@@ -1,0 +1,8 @@
+.env.local
+node_modules/
+.next/
+.codegraph/
+.omo/
+tsconfig.tsbuildinfo
+coverage/
+*.log

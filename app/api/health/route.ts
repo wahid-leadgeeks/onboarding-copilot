@@ -1,0 +1,14 @@
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  const sheetsReadConfigured = Boolean(process.env.GOOGLE_SHEETS_ID && process.env.SHEETS_SCHEDULE_URL);
+  const sheetsWriteConfigured = Boolean(process.env.GOOGLE_SHEETS_ID && process.env.SHEETS_WRITE_URL);
+  const diaryWriteConfigured = Boolean(process.env.GOOGLE_SHEETS_ID && process.env.SHEETS_DIARY_URL);
+  const oauthConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+  const aiConfigured = Boolean(process.env.AI_API_KEY && process.env.AI_API_BASE_URL);
+  return NextResponse.json({
+    status: 'ok',
+    mode: sheetsReadConfigured && sheetsWriteConfigured && oauthConfigured ? 'connected' : 'local',
+    integrations: { sheets: sheetsReadConfigured && sheetsWriteConfigured && diaryWriteConfigured, sheetsRead: sheetsReadConfigured, sheetsWrite: sheetsWriteConfigured, diaryWrite: diaryWriteConfigured, oauth: oauthConfigured, ai: aiConfigured },
+  }, { headers: { 'Cache-Control': 'no-store' } });
+}
