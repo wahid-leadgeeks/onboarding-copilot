@@ -49,6 +49,13 @@ SHEETS_SCHEDULE_URL=
 SHEETS_WRITE_URL=
 SHEETS_DIARY_URL=
 SHEETS_WRITE_TOKEN=
+
+# Groq AI assistant — pick any current Groq chat model; the model is
+# configured here, never hardcoded in the app
+GROQ_API_KEY=
+GROQ_MODEL=
+# Optional endpoint override (defaults to the Groq OpenAI-compatible URL)
+# GROQ_BASE_URL=https://api.groq.com/openai/v1/chat/completions
 ```
 
 Use `.env.example` as the starting template. All Google, automation, and AI values are server-only; never expose them through client-side code or commit `.env.local`.

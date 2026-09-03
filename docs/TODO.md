@@ -68,6 +68,13 @@
 - [x] Give every bare `border` utility an explicit color (Tailwind default is `currentColor`)
 - [x] Re-verify layout at desktop + mobile (no overflow/overlap regressions) and capture `screenshots/theme-*.png`
 
+### AI assistant (Groq provider)
+
+- [x] `lib/ai/assistant.ts` — validated chat messages (1–20, roles, length caps), system prompt enforcing assistive-only behavior, env-driven provider config (`GROQ_API_KEY`, `GROQ_MODEL`, optional `GROQ_BASE_URL` — no model ID hardcoded)
+- [x] `POST /api/ai/assistant` — 400/503/502 boundary handling; `/api/health` `ai` flag now lights for Groq config too
+- [x] `Assistant` component — floating ✨ launcher on every page, chat panel with loading state, failure notice with draft restore, unconfigured hint, Esc to close
+- [x] QA against a mock Groq endpoint via `GROQ_BASE_URL` override (auth, model passthrough, history, failure path)
+
 ### Guide tour (first-run experience)
 
 - [x] Add `lib/guide-tour.ts` — validated tour state persistence (`onboarding-guide-tour` localStorage key)
