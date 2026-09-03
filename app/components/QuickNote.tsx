@@ -12,7 +12,7 @@ export function QuickNote({ onSave }: { onSave: (content: string) => void }) {
   }
 
   return (
-    <section className="mt-8">
+    <section data-tour="quick-note" className="mt-8">
       {!expanded && (
         <button
           onClick={() => setExpanded(true)}

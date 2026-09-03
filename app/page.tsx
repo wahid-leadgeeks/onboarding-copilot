@@ -5,6 +5,8 @@ import { isActivityList } from '@/lib/sheets/types';
 import type { Activity } from '@/lib/types/activity';
 import { PrimaryNav } from '@/app/components/PrimaryNav';
 import { QuickNote } from '@/app/components/QuickNote';
+import { GuideTour, todayTourSteps } from '@/app/components/GuideTour';
+import { GUIDE_TOUR_STORAGE_KEY, readGuideTourState, writeGuideTourState } from '@/lib/guide-tour';
 import { ACTIVE_SESSION_STORAGE_KEY, DIARY_STORAGE_KEY, QUICK_NOTES_STORAGE_KEY, SESSION_HISTORY_STORAGE_KEY, appendDiary, appendQuickNote, appendSession, completedActivityIds, readDiary, readQuickNotes, readSessions, type StoredDiary, type StoredSession } from '@/lib/local-records';
 import { selectCurrentActivity } from '@/lib/session/activity-selection';
 import { enqueueSync, pendingSyncStorageKey, readPendingSyncs, writePendingSyncs } from '@/lib/sync-queue';
@@ -32,6 +34,25 @@ export default function TodayPage() {
   const [deviation, setDeviation] = useState<string | null>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [showLearningCapture, setShowLearningCapture] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tour') === 'start') {
+      params.delete('tour');
+      const query = params.toString();
+      window.history.replaceState(null, '', query ? `/?${query}` : '/');
+      setTourOpen(true);
+      return;
+    }
+    const tourState = readGuideTourState(localStorage.getItem(GUIDE_TOUR_STORAGE_KEY));
+    if (!tourState?.completed) setTourOpen(true);
+  }, []);
+
+  function handleTourFinish() {
+    localStorage.setItem(GUIDE_TOUR_STORAGE_KEY, writeGuideTourState({ completed: true, completedAt: new Date().toISOString() }));
+    setTourOpen(false);
+  }
 
   useEffect(() => {
     fetch('/api/schedule', { cache: 'no-store' })
@@ -185,12 +206,12 @@ export default function TodayPage() {
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-slate-900 sm:px-8 sm:py-8">
       <PrimaryNav active="Today" />
-      <div role="status" className={`mb-8 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${statusBar.className}`}>
+      <div role="status" data-tour="status-bar" className={`mb-8 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${statusBar.className}`}>
         <span aria-hidden="true">{statusBar.indicator}</span>{statusBar.label}
       </div>
 
       {/* Header */}
-      <header className="border-b border-slate-200 pb-8">
+      <header data-tour="progress-header" className="border-b border-slate-200 pb-8">
         <p className="text-sm font-medium text-slate-500">{todayLabel}</p>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">{greeting}, Noah</h1>
         <div className="mt-6 max-w-xl">
@@ -207,7 +228,7 @@ export default function TodayPage() {
 
       {/* Done for today */}
       {completedCount === totalCount && totalCount > 0 && !currentActivity ? (
-        <section className="mt-10 rounded-2xl border border-emerald-100 bg-emerald-50 p-8 text-center">
+        <section data-tour="current-activity" className="mt-10 rounded-2xl border border-emerald-100 bg-emerald-50 p-8 text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Done for today</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight">You’re done for today.</h2>
           <p className="mt-2 text-slate-700">{completedCount} activities completed. Nothing else is scheduled.</p>
@@ -218,7 +239,7 @@ export default function TodayPage() {
           {/* Current activity or completion moment */}
           {finishedAt ? (
             // Completion moment
-            <section className="mt-10 rounded-2xl border border-emerald-100 bg-emerald-50 p-8">
+            <section data-tour="current-activity" className="mt-10 rounded-2xl border border-emerald-100 bg-emerald-50 p-8">
               <div className="flex items-center gap-3">
                 <span className="text-3xl text-emerald-600">✓</span>
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Done</p>
@@ -245,7 +266,7 @@ export default function TodayPage() {
             </section>
           ) : (
             // Current activity card
-            <section className="mt-10 rounded-2xl bg-slate-900 p-6 text-white shadow-xl shadow-slate-900/10 sm:p-8">
+            <section data-tour="current-activity" className="mt-10 rounded-2xl bg-slate-900 p-6 text-white shadow-xl shadow-slate-900/10 sm:p-8">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-300">
                 <span aria-hidden="true">●</span>
                 {startedAt ? 'In progress' : 'Right now'}
@@ -371,7 +392,7 @@ export default function TodayPage() {
       )}
 
       {/* Timeline: YOUR DAY */}
-      <section className="mt-12">
+      <section data-tour="day-timeline" className="mt-12">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Today</h2>
           <span className="text-sm text-slate-500">{activities.length} activities</span>
@@ -405,6 +426,7 @@ export default function TodayPage() {
           setSync('Quick note saved · find it later under Learnings');
         }}
       />
+      <GuideTour steps={todayTourSteps} open={tourOpen} onFinish={handleTourFinish} />
     </main>
   );
 }
