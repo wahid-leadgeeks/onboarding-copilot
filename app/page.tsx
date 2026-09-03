@@ -7,6 +7,7 @@ import { PrimaryNav } from '@/app/components/PrimaryNav';
 import { QuickNote } from '@/app/components/QuickNote';
 import { GuideTour, todayTourSteps } from '@/app/components/GuideTour';
 import { GUIDE_TOUR_STORAGE_KEY, readGuideTourState, writeGuideTourState } from '@/lib/guide-tour';
+import { IMPORTED_SCHEDULE_STORAGE_KEY, readImportedSchedule } from '@/lib/imported-schedule';
 import { ACTIVE_SESSION_STORAGE_KEY, DIARY_STORAGE_KEY, QUICK_NOTES_STORAGE_KEY, SESSION_HISTORY_STORAGE_KEY, appendDiary, appendQuickNote, appendSession, completedActivityIds, readDiary, readQuickNotes, readSessions, type StoredDiary, type StoredSession } from '@/lib/local-records';
 import { selectCurrentActivity } from '@/lib/session/activity-selection';
 import { enqueueSync, pendingSyncStorageKey, readPendingSyncs, writePendingSyncs } from '@/lib/sync-queue';
@@ -30,7 +31,7 @@ export default function TodayPage() {
   const [listening, setListening] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [progress, setProgress] = useState<{ completed: number; total: number; remaining: number } | null>(null);
-  const [scheduleState, setScheduleState] = useState<'demo' | 'connected' | 'error'>('demo');
+  const [scheduleState, setScheduleState] = useState<'demo' | 'connected' | 'error' | 'imported'>('demo');
   const [deviation, setDeviation] = useState<string | null>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [showLearningCapture, setShowLearningCapture] = useState(false);
@@ -55,6 +56,12 @@ export default function TodayPage() {
   }
 
   useEffect(() => {
+    const imported = readImportedSchedule(localStorage.getItem(IMPORTED_SCHEDULE_STORAGE_KEY));
+    if (imported) {
+      setActivities(imported.activities);
+      setScheduleState('imported');
+      return;
+    }
     fetch('/api/schedule', { cache: 'no-store' })
       .then(async (response) => {
         if (!response.ok) { setScheduleState('error'); throw new Error('schedule'); }
@@ -201,7 +208,7 @@ export default function TodayPage() {
     else { setListening(true); recognition.start(); }
   }
 
-  const statusBar = scheduleState === 'demo' ? { indicator: '🧪', label: 'Demo data', className: 'border-indigo-100 bg-indigo-50 text-indigo-900' } : scheduleState === 'error' ? { indicator: '🟡', label: 'Offline · Using saved schedule', className: 'border-amber-100 bg-amber-50 text-amber-900' } : { indicator: '🟢', label: sync || 'Synced just now', className: 'border-emerald-100 bg-emerald-50 text-emerald-900' };
+  const statusBar = scheduleState === 'imported' ? { indicator: '📄', label: `Imported schedule · ${activities.length} activities`, className: 'border-blue-100 bg-blue-50 text-blue-900' } : scheduleState === 'demo' ? { indicator: '🧪', label: 'Demo data', className: 'border-indigo-100 bg-indigo-50 text-indigo-900' } : scheduleState === 'error' ? { indicator: '🟡', label: 'Offline · Using saved schedule', className: 'border-amber-100 bg-amber-50 text-amber-900' } : { indicator: '🟢', label: sync || 'Synced just now', className: 'border-emerald-100 bg-emerald-50 text-emerald-900' };
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-slate-900 sm:px-8 sm:py-8">

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ACTIVE_SESSION_STORAGE_KEY, DIARY_STORAGE_KEY, QUICK_NOTES_STORAGE_KEY, SESSION_HISTORY_STORAGE_KEY, readSessions, readDiary, readQuickNotes, type StoredSession, type StoredDiary, type StoredQuickNote } from '@/lib/local-records';
 import { PrimaryNav } from '@/app/components/PrimaryNav';
 import { mergeCompletedCount } from '@/lib/session/presentation';
+import { IMPORTED_SCHEDULE_STORAGE_KEY, readImportedSchedule } from '@/lib/imported-schedule';
 import type { Activity } from '@/lib/types/activity';
 import { isActivityList } from '@/lib/sheets/types';
 
@@ -23,7 +24,9 @@ export default function HistoryPage() {
       const data = value as Record<string, unknown>;
       if (typeof data.completed === 'number' && typeof data.total === 'number' && typeof data.remaining === 'number' && typeof data.message === 'string') setSummary({ completed: data.completed, total: data.total, remaining: data.remaining, message: data.message, source: typeof data.source === 'string' ? data.source : undefined });
     }).catch(() => undefined);
-    fetch('/api/schedule', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((value: unknown) => { if (isActivityList(value)) setActivities(value); }).catch(() => undefined);
+    const imported = readImportedSchedule(localStorage.getItem(IMPORTED_SCHEDULE_STORAGE_KEY));
+    if (imported) setActivities(imported.activities);
+    else fetch('/api/schedule', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((value: unknown) => { if (isActivityList(value)) setActivities(value); }).catch(() => undefined);
   }, []);
   const completedIds = new Set(sessions.map((session) => session.activityId));
   const summaryCompleted = summary ? mergeCompletedCount(summary.completed, completedIds.size) : 0;
