@@ -278,6 +278,19 @@ TODAY
 - AI structures the note later
 - Example: "MD explained company strategy..." → structured diary entry
 
+### Notes Export Toolbar
+
+```
+☑ Select all notes   3 of 4 notes selected    Format [CSV ▾]  [ Export 3 notes ]  Clear
+```
+
+- On Learnings, visible only when at least one note exists
+- Checkbox on every diary entry and quick note; select-all carries an indeterminate state
+- Two formats: CSV (UTF-8 BOM, RFC4180 — Excel-compatible) and Markdown
+- Export is fully client-side (Blob download), oldest note first, filename `onboarding-notes-YYYY-MM-DD.csv|.md`
+- Selection persists after export; a status line confirms the count
+- Export button shows the count and disables at zero selection
+
 ### Journey View
 
 ```

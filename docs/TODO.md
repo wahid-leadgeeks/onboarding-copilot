@@ -68,6 +68,14 @@
 - [x] Give every bare `border` utility an explicit color (Tailwind default is `currentColor`)
 - [x] Re-verify layout at desktop + mobile (no overflow/overlap regressions) and capture `screenshots/theme-*.png`
 
+### Notes export (batch, client-side)
+
+- [x] `lib/export-notes.ts` — pure serializers: RFC4180 CSV (UTF-8 BOM, CRLF, quote escaping) and Markdown (UTC `##` headings), plus `onboarding-notes-YYYY-MM-DD.ext` filename builder
+- [x] Selection checkboxes on every diary entry and quick note on Learnings, with stable ids
+- [x] Export toolbar (visible only when notes exist): select-all with indeterminate state, "N of M notes selected", CSV/Markdown format picker, count-labeled export button, Clear
+- [x] Client-side Blob download (no server round-trip); selection persists after export; status message confirms
+- [x] Browser QA: byte-level BOM check, quote/newline escaping, partial selection, both formats, cleanup verified
+
 ### AI assistant (Groq provider)
 
 - [x] `lib/ai/assistant.ts` — validated chat messages (1–20, roles, length caps), system prompt enforcing assistive-only behavior, env-driven provider config (`GROQ_API_KEY`, `GROQ_MODEL`, optional `GROQ_BASE_URL` — no model ID hardcoded)
