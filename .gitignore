@@ -3,6 +3,7 @@ node_modules/
 .next/
 .codegraph/
 .omo/
+.playwright-mcp/
 tsconfig.tsbuildinfo
 coverage/
 *.log

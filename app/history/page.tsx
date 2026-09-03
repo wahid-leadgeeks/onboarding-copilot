@@ -1,23 +1,49 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { ACTIVE_SESSION_STORAGE_KEY, DIARY_STORAGE_KEY, SESSION_HISTORY_STORAGE_KEY, readSessions, readDiary, type StoredSession, type StoredDiary } from '@/lib/local-records';
+import { ACTIVE_SESSION_STORAGE_KEY, DIARY_STORAGE_KEY, QUICK_NOTES_STORAGE_KEY, SESSION_HISTORY_STORAGE_KEY, readSessions, readDiary, readQuickNotes, type StoredSession, type StoredDiary, type StoredQuickNote } from '@/lib/local-records';
 import { PrimaryNav } from '@/app/components/PrimaryNav';
+import { mergeCompletedCount } from '@/lib/session/presentation';
+import type { Activity } from '@/lib/types/activity';
+import { isActivityList } from '@/lib/sheets/types';
 
 export default function HistoryPage() {
   const [sessions, setSessions] = useState<StoredSession[]>([]);
   const [diary, setDiary] = useState<StoredDiary[]>([]);
+  const [quickNotes, setQuickNotes] = useState<StoredQuickNote[]>([]);
   const [summary, setSummary] = useState<{ completed: number; total: number; remaining: number; message: string; source?: string } | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
   useEffect(() => {
     try {
       setSessions(readSessions(localStorage.getItem(SESSION_HISTORY_STORAGE_KEY) ?? localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY)));
       setDiary(readDiary(localStorage.getItem(DIARY_STORAGE_KEY)));
+      setQuickNotes(readQuickNotes(localStorage.getItem(QUICK_NOTES_STORAGE_KEY)));
     } catch { /* ignore malformed local state */ }
     fetch('/api/summary', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((value: unknown) => {
       if (!value || typeof value !== 'object') return;
       const data = value as Record<string, unknown>;
       if (typeof data.completed === 'number' && typeof data.total === 'number' && typeof data.remaining === 'number' && typeof data.message === 'string') setSummary({ completed: data.completed, total: data.total, remaining: data.remaining, message: data.message, source: typeof data.source === 'string' ? data.source : undefined });
     }).catch(() => undefined);
+    fetch('/api/schedule', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).then((value: unknown) => { if (isActivityList(value)) setActivities(value); }).catch(() => undefined);
   }, []);
-  const duration = sessions.length ? Math.floor((sessions.at(-1)!.finishedAt - sessions.at(-1)!.startedAt) / 60000) : 0;
-  return <main className="mx-auto min-h-screen max-w-3xl px-6 py-10"><PrimaryNav active="History" />{summary && <section className="mb-6 rounded-2xl bg-emerald-50 p-5 ring-1 ring-emerald-100"><h2 className="font-semibold">Today’s progress</h2><p className="mt-1 text-sm text-slate-600">{summary.message} {summary.remaining > 0 ? `${summary.remaining} record${summary.remaining === 1 ? "" : "s"} still missing.` : "Nothing is missing."}</p></section>}<h1 className="text-3xl font-semibold">History</h1><section className="mt-8 rounded-2xl bg-white p-6 ring-1 ring-slate-200"><h2 className="text-lg font-semibold">Recent sessions</h2>{sessions.length ? <div className="mt-3 space-y-3">{sessions.slice().reverse().map((item, index) => <p key={`${item.startedAt}-${index}`}>{item.name} · {Math.floor((item.finishedAt - item.startedAt) / 60000)}m <span className="ml-3 text-sm text-emerald-700">Done</span></p>)}</div> : <p className="mt-3 text-slate-500">Completed sessions will appear here.</p>}</section><section className="mt-6 rounded-2xl bg-white p-6 ring-1 ring-slate-200"><h2 className="text-lg font-semibold">Learning diary</h2>{diary.length ? <div className="mt-3 space-y-4">{diary.slice().reverse().map((entry, index) => <article key={`${entry.createdAt}-${index}`} className="border-b pb-3 last:border-0"><p className="whitespace-pre-wrap text-slate-700">{entry.content}</p><time className="text-xs text-slate-500">{new Date(entry.createdAt).toLocaleString()}</time></article>)}</div> : <p className="mt-3 text-slate-500">Your confirmed learning notes will appear here.</p>}</section></main>;
+  const completedIds = new Set(sessions.map((session) => session.activityId));
+  const summaryCompleted = summary ? mergeCompletedCount(summary.completed, completedIds.size) : 0;
+  const summaryRemaining = summary ? Math.max(0, summary.total - summaryCompleted) : 0;
+  const summaryMessage = !summary ? ''
+    : summary.total === 0 ? 'No activities are scheduled today.'
+    : summaryRemaining === 0 ? 'All scheduled activities are recorded.'
+    : `${summaryCompleted} of ${summary.total} activities are recorded.`;
+  const dateLabel = new Intl.DateTimeFormat(undefined, { month: 'long', day: 'numeric' }).format(new Date());
+  return <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-slate-900 sm:px-8 sm:py-8"><PrimaryNav active="Learnings" />
+    <header className="border-b border-slate-200 pb-8"><p className="text-sm font-medium text-slate-500">Your learning record</p><h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Learnings</h1><p className="mt-3 text-lg text-slate-600">Completed sessions, quick notes, and your learning diary.</p></header>
+    {summary && <section className="mt-8 rounded-2xl border border-emerald-100 bg-emerald-50 p-6"><h2 className="font-semibold text-emerald-900">Today’s progress</h2><p className="mt-1 text-sm text-slate-700">{summaryMessage} {summaryRemaining > 0 ? `${summaryRemaining} record${summaryRemaining === 1 ? '' : 's'} still missing.` : 'Nothing is missing.'}</p></section>}
+    <section className="mt-10"><div className="mb-4 flex items-center justify-between"><h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">{dateLabel}</h2><span className="text-sm text-slate-500">{sessions.length} completed</span></div><div className="divide-y divide-slate-200 border-y border-slate-200">{activities.map(activity => {
+      const isCompleted = completedIds.has(activity.id);
+      const status = isCompleted ? { indicator: '✓', label: 'Completed', className: 'text-emerald-600' } : { indicator: '○', label: 'Not started', className: 'text-slate-400' };
+      const session = sessions.find(s => s.activityId === activity.id);
+      const duration = session ? Math.floor((session.finishedAt - session.startedAt) / 60000) : 0;
+      return <article key={activity.id} className="grid grid-cols-[1.5rem_1fr_auto] items-start gap-3 py-5"><span className={`pt-0.5 text-xl leading-none ${status.className}`} aria-label={status.label}>{status.indicator}</span><div><h3 className="font-medium text-slate-900">{activity.name}</h3><p className="mt-1 text-sm text-slate-500">{isCompleted && session ? `${new Date(session.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} – ${new Date(session.finishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${duration} min` : `${activity.plannedStart} – ${activity.plannedEnd}`}</p></div><span className={`pt-1 text-right text-sm font-medium ${status.className}`}>{status.label}</span></article>
+    })}</div></section>
+    <section className="mt-12"><div className="mb-4 flex items-center justify-between"><h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Learning diary</h2><span className="text-sm text-slate-500">{diary.length} entries</span></div><div className="rounded-2xl bg-white p-6 ring-1 ring-slate-200">{diary.length ? <div className="space-y-5">{diary.slice().reverse().map((entry, index) => <article key={`${entry.createdAt}-${index}`} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0"><p className="whitespace-pre-wrap text-slate-700">{entry.content}</p><time className="mt-2 block text-xs text-slate-500">{new Date(entry.createdAt).toLocaleString()}</time></article>)}</div> : <p className="text-slate-500">Your confirmed learning notes will appear here.</p>}</div></section>
+    <section className="mt-12"><div className="mb-4 flex items-center justify-between"><h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Quick notes</h2><span className="text-sm text-slate-500">{quickNotes.length} drafts</span></div><div className="rounded-2xl bg-white p-6 ring-1 ring-slate-200">{quickNotes.length ? <div className="space-y-5">{quickNotes.slice().reverse().map((note, index) => <article key={`${note.createdAt}-${index}`} className="border-b border-slate-100 pb-4 last:border-0 last:pb-0"><p className="whitespace-pre-wrap text-slate-700">{note.content}</p><time className="mt-2 block text-xs text-slate-500">{new Date(note.createdAt).toLocaleString()}</time></article>)}</div> : <p className="text-slate-500">Capture a thought on Today with + Quick note. Drafts wait here until you shape them into diary entries.</p>}</div></section>
+  </main>;
 }

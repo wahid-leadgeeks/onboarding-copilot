@@ -10,9 +10,15 @@ export type StoredDiary = {
   createdAt: string;
 };
 
+export type StoredQuickNote = {
+  content: string;
+  createdAt: string;
+};
+
 export const ACTIVE_SESSION_STORAGE_KEY = 'onboarding-session';
 export const SESSION_HISTORY_STORAGE_KEY = 'onboarding-sessions';
 export const DIARY_STORAGE_KEY = 'onboarding-diary';
+export const QUICK_NOTES_STORAGE_KEY = 'onboarding-quick-notes';
 
 function parseUnknown(raw: string | null): unknown {
   if (!raw) return null;
@@ -53,6 +59,13 @@ export function readDiary(raw: string | null): StoredDiary[] {
   return [];
 }
 
+export function readQuickNotes(raw: string | null): StoredQuickNote[] {
+  const value = parseUnknown(raw);
+  if (Array.isArray(value)) return value.filter(isQuickNote);
+  if (isQuickNote(value)) return [value];
+  return [];
+}
+
 function isSession(value: unknown): value is StoredSession {
   if (!value || typeof value !== "object") return false;
   const item = value as Record<string, unknown>;
@@ -68,11 +81,21 @@ function isDiary(value: unknown): value is StoredDiary {
   return typeof item.content === "string" && typeof item.createdAt === "string";
 }
 
+function isQuickNote(value: unknown): value is StoredQuickNote {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.content === "string" && typeof item.createdAt === "string";
+}
+
 export function appendSession(existing: StoredSession[], next: StoredSession): StoredSession[] {
   return [...existing, next];
 }
 
 export function appendDiary(existing: StoredDiary[], next: StoredDiary): StoredDiary[] {
+  return [...existing, next];
+}
+
+export function appendQuickNote(existing: StoredQuickNote[], next: StoredQuickNote): StoredQuickNote[] {
   return [...existing, next];
 }
 
