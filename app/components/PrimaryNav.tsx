@@ -7,10 +7,10 @@ const destinations = [
 
 export function PrimaryNav({ active }: { active: 'Today' | 'Journey' | 'Learnings' | 'Settings' }) {
   return (
-    <nav aria-label="Primary navigation" data-tour="primary-nav" className="animate-fade-up mb-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
-      <p className="mr-auto text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Onboarding Copilot</p>
+    <nav aria-label="Primary navigation" data-tour="primary-nav" className="animate-fade-up mb-10 flex flex-wrap items-center gap-x-2 gap-y-3 text-sm">
+      <p className="mr-auto text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Onboarding Copilot</p>
       {destinations.map((item) => (
-        <a key={item.label} aria-current={active === item.label ? 'page' : undefined} className={`primary-nav-link transition ${active === item.label ? 'font-semibold text-slate-900' : 'text-slate-500 hover:text-slate-900'}`} href={item.href}>
+        <a key={item.label} aria-current={active === item.label ? 'page' : undefined} className={`inline-flex min-h-11 items-center justify-center rounded-full px-4 py-1.5 transition ${active === item.label ? 'bg-stone-900 font-semibold text-white' : 'text-stone-500 hover:bg-stone-900/5 hover:text-stone-900'}`} href={item.href}>
           {item.label}
         </a>
       ))}

@@ -1,51 +1,81 @@
 @import 'tailwindcss';
 
 /*
- * Tailwind v4 compiles utilities into CSS cascade layers. Unlayered rules below
- * therefore intentionally override utilities (theme tokens, motion, focus) —
- * keep them free of element-level styling (bg/border/padding on tags) that
- * would fight utility classes. The previous unlayered fallback block was
- * removed when the PostCSS pipeline was enabled: it would have clobbered
- * every utility class.
+ * Warm human-first design system (v3). Tailwind v4 compiles utilities into
+ * cascade layers; the unlayered rules below (theme tokens, motion, focus)
+ * intentionally override utilities and must stay free of element-level
+ * styling that would fight utility classes.
  */
+
+@theme {
+  --color-cream: #fafaf7;
+
+  /* Emotion palettes — color communicates meaning, never decoration. */
+  --color-mint-50: #f0fdf9;
+  --color-mint-100: #dcf7ec;
+  --color-mint-300: #86e2bc;
+  --color-mint-500: #35c98e;
+  --color-mint-600: #23ae77;
+  --color-mint-700: #1d8a60;
+
+  --color-peach-50: #fff6f0;
+  --color-peach-100: #ffe9dc;
+  --color-peach-300: #ffc5a3;
+  --color-peach-500: #ff9d6b;
+  --color-peach-600: #f58149;
+  --color-peach-700: #c9602a;
+
+  --color-lavender-50: #f6f4fe;
+  --color-lavender-100: #ede9fd;
+  --color-lavender-300: #c4b5f5;
+  --color-lavender-500: #9b8cf2;
+  --color-lavender-600: #7e6ae6;
+  --color-lavender-700: #6650c4;
+
+  --color-sun-50: #fffbeb;
+  --color-sun-100: #fef3c7;
+  --color-sun-300: #fde047;
+  --color-sun-500: #facc15;
+  --color-sun-600: #ca9f04;
+  --color-sun-700: #9c7a0d;
+
+  /* Soft warm elevation instead of bordered boxes. */
+  --radius-card: 1.75rem;
+  --shadow-soft: 0 1px 2px rgb(87 70 31 / 0.04), 0 8px 24px rgb(87 70 31 / 0.06);
+  --shadow-lift: 0 2px 4px rgb(87 70 31 / 0.05), 0 16px 40px rgb(87 70 31 / 0.1);
+}
 
 :root { color-scheme: light; }
 
 body {
   margin: 0;
   min-height: 100vh;
-  color: #0f172a;
+  color: #1c1917;
   font-family: Inter, 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
-  background-color: #f8fafc;
-  background-image: linear-gradient(180deg, #e0e7ff 0%, #f8fafc 18rem);
+  background-color: #fafaf7;
+  background-image: radial-gradient(60rem 20rem at 50% -6rem, rgb(255 243 224 / 0.55), transparent 70%);
   background-repeat: no-repeat;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 a { color: inherit; text-decoration: none; }
-button, textarea, input { font: inherit; }
+button, textarea, input, select { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 
-::selection { background: #c7d2fe; color: #1e1b4b; }
+::selection { background: #fef3c7; color: #78350f; }
 
-a:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible {
-  outline: 2px solid #2563eb;
+a:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible, select:focus-visible {
+  outline: 2px solid #35c98e;
   outline-offset: 2px;
 }
 
-/* --- Theme accents --- */
-.hero-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 45%, #312e81 100%); }
-.bar-gradient { background: linear-gradient(90deg, #6366f1, #3b82f6); }
-.text-gradient {
-  background: linear-gradient(90deg, #4338ca, #2563eb 45%, #0ea5e9);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
+/* --- Accents --- */
+.hero-gradient { background: linear-gradient(135deg, #3f3a36 0%, #262220 55%, #1c1917 100%); }
+.bar-gradient { background: linear-gradient(90deg, #35c98e, #38bdf8); }
 
-/* --- Primary nav underline --- */
+/* --- Primary nav pill --- */
 .primary-nav-link { position: relative; }
 .primary-nav-link::after {
   content: '';
@@ -55,7 +85,7 @@ a:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visib
   bottom: -4px;
   height: 2px;
   border-radius: 9999px;
-  background: linear-gradient(90deg, #6366f1, #3b82f6);
+  background: linear-gradient(90deg, #35c98e, #38bdf8);
   transform: scaleX(0);
   transform-origin: left center;
   transition: transform 0.2s ease;
@@ -68,7 +98,7 @@ button {
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease,
     box-shadow 0.15s ease, transform 0.15s ease;
 }
-button:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgb(15 23 42 / 0.1); }
+button:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgb(87 70 31 / 0.1); }
 button:not(:disabled):active { transform: translateY(0) scale(0.98); }
 
 @keyframes fade-up {
@@ -79,6 +109,21 @@ button:not(:disabled):active { transform: translateY(0) scale(0.98); }
   0% { opacity: 0; transform: scale(0.85); }
   60% { opacity: 1; transform: scale(1.04); }
   100% { opacity: 1; transform: scale(1); }
+}
+@keyframes spring-in {
+  0% { opacity: 0; transform: scale(0.7); }
+  55% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes celebrate {
+  0% { opacity: 0; transform: scale(0.5) rotate(-4deg); }
+  50% { opacity: 1; transform: scale(1.12) rotate(2deg); }
+  75% { transform: scale(0.97) rotate(-1deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
 }
 @keyframes pulse-soft {
   0%, 100% { opacity: 1; }
@@ -91,6 +136,9 @@ button:not(:disabled):active { transform: translateY(0) scale(0.98); }
 
 .animate-fade-up { animation: fade-up 0.5s cubic-bezier(0.21, 0.61, 0.35, 1) both; }
 .animate-pop-in { animation: pop-in 0.35s cubic-bezier(0.21, 0.61, 0.35, 1) both; }
+.animate-spring-in { animation: spring-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-celebrate { animation: celebrate 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-float { animation: float 3.5s ease-in-out infinite; }
 .animate-pulse-soft { animation: pulse-soft 2s ease-in-out infinite; }
 .stagger-1 { animation-delay: 0.07s; }
 .stagger-2 { animation-delay: 0.14s; }
@@ -98,7 +146,6 @@ button:not(:disabled):active { transform: translateY(0) scale(0.98); }
 .stagger-4 { animation-delay: 0.28s; }
 .stagger-5 { animation-delay: 0.35s; }
 
-/* Shimmer sweep across a progress bar fill. */
 .progress-shimmer { position: relative; overflow: hidden; }
 .progress-shimmer::after {
   content: '';

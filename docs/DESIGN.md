@@ -1,8 +1,8 @@
 # Design System — Onboarding Copilot
 
 **Product:** Onboarding Copilot
-**Status:** Active — v2.1
-**Last updated:** 2026-09-03
+**Status:** Active — v3 (warm, human-first)
+**Last updated:** 2026-09-04
 
 ---
 
@@ -36,51 +36,63 @@ Open spreadsheet → find row → inspect columns → type stuff → wonder what
 
 ---
 
-## 2. Visual Identity
+## 2. Visual Identity (v3 — warm, human-first)
+
+> Linear's clarity + Duolingo's personality + Notion's flexibility. Not a children's app: color communicates emotion and meaning, never decoration.
 
 ### Palette
 
-| Role | Color | Hex | Usage |
+| Role | Color | Hex / Class | Usage |
 |---|---|---|---|
-| Background | Near-white | `#f8fafc` | Page background |
-| Surface | White | `#ffffff` | Cards, panels |
-| Primary | Deep navy | `#0f172a` | Headers, primary buttons, emphasis |
-| Accent | Calm blue | `#2563eb` | Primary CTA, highlights, progress |
-| Success | Emerald | `#059669` | Completed states |
-| Warning | Amber | `#d97706` | Attention states |
-| Text | Slate | `#0f172a` → `#64748b` | Hierarchy |
+| Background | Cream | `#fafaf7` (`bg-cream`) | Page background with a faint sun radial tint at the top |
+| Surface | White | `#ffffff` | Cards — `rounded-card` (28px) + `shadow-soft`, **no borders or rings** |
+| Ink | Warm charcoal | `stone-900 … stone-400` | All text, primary buttons (`bg-stone-900`) |
+| Mint 🌿 | Progress / success | `mint-*` (500 `#35c98e`) | Completed, growth, "done" moments |
+| Peach 🍑 | Activity / attention | `peach-*` (500 `#ff9d6b`) | Current activity, warnings, deviations |
+| Lavender 💜 | Learning / personal | `lavender-*` (500 `#9b8cf2`) | Diary, AI content, assistant |
+| Sun 🌼 | Achievement / highlight | `sun-*` (500 `#facc15`) | Celebrations, demo badge, import ready |
+| Sky 🩵 | Information | `sky-*` | Imported schedule, neutral info |
+
+Rules: one emotion tint per element (a dot, chip, or 50-level wash — never full saturated cards); ink does most of the work; big numerals over badges.
 
 ### Typography
 
 | Role | Font | Weight | Size |
 |---|---|---|---|
-| Display | Inter (sans-serif) | 600 | 2.25rem (36px) |
+| Display | Inter (sans-serif) | 600 | 2.25–3.75rem — greeting (`Good evening, Noah 👋`), big stats (`text-6xl`) |
 | Heading | Inter | 600 | 1.5rem (24px) |
 | Body | Inter | 400 | 1rem (16px) |
 | Small | Inter | 400 | 0.875rem (14px) |
-| Mono | JetBrains Mono | 400 | 0.875rem (14px) |
 
-### Spacing
+Typography IS the structure: giant numbers with small labels replace stat cards and tables.
 
-Base unit: 4px. Use multiples: 4, 8, 12, 16, 20, 24, 32, 48, 64.
+### Personality copy
+
+| Instead of | Use |
+|---|---|
+| `Time Tracking Dashboard` | `Your day so far ☀️` |
+| `Task successfully created.` | `Nice. That's one less thing to carry around. ✨` |
+| `87% completion` | `Almost there! 🌱` |
+| `No records found.` | `Nothing here yet. Your day is still unwritten.` |
+
+Growth stages track progress: 🌱 Just planted → 🌱 Growing → 🌿 Almost there → 🌳 Day complete. The day's finish is `Day wrapped up 🎉`.
 
 ### Shadows
 
 | Level | Usage |
 |---|---|
-| None | Flat surfaces |
-| Sm | Subtle elevation (cards) |
-| Md | Hover / focus |
-| Lg | Modals, dropdowns |
+| `shadow-soft` | Resting cards — `0 1px 2px + 0 8px 24px rgb(87 70 31 / .04–.06)` warm tint |
+| `shadow-lift` | Hover elevation |
 
-### Gradients (v2.1)
+No borders on cards. Elevation is soft and warm, never gray-boxed.
+
+### Gradients
 
 | Class | Gradient | Usage |
 |---|---|---|
-| Body background | `#e0e7ff → #f8fafc` (vertical, top 18rem) | Fresh indigo-tinted page top |
-| `.hero-gradient` | `#0f172a → #1e1b4b → #312e81` (135°) | "Right now" card, Journey hero card |
-| `.bar-gradient` | `#6366f1 → #3b82f6` (90°) | Progress bar fills |
-| `.text-gradient` | `#4338ca → #2563eb → #0ea5e9` (90°, clipped to text) | Page h1 titles |
+| Body background | sun radial tint fading to cream | Warm page top |
+| `.hero-gradient` | `#3f3a36 → #1c1917` (135°) warm charcoal | Assistant header/launcher |
+| `.bar-gradient` | `#35c98e → #38bdf8` mint→sky (90°) | Progress bar fills (with `.progress-shimmer`) |
 
 ### Fonts
 
@@ -88,7 +100,7 @@ The app renders `Inter, 'Segoe UI', system-ui, -apple-system, Arial, sans-serif`
 
 ---
 
-## 3. Motion (v2.1)
+## 3. Motion (v3)
 
 Motion is **calm, quick, and meaningful** — it explains where things come from, never distracts.
 
@@ -96,17 +108,20 @@ Motion is **calm, quick, and meaningful** — it explains where things come from
 |---|---|---|
 | `.animate-fade-up` | 0.5s rise + fade, cubic-bezier(.21,.61,.35,1) | Sections entering on page load |
 | `.stagger-1` … `.stagger-5` | +0.07s per step | Sequential entrance of sibling sections/cards |
-| `.animate-pop-in` | 0.35s scale-in (overshoot 1.04) | Completion moment, import preview, learning capture |
+| `.animate-pop-in` | 0.35s scale-in (overshoot 1.04) | Import preview, learning capture |
+| `.animate-spring-in` | 0.45s spring (cubic-bezier(.34,1.56,.64,1)) | Completion moment ✓ |
+| `.animate-celebrate` | 0.7s springy scale+rotate | `Day wrapped up 🎉` |
+| `.animate-float` | 3.5s gentle idle float | Assistant launcher, growth emoji |
 | `.animate-pulse-soft` | 2s opacity pulse | "Right now" live indicator |
-| `.progress-shimmer` | Sweeping highlight across the bar fill | Both progress bars |
-| Nav underline | Gradient bar scaleX(0→1) on hover / active | Primary navigation |
+| `.progress-shimmer` | Sweeping highlight across the bar fill | Progress bars |
+| Nav active pill | Filled `bg-stone-900` pill | Primary navigation |
 | Button lift | translateY(-1px) + soft shadow on hover | All buttons |
 
 Rules:
 
 - Every entrance animation plays once, on mount.
 - `prefers-reduced-motion: reduce` disables all animation and transition durations globally (globals.css).
-- The guide tour popover pops in per step and its backdrop/spotlight fade in.
+- The guide tour popover pops in per step (spring easing) with a mint-600 spotlight ring.
 
 ---
 

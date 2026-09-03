@@ -12,42 +12,42 @@ export type GuideTourStep = {
 
 export const todayTourSteps: readonly GuideTourStep[] = [
   {
-    title: 'Welcome to your cockpit',
-    body: "This is your onboarding copilot — one thing at a time. It tracks your time, notes, and the paperwork, so you can focus on learning. Let's take a quick look around.",
+    title: 'Welcome to your cockpit 👋',
+    body: "One thing at a time. We'll track the hours, the notes, and the paperwork — you focus on learning. Let's take a quick look around.",
   },
   {
     target: 'status-bar',
     title: 'Know where you stand',
-    body: 'This badge tells you whether you are looking at demo data, a saved schedule, or a live Google Sheets connection.',
+    body: "This little badge says whether you're looking at demo data, a saved schedule, or a live connection.",
   },
   {
     target: 'progress-header',
     title: 'Your day at a glance',
-    body: 'See how far you are into the 90-day journey and how today is going — no spreadsheet required.',
+    body: 'How far into the 90 days you are, and how today is going — no spreadsheet required.',
   },
   {
     target: 'current-activity',
-    title: 'Do one thing',
-    body: 'This card is your only job. Start when you begin and finish when you are done — the app records the times and the duration for you.',
+    title: 'One thing at a time',
+    body: "This card is your only job right now. Start it, finish it — we'll write down the times.",
   },
   {
     target: 'day-timeline',
     title: 'The shape of your day',
-    body: "Everything scheduled today with status at a glance. If plans change, use 'Something changed?' to note it.",
+    body: "Everything scheduled today at a glance. If plans change, 'Something changed?' has you covered.",
   },
   {
     target: 'quick-note',
-    title: 'Capture thoughts on the fly',
-    body: 'Had an insight? Jot it down in seconds. Drafts wait safely under Learnings until you turn them into diary entries.',
+    title: 'Capture thoughts on the fly ✨',
+    body: 'Had an idea? Jot it down in seconds. Drafts wait safely under Learnings.',
   },
   {
     target: 'primary-nav',
-    title: 'Explore when you are ready',
-    body: 'Journey shows your 90-day path, Learnings keeps your diary and notes, and Settings manages the connection and sync.',
+    title: "Explore when you're ready",
+    body: 'Journey is your 90-day path, Learnings keeps your notes, Settings handles the boring parts.',
   },
   {
-    title: "You're all set",
-    body: 'Start your first activity whenever you are ready. The app handles the rest.',
+    title: "You're all set 🌱",
+    body: "Start your first activity whenever you're ready. We'll handle the rest.",
   },
 ];
 
@@ -55,26 +55,26 @@ export const todayTourSteps: readonly GuideTourStep[] = [
 // Tailwind pipeline state.
 const guideTourCss = `
 .guide-tour-shield { position: fixed; inset: 0; z-index: 40; }
-.guide-tour-shield--dim { background: rgb(2 6 23 / 0.45); animation: guide-fade 0.25s ease both; }
-.guide-tour-spotlight { position: fixed; z-index: 41; pointer-events: none; border: 2px solid #2563eb; border-radius: 16px; box-shadow: 0 0 0 9999px rgb(2 6 23 / 0.45); animation: guide-fade 0.25s ease both; }
-.guide-tour-popover { position: fixed; z-index: 50; width: min(24rem, calc(100vw - 2rem)); background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.25); font-family: inherit; animation: guide-pop-in 0.28s cubic-bezier(0.21, 0.61, 0.35, 1) both; }
+.guide-tour-shield--dim { background: rgb(28 25 23 / 0.45); animation: guide-fade 0.25s ease both; }
+.guide-tour-spotlight { position: fixed; z-index: 41; pointer-events: none; border: 2px solid #23ae77; border-radius: 16px; box-shadow: 0 0 0 9999px rgb(28 25 23 / 0.45); animation: guide-fade 0.25s ease both; }
+.guide-tour-popover { position: fixed; z-index: 50; width: min(24rem, calc(100vw - 2rem)); background: #ffffff; border: 1px solid #e7e5e4; border-radius: 20px; padding: 24px; box-shadow: 0 16px 40px rgb(87 70 31 / 0.14); font-family: inherit; animation: guide-pop-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .guide-tour-popover--centered { left: 50%; top: 50%; transform: translate(-50%, -50%); animation-name: guide-pop-center; }
-.guide-tour-step-label { margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: #1d4ed8; }
-.guide-tour-title { margin: 8px 0 0; font-size: 20px; line-height: 1.2; font-weight: 600; color: #0f172a; }
-.guide-tour-body { margin: 8px 0 0; font-size: 14px; line-height: 24px; color: #475569; }
+.guide-tour-step-label { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; color: #23ae77; }
+.guide-tour-title { margin: 8px 0 0; font-size: 20px; line-height: 1.2; font-weight: 600; color: #1c1917; }
+.guide-tour-body { margin: 8px 0 0; font-size: 14px; line-height: 24px; color: #57534e; }
 .guide-tour-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; }
 .guide-tour-dots { display: flex; align-items: center; gap: 6px; }
-.guide-tour-dot { width: 6px; height: 6px; border-radius: 9999px; background: #cbd5e1; }
-.guide-tour-dot--active { width: 16px; background: #2563eb; }
+.guide-tour-dot { width: 6px; height: 6px; border-radius: 9999px; background: #d6d3d1; transition: width 0.2s ease, background-color 0.2s ease; }
+.guide-tour-dot--active { width: 16px; background: #23ae77; }
 .guide-tour-actions { display: flex; align-items: center; gap: 8px; }
 .guide-tour-button { min-height: 44px; border-radius: 12px; padding: 8px 16px; font-size: 14px; font-weight: 500; cursor: pointer; }
-.guide-tour-button--back { background: #ffffff; border: 1px solid #cbd5e1; color: #334155; }
-.guide-tour-button--back:hover { background: #f8fafc; }
-.guide-tour-button--skip { background: none; border: none; color: #64748b; text-decoration: underline; text-underline-offset: 4px; padding: 8px 12px; }
-.guide-tour-button--skip:hover { color: #334155; }
-.guide-tour-button--primary { background: #2563eb; border: 1px solid #2563eb; color: #ffffff; font-weight: 600; padding: 8px 20px; }
-.guide-tour-button--primary:hover { background: #1d4ed8; }
-.guide-tour-button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.guide-tour-button--back { background: #ffffff; border: 1px solid #e7e5e4; color: #57534e; }
+.guide-tour-button--back:hover { background: #fafaf7; }
+.guide-tour-button--skip { background: none; border: none; color: #78716c; text-decoration: underline; text-underline-offset: 4px; padding: 8px 12px; }
+.guide-tour-button--skip:hover { color: #1c1917; }
+.guide-tour-button--primary { background: #1c1917; border: 1px solid #1c1917; color: #ffffff; font-weight: 600; padding: 8px 20px; }
+.guide-tour-button--primary:hover { background: #292524; }
+.guide-tour-button:focus-visible { outline: 2px solid #23ae77; outline-offset: 2px; }
 @keyframes guide-fade { from { opacity: 0; } }
 @keyframes guide-pop-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes guide-pop-center { from { opacity: 0; transform: translate(-50%, calc(-50% + 10px)) scale(0.97); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
@@ -253,7 +253,7 @@ export function GuideTour({ steps, open, onFinish }: { steps: readonly GuideTour
         style={centeredRender ? undefined : { top: popoverTop ?? undefined, left: popoverLeft ?? undefined }}
       >
         <p className="guide-tour-step-label">
-          Guide · Step {index + 1} of {steps.length}
+          Step {index + 1} of {steps.length}
         </p>
         <h2 id={titleId} className="guide-tour-title">
           {step.title}

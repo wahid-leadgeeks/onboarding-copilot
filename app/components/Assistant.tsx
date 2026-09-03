@@ -84,7 +84,7 @@ export function Assistant() {
           type="button"
           aria-label="Ask the onboarding copilot"
           onClick={() => setOpen(true)}
-          className="hero-gradient fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white shadow-xl transition hover:-translate-y-0.5 hover:shadow-2xl active:translate-y-0"
+          className="hero-gradient animate-float fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white shadow-xl transition hover:shadow-2xl"
         >
           ✨
         </button>
@@ -93,27 +93,27 @@ export function Assistant() {
         <section
           role="dialog"
           aria-label="AI assistant"
-          className="animate-pop-in fixed bottom-5 right-5 z-50 flex h-[28rem] w-[min(24rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200 shadow-2xl"
+          className="animate-pop-in fixed bottom-5 right-5 z-50 flex h-[28rem] w-[min(24rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-card bg-white shadow-lift"
         >
           <header className="hero-gradient flex items-center justify-between px-4 py-3 text-white">
             <div>
               <p className="text-sm font-semibold tracking-tight">Copilot Assistant</p>
-              <p className="text-xs text-indigo-200">Answers only · never records anything</p>
+              <p className="text-xs text-stone-300">Answers only · nothing is recorded</p>
             </div>
             <button
               type="button"
               aria-label="Close assistant"
               onClick={() => setOpen(false)}
-              className="min-h-11 rounded-lg px-3 text-lg text-indigo-200 transition hover:bg-white/10 hover:text-white"
+              className="min-h-11 rounded-lg px-3 text-lg text-stone-300 transition hover:bg-white/10 hover:text-white"
             >
               ×
             </button>
           </header>
           <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
             {messages.length === 0 && (
-              <div className="rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-600 ring-1 ring-slate-200">
-                Ask anything about your onboarding — how to phrase a learning note, what an activity means, or how the app works.
-                {unavailable && <p className="mt-2 font-medium text-amber-700">AI is not configured yet. Add <code className="rounded bg-slate-100 px-1">GROQ_API_KEY</code> and <code className="rounded bg-slate-100 px-1">GROQ_MODEL</code> to <code className="rounded bg-slate-100 px-1">.env.local</code> and restart.</p>}
+              <div className="rounded-xl bg-cream p-3 text-sm leading-6 text-stone-600 ring-1 ring-stone-200">
+                Ask anything — how to phrase a learning note, what an activity means, or how the app works. ✨
+                {unavailable && <p className="mt-2 font-medium text-peach-700">AI is not configured yet. Add <code className="rounded bg-stone-100 px-1">GROQ_API_KEY</code> and <code className="rounded bg-stone-100 px-1">GROQ_MODEL</code> to <code className="rounded bg-stone-100 px-1">.env.local</code> and restart.</p>}
               </div>
             )}
             {messages.map((message, index) => (
@@ -121,8 +121,8 @@ export function Assistant() {
                 <p
                   className={
                     message.role === 'user'
-                      ? 'max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-indigo-600 px-3.5 py-2 text-sm leading-6 text-white'
-                      : 'max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-slate-100 px-3.5 py-2 text-sm leading-6 text-slate-800'
+                      ? 'max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-lavender-600 px-3.5 py-2 text-sm leading-6 text-white'
+                      : 'max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-bl-sm bg-cream px-3.5 py-2 text-sm leading-6 text-stone-700'
                   }
                 >
                   {message.content}
@@ -131,14 +131,14 @@ export function Assistant() {
             ))}
             {sending && (
               <div className="flex justify-start">
-                <p className="rounded-2xl rounded-bl-sm bg-slate-100 px-4 py-3 text-sm text-slate-500">
+                <p className="rounded-2xl rounded-bl-sm bg-cream px-4 py-3 text-sm text-stone-500">
                   <span className="animate-pulse-soft">Thinking…</span>
                 </p>
               </div>
             )}
-            {notice && <p className="text-center text-xs text-amber-700" role="status">{notice}</p>}
+            {notice && <p className="text-center text-xs text-peach-700" role="status">{notice}</p>}
           </div>
-          <div className="flex items-end gap-2 border-t border-slate-200 p-3">
+          <div className="flex items-end gap-2 border-t border-stone-200 p-3">
             <textarea
               ref={inputRef}
               aria-label="Message the assistant"
@@ -153,13 +153,13 @@ export function Assistant() {
               rows={2}
               maxLength={MAX_MESSAGE_LENGTH}
               placeholder={unavailable ? 'AI is not configured…' : 'Ask about your onboarding…'}
-              className="max-h-24 min-h-11 w-full resize-none rounded-xl border border-slate-300 p-2.5 text-sm"
+              className="max-h-24 min-h-11 w-full resize-none rounded-xl border border-stone-200 p-2.5 text-sm"
             />
             <button
               type="button"
               onClick={() => void send()}
               disabled={sending || !input.trim()}
-              className="min-h-11 shrink-0 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-40"
+              className="min-h-11 shrink-0 rounded-xl bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-stone-700 disabled:opacity-40"
             >
               Send
             </button>

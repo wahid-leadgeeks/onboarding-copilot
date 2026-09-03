@@ -16,9 +16,9 @@ export function QuickNote({ onSave }: { onSave: (content: string) => void }) {
       {!expanded && (
         <button
           onClick={() => setExpanded(true)}
-          className="min-h-11 rounded-xl border border-dashed border-slate-300 px-4 py-2 text-sm text-slate-500 transition hover:border-slate-400 hover:text-slate-700"
+          className="min-h-11 rounded-full bg-white px-4 py-2 text-sm text-stone-500 shadow-soft transition hover:text-stone-700 hover:shadow-lift"
         >
-          + Quick note
+          + Quick note <span aria-hidden="true">✨</span>
         </button>
       )}
       {expanded && (
@@ -30,9 +30,9 @@ export function QuickNote({ onSave }: { onSave: (content: string) => void }) {
             onChange={(event) => setValue(event.target.value)}
             rows={3}
             placeholder="Capture something for later..."
-            className="w-full rounded-xl border border-slate-300 p-3 text-sm"
+            className="w-full rounded-card border border-stone-200 bg-white p-3 text-sm text-stone-900 placeholder:text-stone-400 focus:border-mint-300"
           />
-          <button onClick={save} className="min-h-11 self-end rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+          <button onClick={save} className="min-h-11 self-end rounded-full bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-stone-700">
             Save
           </button>
         </div>

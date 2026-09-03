@@ -17,6 +17,14 @@ type SpeechRecognitionLike = { start: () => void; stop: () => void; onresult: ((
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 const fallback: Activity[] = [{ id: 'intro-it', name: 'Introduction to IT Systems', type: 'learning', plannedStart: '09:00', plannedEnd: '11:00', status: 'not-started' }, { id: 'security', name: 'Security & Access Setup', type: 'setup', plannedStart: '11:30', plannedEnd: '12:30', status: 'not-started' }, { id: 'welcome', name: 'Team Welcome', type: 'welcome', plannedStart: '14:00', plannedEnd: '15:00', status: 'not-started' }];
 
+const activityDot = (type: string) =>
+  type === 'learning' ? 'bg-lavender-300' : type === 'setup' ? 'bg-sky-300' : 'bg-peach-300';
+
+const seedlingStage = (percent: number) =>
+  percent <= 0 ? '🌱 Just planted' : percent < 50 ? '🌱 Growing' : percent < 100 ? '🌿 Almost there' : '🌳 Day complete';
+
+const formatClock = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
 export default function TodayPage() {
   const [activities, setActivities] = useState<Activity[]>(fallback);
   const [startedAt, setStartedAt] = useState<number | null>(null);
@@ -125,13 +133,6 @@ export default function TodayPage() {
   const totalDays = 90;
   const dayProgress = Math.min(100, Math.round((dayNumber / totalDays) * 100));
 
-  const displayStatus = (activity: Activity) => {
-    if (activity.id === activeActivityId && startedAt && !finishedAt) return { indicator: '●', label: 'In progress', className: 'text-indigo-600' };
-    if (completedIds.has(activity.id)) return { indicator: '✓', label: 'Completed', className: 'text-emerald-600' };
-    if (activity.status === 'overdue') return { indicator: '!', label: 'Needs attention', className: 'text-amber-600' };
-    return { indicator: '○', label: 'Upcoming', className: 'text-slate-400' };
-  };
-
   const duration = startedAt && finishedAt ? Math.floor((finishedAt - startedAt) / 60000) : 0;
 
   async function finish() {
@@ -208,91 +209,117 @@ export default function TodayPage() {
     else { setListening(true); recognition.start(); }
   }
 
-  const statusBar = scheduleState === 'imported' ? { indicator: '📄', label: `Imported schedule · ${activities.length} activities`, className: 'border-blue-100 bg-blue-50 text-blue-900' } : scheduleState === 'demo' ? { indicator: '🧪', label: 'Demo data', className: 'border-indigo-100 bg-indigo-50 text-indigo-900' } : scheduleState === 'error' ? { indicator: '🟡', label: 'Offline · Using saved schedule', className: 'border-amber-100 bg-amber-50 text-amber-900' } : { indicator: '🟢', label: sync || 'Synced just now', className: 'border-emerald-100 bg-emerald-50 text-emerald-900' };
+  const statusBar = scheduleState === 'imported' ? { indicator: '📄', label: `Imported schedule · ${activities.length} activities`, className: 'bg-sky-50 text-sky-900' } : scheduleState === 'demo' ? { indicator: '🧪', label: 'Demo data', className: 'bg-sun-50 text-sun-700' } : scheduleState === 'error' ? { indicator: '🟡', label: 'Offline · Using saved schedule', className: 'bg-peach-50 text-peach-700' } : { indicator: '🟢', label: sync || 'Synced just now', className: 'bg-mint-50 text-mint-700' };
+
+  const seedling = seedlingStage(progressPercent);
+  const diaryCount = typeof window === 'undefined' ? 0 : readDiary(localStorage.getItem(DIARY_STORAGE_KEY)).length;
+  const allDone = completedCount === totalCount && totalCount > 0 && !currentActivity;
+  const sessionToday = historySessions.length > 0 ? historySessions[historySessions.length - 1] : null;
+  const durationHours = Math.floor(duration / 60);
+  const durationMinutes = duration % 60;
+
+  const headline = allDone ? 'That’s everything for today. ✨' : completedCount === 0 ? 'Your day is still unwritten.' : progressPercent >= 50 ? 'Almost there! 🌱' : 'You’ve had a pretty productive day.';
 
   return (
-    <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-slate-900 sm:px-8 sm:py-8">
+    <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
       <PrimaryNav active="Today" />
       <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div role="status" data-tour="status-bar" className={`inline-flex animate-fade-up items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${statusBar.className}`}>
+        <div role="status" data-tour="status-bar" className={`inline-flex animate-fade-up items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${statusBar.className}`}>
           <span aria-hidden="true">{statusBar.indicator}</span>{statusBar.label}
         </div>
         {(scheduleState === 'demo' || scheduleState === 'error') && (
-          <a href="/settings" className="animate-fade-up text-xs font-medium text-indigo-600 underline underline-offset-4 transition hover:text-indigo-800">
+          <a href="/settings" className="animate-fade-up text-xs font-medium text-mint-700 underline underline-offset-4 transition hover:text-mint-600">
             Import your own schedule →
           </a>
         )}
       </div>
 
       {/* Header */}
-      <header data-tour="progress-header" className="animate-fade-up border-b border-slate-200 pb-8">
-        <p className="text-sm font-medium text-slate-500">{todayLabel}</p>
-        <h1 className="text-gradient mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">{greeting}, Noah</h1>
-        <div className="mt-6 max-w-xl">
-          <div className="flex items-baseline justify-between gap-4">
-            <p className="font-semibold text-slate-900">Day {Math.min(dayNumber, totalDays)} of {totalDays}</p>
-            <p className="text-sm text-slate-500">{completedCount} of {totalCount} today</p>
+      <header data-tour="progress-header" className="animate-fade-up">
+        <p className="text-sm font-medium text-stone-500">{todayLabel} · Day {Math.min(dayNumber, totalDays)} of {totalDays}</p>
+        <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">{greeting}, Noah <span aria-hidden="true" className="animate-float">👋</span></h1>
+        <p className="mt-3 text-lg text-stone-500">{headline}</p>
+
+        <div className="mt-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+          <div>
+            <p className="text-6xl font-semibold tracking-tight text-stone-900">
+              {completedCount}<span className="ml-3 align-baseline text-xl font-medium text-stone-500">of {totalCount} today</span>
+            </p>
+            <div className="h-2.5 w-full min-w-56 overflow-hidden rounded-full bg-stone-200" aria-label={`${progressPercent}% of today’s activities complete`}>
+              <div className="bar-gradient progress-shimmer h-full rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
+            </div>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200" aria-label={`${dayProgress}% journey complete`}>
-            <div className="bar-gradient progress-shimmer h-full rounded-full transition-all" style={{ width: `${dayProgress}%` }} />
-          </div>
-          <p className="mt-2 text-sm text-slate-500">{progressLabel}</p>
+          <p className="text-lg text-stone-600">
+            <span aria-hidden="true" className="mr-2 inline-block">{seedling.split(' ')[0]}</span>{seedling.split(' ').slice(1).join(' ')}
+          </p>
         </div>
+        <p className="mt-3 text-sm text-stone-500">{progressLabel}</p>
       </header>
 
-      {/* Done for today */}
-      {completedCount === totalCount && totalCount > 0 && !currentActivity ? (
-        <section data-tour="current-activity" className="animate-pop-in mt-10 rounded-2xl border border-emerald-100 bg-emerald-50 p-8 text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Done for today</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight">You’re done for today.</h2>
-          <p className="mt-2 text-slate-700">{completedCount} activities completed. Nothing else is scheduled.</p>
-          <a href="/history" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-slate-900 px-5 py-3 font-semibold text-white transition hover:bg-slate-700">Review your learnings</a>
+      {allDone ? (
+        /* Day wrapped up */
+        <section data-tour="current-activity" className="animate-pop-in mt-10 rounded-card bg-sun-50 p-8 text-center shadow-soft">
+          <p aria-hidden="true" className="animate-celebrate text-5xl">🎉</p>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-stone-900">Day wrapped up</h2>
+          <p className="mt-2 text-stone-600">{completedCount} activities{diaryCount > 0 ? ` · ${diaryCount} ${diaryCount === 1 ? 'thing' : 'things'} learned` : ''}</p>          <p className="mt-1 text-stone-500">See you tomorrow.</p>
+          <a href="/history" className="mt-6 inline-flex min-h-11 items-center rounded-full bg-stone-900 px-5 py-3 font-semibold text-white transition hover:bg-stone-700">Review your learnings →</a>
         </section>
       ) : (
         <>
-          {/* Current activity or completion moment */}
           {finishedAt ? (
             // Completion moment
-            <section data-tour="current-activity" className="animate-pop-in mt-10 rounded-2xl border border-emerald-100 bg-emerald-50 p-8">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl text-emerald-600">✓</span>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Done</p>
+            <section data-tour="current-activity" className="animate-pop-in mt-10 rounded-card bg-white p-8 shadow-soft">
+              <div className="flex items-center gap-4">
+                <span className="animate-spring-in flex h-14 w-14 items-center justify-center rounded-full bg-mint-100 text-3xl font-semibold text-mint-700">✓</span>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-mint-700">Done</p>
               </div>
-              <h2 className="mt-4 text-3xl font-semibold tracking-tight">{finishedActivityName ?? currentActivity?.name ?? 'Activity completed'}</h2>
+              <h2 className="mt-5 text-3xl font-semibold tracking-tight text-stone-900">{finishedActivityName ?? currentActivity?.name ?? 'Activity completed'}</h2>
               {startedAt && finishedAt && (
-                <p className="mt-2 text-lg text-slate-600">
-                  {new Date(startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} → {new Date(finishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {duration} min
-                </p>
+                <div className="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+                  <p className="text-4xl font-semibold tracking-tight text-stone-900">{durationHours > 0 ? `${durationHours}h ${String(durationMinutes).padStart(2, '0')}m` : `${durationMinutes}m`}</p>
+                  <p className="text-stone-500">{formatClock(startedAt)} → {formatClock(finishedAt)}</p>
+                </div>
               )}
-              <p className="mt-1 text-sm text-slate-500">Nice. One less thing to think about.</p>
-              <button
-                onClick={() => setShowLearningCapture(true)}
-                className="mt-6 min-h-12 rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-700"
-              >
-                Record what I learned
-              </button>
-              <button
-                onClick={resetSession}
-                className="ml-4 min-h-12 rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                Continue
-              </button>
+              <p className="mt-3 text-stone-500">Nice. That’s one less thing to carry around. ✨</p>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => setShowLearningCapture(true)}
+                  className="min-h-12 rounded-full bg-stone-900 px-6 py-3 font-semibold text-white transition hover:bg-stone-700"
+                >
+                  Record what I learned
+                </button>
+                <button
+                  onClick={resetSession}
+                  className="min-h-12 rounded-full px-6 py-3 font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-700"
+                >
+                  Continue
+                </button>
+              </div>
             </section>
           ) : (
-            // Current activity card
-            <section data-tour="current-activity" className="hero-gradient animate-fade-up stagger-1 mt-10 rounded-2xl p-6 text-white shadow-xl shadow-slate-900/10 sm:p-8">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-300">
-                <span aria-hidden="true" className="animate-pulse-soft">●</span>
-                {startedAt ? 'In progress' : 'Right now'}
+            // Focus card
+            <section data-tour="current-activity" className="animate-fade-up stagger-1 mt-10 rounded-card bg-white p-8 shadow-soft transition hover:shadow-lift">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
+                {startedAt ? (
+                  <>
+                    <span aria-hidden="true" className="animate-pulse-soft text-peach-600">●</span>
+                    <span className="text-peach-600">In progress</span>
+                    <span className="text-stone-500">· {formatStartedAt(startedAt)}</span>
+                  </>
+                ) : (
+                  <span>Right now</span>
+                )}
               </div>
-              <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">{currentActivity?.name ?? 'No activities scheduled'}</h2>
-              <p className="mt-3 text-base text-slate-300">
+              <div className="mt-4 flex items-center gap-3">
+                <h2 className="text-3xl font-semibold tracking-tight text-stone-900">{currentActivity?.name ?? 'No activities scheduled'}</h2>
+                {currentActivity && <span aria-hidden="true" className={`h-2.5 w-2.5 shrink-0 rounded-full ${activityDot(currentActivity.type)}`} />}
+              </div>
+              <p className="mt-3 text-stone-500">
                 {currentActivity ? `${currentActivity.type === 'welcome' ? 'Experience Manager' : 'IT Manager'} · ${currentActivity.type === 'learning' ? 'Knowledge Sharing' : currentActivity.type === 'setup' ? 'Access & setup' : 'Team welcome'}` : 'Enjoy the rest of your day'}
               </p>
               {currentActivity && (
-                <p className="mt-1 text-sm text-slate-400">Scheduled {currentActivity.plannedStart}–{currentActivity.plannedEnd}</p>
+                <p className="mt-1 text-sm text-stone-500">Scheduled {currentActivity.plannedStart}–{currentActivity.plannedEnd}</p>
               )}
-              {startedAt && <p className="mt-6 text-base font-medium text-slate-200">{formatStartedAt(startedAt)}</p>}
               {!finishedAt && currentActivity && (
                 <button
                   onClick={() => {
@@ -309,7 +336,7 @@ export default function TodayPage() {
                       }).catch(() => setSync('Session started locally · server acknowledgement unavailable'));
                     }
                   }}
-                  className="mt-8 min-h-12 w-full rounded-xl bg-white px-5 py-3 font-semibold text-slate-900 transition hover:bg-slate-100 active:scale-[.99]"
+                  className="mt-8 min-h-12 w-full rounded-full bg-stone-900 px-5 py-3 text-lg font-semibold text-white transition hover:bg-stone-700 active:scale-[.99] sm:w-auto sm:min-w-64"
                 >
                   {startedAt ? 'Finish activity' : 'Start activity'}
                 </button>
@@ -319,19 +346,19 @@ export default function TodayPage() {
                   <button
                     onClick={() => setOptionsOpen(open => !open)}
                     aria-expanded={optionsOpen}
-                    className="min-h-11 text-sm text-slate-300 underline underline-offset-4"
+                    className="min-h-11 text-sm text-stone-500 underline underline-offset-4 transition hover:text-stone-700"
                   >
                     Something changed?
                   </button>
                   {optionsOpen && (
-                    <div className="mt-4 border-t border-slate-700 pt-4">
-                      <p className="text-sm text-slate-300">What happened?</p>
+                    <div className="mt-4 border-t border-stone-100 pt-4">
+                      <p className="text-sm text-stone-500">What happened?</p>
                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
                         {['Started late', 'Finished early', 'Rescheduled', 'Cancelled', 'Forgot to start'].map(item => (
                           <button
                             key={item}
                             onClick={() => { setDeviation(item); setSync(`${item} noted locally`); setOptionsOpen(false); }}
-                            className="rounded-lg border border-slate-600 px-3 py-2 text-left text-sm text-white transition hover:border-slate-400"
+                            className="min-h-11 rounded-2xl bg-stone-50 px-3 py-2 text-left text-sm text-stone-700 transition hover:bg-stone-100"
                           >
                             {item}
                           </button>
@@ -345,53 +372,53 @@ export default function TodayPage() {
           )}
 
           {/* Deviation message */}
-          {deviation && <p className="mt-3 text-center text-sm text-slate-600">Noted: {deviation}. You can continue when ready.</p>}
+          {deviation && <p className="mt-3 text-center text-sm text-stone-600">Noted: {deviation}. You can continue when ready.</p>}
 
           {/* Learning capture */}
           {finishedAt && showLearningCapture && (
-            <section className="animate-pop-in mt-6 rounded-2xl bg-white p-6 ring-1 ring-slate-200">
-              <h2 className="text-lg font-semibold">What did you learn?</h2>
+            <section className="animate-pop-in mt-6 rounded-card bg-white p-6 shadow-soft">
+              <h2 className="text-lg font-semibold text-stone-900">What did you learn?</h2>
               <textarea
                 aria-label="What did you learn?"
                 placeholder="Just write a few words..."
                 value={notes}
                 onChange={event => setNotes(event.target.value)}
                 rows={4}
-                className="mt-3 w-full rounded-xl border border-slate-300 p-3"
+                className="mt-3 w-full rounded-2xl border border-stone-200 p-3 text-stone-900 placeholder:text-stone-400 focus:border-mint-300"
               />
               <div className="mt-3 flex flex-wrap gap-3">
-                <button onClick={toggleVoice} className="rounded-xl border border-slate-300 px-5 py-2">
+                <button onClick={toggleVoice} className="min-h-11 rounded-full border border-stone-200 px-5 py-2 text-stone-700 transition hover:bg-stone-50">
                   {listening ? 'Stop speaking' : 'Speak'}
                 </button>
                 <button
                   onClick={() => void summarize()}
                   disabled={!notes.trim()}
-                  className="rounded-xl border border-slate-300 px-5 py-2 disabled:opacity-40"
+                  className="min-h-11 rounded-full border border-stone-200 px-5 py-2 text-stone-700 transition hover:bg-stone-50 disabled:opacity-40"
                 >
                   ✨ Summarize for me
                 </button>
                 <button
                   onClick={() => void saveNotes()}
                   disabled={!notes.trim() || (!!aiSummary && !aiConfirmed)}
-                  className="rounded-xl bg-emerald-700 px-5 py-2 text-white disabled:opacity-40"
+                  className="min-h-11 rounded-full bg-stone-900 px-5 py-2 font-semibold text-white transition hover:bg-stone-700 disabled:opacity-40"
                 >
                   {aiSummary ? 'Confirm & save' : 'Save & continue'}
                 </button>
-                <button onClick={skipNotes} className="rounded-xl px-2 py-2 text-sm text-slate-500 underline">
+                <button onClick={skipNotes} className="min-h-11 rounded-full px-3 py-2 text-sm text-stone-500 underline underline-offset-4 transition hover:text-stone-700">
                   Skip for now
                 </button>
               </div>
               {aiSummary && (
-                <div className="mt-4 rounded-xl border border-violet-200 bg-violet-50 p-4">
-                  <p className="text-xs font-medium text-violet-700">AI-generated summary</p>
+                <div className="mt-4 rounded-2xl bg-lavender-50 p-4">
+                  <p className="text-xs font-medium text-lavender-700">AI-generated summary</p>
                   <textarea
                     aria-label="Editable AI summary"
                     value={aiSummary}
                     onChange={event => { setAiSummary(event.target.value); setAiConfirmed(false); }}
                     rows={3}
-                    className="mt-2 w-full rounded-lg border border-slate-300 p-2"
+                    className="mt-2 w-full rounded-xl border border-stone-200 bg-white p-2 text-stone-900"
                   />
-                  <label className="mt-2 flex items-center gap-2 text-sm">
+                  <label className="mt-2 flex items-center gap-2 text-sm text-stone-700">
                     <input type="checkbox" checked={aiConfirmed} onChange={event => setAiConfirmed(event.target.checked)} />
                     I reviewed and confirm this summary
                   </label>
@@ -401,34 +428,45 @@ export default function TodayPage() {
           )}
 
           {/* Sync status */}
-          {sync && <p className="mt-4 text-center text-sm text-slate-500" role="status">{sync}</p>}
+          {sync && <p className="mt-4 text-center text-sm text-stone-500" role="status">{sync}</p>}
         </>
       )}
 
-      {/* Timeline: YOUR DAY */}
+      {/* Day journey */}
       <section data-tour="day-timeline" className="animate-fade-up stagger-2 mt-12">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Today</h2>
-          <span className="text-sm text-slate-500">{activities.length} activities</span>
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">Your day</h2>
+          <span className="text-sm text-stone-500">{activities.length} activities</span>
         </div>
-        <div className="divide-y divide-slate-200 border-y border-slate-200">
+        <div className="mt-2">
+          {sessionToday && sessionToday.finishedAt > sessionToday.startedAt && (
+            <div className="grid grid-cols-[2rem_1fr] items-center gap-3 border-l-2 border-stone-100 py-3 pl-4">
+              <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-sun-50 text-lg">☀️</span>
+              <p className="text-sm text-stone-500">Started {formatClock(sessionToday.startedAt)}</p>
+            </div>
+          )}
           {activities.map(activity => {
-            const status = displayStatus(activity);
+            const done = completedIds.has(activity.id);
+            const current = activity.id === currentActivity?.id;
             return (
-              <div key={activity.id} className="grid grid-cols-[1.5rem_1fr_auto] items-start gap-3 py-5">
-                <span className={`pt-0.5 text-xl leading-none ${status.className}`} aria-label={status.label}>
-                  {status.indicator}
+              <div key={activity.id} className="grid grid-cols-[2rem_1fr_auto] items-center gap-3 border-l-2 border-stone-100 py-3 pl-4">
+                <span
+                  aria-label={done ? 'Completed' : current ? 'In progress' : 'Upcoming'}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${done ? 'bg-mint-100 text-mint-700' : current ? (startedAt && !finishedAt ? 'bg-peach-100 text-peach-600' : 'bg-peach-100 text-peach-700') : 'bg-stone-100 text-stone-400'}`}
+                >
+                  {done ? '✓' : current ? '●' : '○'}
                 </span>
-                <div>
-                  <p className="font-medium text-slate-900">{activity.name}</p>
-                  <p className="mt-1 text-sm text-slate-500">{activity.plannedStart} · {status.label}</p>
-                </div>
-                <span className={`pt-1 text-right text-sm font-medium ${status.className}`}>
-                  {status.label}
-                </span>
+                <p className={`font-medium ${done ? 'text-stone-500' : current ? 'text-stone-900' : 'text-stone-700'}`}>{activity.name}</p>
+                <span className="text-sm text-stone-400">{activity.plannedStart}</span>
               </div>
             );
           })}
+          {sessionToday && sessionToday.finishedAt > sessionToday.startedAt && (
+            <div className="grid grid-cols-[2rem_1fr] items-center gap-3 border-l-2 border-stone-100 py-3 pl-4">
+              <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-mint-50 text-lg">🌿</span>
+              <p className="text-sm text-stone-500">Finished {formatClock(sessionToday.finishedAt)}</p>
+            </div>
+          )}
         </div>
       </section>
 

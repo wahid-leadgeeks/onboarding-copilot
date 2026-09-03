@@ -68,6 +68,15 @@
 - [x] Give every bare `border` utility an explicit color (Tailwind default is `currentColor`)
 - [x] Re-verify layout at desktop + mobile (no overflow/overlap regressions) and capture `screenshots/theme-*.png`
 
+### UI v3 redesign (warm human-first design language)
+
+- [x] Design token foundation in globals.css: cream `#fafaf7` base with sun radial tint, emotion palettes as Tailwind v4 utilities (mint/peach/lavender/sun), stone ink replacing slate, 28px `rounded-card`, warm `shadow-soft`/`shadow-lift`, spring/celebrate/float keyframes
+- [x] Today: 👋 greeting + reactive human line, big-stat typography (giant `N of N`), growth stages 🌱→🌿→🌳, warm focus card, day-journey rail with connector, spring completion moment, `Day wrapped up 🎉` celebration
+- [x] Journey + PrimaryNav: huge percentage display, floating growth emoji, milestone path rail, filled-pill active nav
+- [x] Learnings + Settings + ExportNotes: visual summaries, personality copy, human empty states ("Your day is still unwritten."), warm export toolbar
+- [x] GuideTour + Assistant: mint spotlight, refreshed personality copy, lavender assistant bubbles, floating ✨ launcher
+- [x] Zero slate-* classes remain; verified typecheck/lint/82 tests/build + browser QA (desktop + mobile, geometry clean); screenshots in `screenshots/warm-*.png`
+
 ### Notes export (batch, client-side)
 
 - [x] `lib/export-notes.ts` — pure serializers: RFC4180 CSV (UTF-8 BOM, CRLF, quote escaping) and Markdown (UTC `##` headings), plus `onboarding-notes-YYYY-MM-DD.ext` filename builder
