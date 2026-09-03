@@ -50,6 +50,13 @@
 - [x] Fix completion-moment activity name, header progress merge with local sessions, and reload hydration (found in browser QA)
 - [x] Consolidate design system into `docs/DESIGN.md` (v2)
 
+### Guide tour (first-run experience)
+
+- [x] Add `lib/guide-tour.ts` — validated tour state persistence (`onboarding-guide-tour` localStorage key)
+- [x] Add `GuideTour` component — spotlight, popover, keyboard navigation (←/→/Esc/Tab), reduced-motion support
+- [x] Auto-start tour on first visit to Today; restart via Settings → "Restart the guide tour" (`/?tour=start`)
+- [x] Tag tour targets with `data-tour` attributes (status bar, progress header, activity card, timeline, quick note, primary nav)
+
 ---
 
 ## Bugs

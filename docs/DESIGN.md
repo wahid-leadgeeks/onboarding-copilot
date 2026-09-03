@@ -264,6 +264,28 @@ Understanding the company & IT environment
 - Current position highlighted
 - Phase detail below
 
+### Guide Tour
+
+```
+┌───────────────────────────────────────┐
+│  GUIDE · STEP 3 OF 8                  │
+│                                       │
+│  Your day at a glance                 │
+│  See how far you are into the 90-day  │
+│  journey and how today is going.      │
+│                                       │
+│  ●●●○○○○○      [ Back ][ Skip ][ Next ] │
+└───────────────────────────────────────┘
+```
+
+- First-run walkthrough of the cockpit (8 steps: welcome, status bar, progress, current activity, timeline, quick note, navigation, done)
+- Spotlight dims the page; a blue ring frames the highlighted element; the popover sits beside it (centered when no target)
+- Auto-starts on a visitor's first arrival at Today; restartable from Settings
+- Keyboard: `←`/`→` step, `Esc` closes, focus stays inside the popover
+- Dismissing (skip, escape, or finish) persists to localStorage (`onboarding-guide-tour`) so it never nags
+- Calm tone, no jargon, never blocks the primary action for returning users
+- Elements opt in via a `data-tour="<id>"` attribute; steps live in `app/components/GuideTour.tsx`
+
 ---
 
 ## 5. Interaction Flows
