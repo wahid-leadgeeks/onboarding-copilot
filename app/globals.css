@@ -59,10 +59,18 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-a { color: inherit; text-decoration: none; }
-button, textarea, input, select { font: inherit; }
-button { cursor: pointer; }
-button:disabled { cursor: not-allowed; }
+/*
+ * Element resets live in @layer base so Tailwind utilities (rendered in the
+ * utilities layer, which wins over base) can override them — an unlayered
+ * `a { color: inherit }` previously defeated `.text-white` on the active
+ * nav pill, hiding its label.
+ */
+@layer base {
+  a { color: inherit; text-decoration: none; }
+  button, textarea, input, select { font: inherit; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+}
 
 ::selection { background: #fef3c7; color: #78350f; }
 
