@@ -29,37 +29,37 @@ export default function JourneyPage() {
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-5 py-6 text-slate-900 sm:px-8 sm:py-8">
       <PrimaryNav active="Journey" />
-      <header className="border-b border-slate-200 pb-8">
+      <header className="animate-fade-up border-b border-slate-200 pb-8">
         <p className="text-sm font-medium text-slate-500">Your 90-day journey</p>
         <div className="mt-2 flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
           <div>
-            <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">A clear path forward.</h1>
+            <h1 className="text-gradient text-4xl font-semibold tracking-tight sm:text-5xl">A clear path forward.</h1>
             <p className="mt-3 max-w-xl text-lg text-slate-600">See where you are, what you have built, and the next moment worth preparing for.</p>
           </div>
           <div className="w-fit rounded-full border border-indigo-100 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-900">Day {day} of {totalDays}</div>
         </div>
       </header>
 
-      <section aria-labelledby="progress-heading" className="mt-8 rounded-3xl bg-slate-900 p-6 text-white shadow-lg shadow-slate-900/10 sm:p-8">
+      <section aria-labelledby="progress-heading" className="hero-gradient animate-fade-up stagger-1 mt-8 rounded-3xl p-6 text-white shadow-lg shadow-slate-900/10 sm:p-8">
         <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
           <div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-300">The big picture</p><h2 id="progress-heading" className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">Keep your momentum.</h2><p className="mt-2 max-w-lg text-sm leading-6 text-slate-300">Every day is a small step toward working with confidence. Your journey builds from context to contribution.</p></div>
           <p className="text-sm font-medium text-slate-300">{percentage}% of your journey</p>
         </div>
-        <div className="mt-7 h-2 overflow-hidden rounded-full bg-slate-700" role="progressbar" aria-label="90-day journey progress" aria-valuemin={1} aria-valuemax={totalDays} aria-valuenow={day}><div className="h-full rounded-full bg-indigo-400" style={{ width: `${percentage}%` }} /></div>
+        <div className="mt-7 h-2 overflow-hidden rounded-full bg-slate-700" role="progressbar" aria-label="90-day journey progress" aria-valuemin={1} aria-valuemax={totalDays} aria-valuenow={day}><div className="bar-gradient progress-shimmer h-full rounded-full" style={{ width: `${percentage}%` }} /></div>
         <div className="mt-3 flex justify-between text-xs text-slate-400"><span>Day 1</span><span>Day 90</span></div>
       </section>
 
-      <section aria-labelledby="phases-heading" className="mt-10">
+      <section aria-labelledby="phases-heading" className="animate-fade-up stagger-2 mt-10">
         <div className="mb-4 flex items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Your path</p><h2 id="phases-heading" className="mt-2 text-2xl font-semibold tracking-tight">Three phases, one direction.</h2></div><p className="hidden text-sm text-slate-500 sm:block">Context to confidence to contribution</p></div>
         <div className="grid gap-4 lg:grid-cols-3">
-          {phases.map((phase) => <article key={phase.name} className={`rounded-2xl border p-5 ${phase.accent} ${phase.status === 'current' ? 'ring-2 ring-indigo-100' : ''}`}>
+          {phases.map((phase, index) => <article key={phase.name} className={`animate-fade-up stagger-${index + 1} rounded-2xl border p-5 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${phase.accent} ${phase.status === 'current' ? 'ring-2 ring-indigo-100' : ''}`}>
             <div className="flex items-center justify-between gap-4"><span className={`h-3 w-3 rounded-full ${phase.marker}`} aria-hidden="true" /><span className={`text-xs font-semibold uppercase tracking-[0.16em] ${phase.status === 'completed' ? 'text-emerald-700' : phase.status === 'current' ? 'text-indigo-700' : 'text-slate-500'}`}>{phase.status === 'completed' ? 'Complete' : phase.status === 'current' ? 'You are here' : 'Up next'}</span></div>
             <h3 className="mt-6 text-xl font-semibold text-slate-900">{phase.name}</h3><p className="mt-1 text-sm font-medium text-slate-500">{phase.period}</p><p className="mt-4 text-sm leading-6 text-slate-600">{phase.description}</p>
           </article>)}
         </div>
       </section>
 
-      <section aria-labelledby="milestones-heading" className="mt-12">
+      <section aria-labelledby="milestones-heading" className="animate-fade-up stagger-3 mt-12">
         <div className="mb-5 flex items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">What comes next</p><h2 id="milestones-heading" className="mt-2 text-2xl font-semibold tracking-tight">Milestones along the way.</h2></div><span className="text-sm text-slate-500">5 moments</span></div>
         <ol className="relative border-l border-slate-200 pl-6 sm:pl-8">
           {milestones.map((milestone) => <li key={milestone.day} className="relative pb-8 last:pb-0">
@@ -69,7 +69,7 @@ export default function JourneyPage() {
         </ol>
       </section>
 
-      <aside className="mt-12 rounded-2xl border border-indigo-100 bg-indigo-50 p-5 sm:flex sm:items-center sm:justify-between sm:gap-8"><div><p className="text-sm font-semibold text-indigo-950">Make today count.</p><p className="mt-1 text-sm leading-6 text-indigo-900/70">Your next action is waiting on Today. Keep the journey in view, then focus on one thing.</p></div><a href="/" className="mt-4 inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 sm:mt-0">Go to Today</a></aside>
+      <aside className="animate-fade-up stagger-4 mt-12 rounded-2xl border border-indigo-100 bg-indigo-50 p-5 sm:flex sm:items-center sm:justify-between sm:gap-8"><div><p className="text-sm font-semibold text-indigo-950">Make today count.</p><p className="mt-1 text-sm leading-6 text-indigo-900/70">Your next action is waiting on Today. Keep the journey in view, then focus on one thing.</p></div><a href="/" className="mt-4 inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 sm:mt-0">Go to Today</a></aside>
     </main>
   );
 }

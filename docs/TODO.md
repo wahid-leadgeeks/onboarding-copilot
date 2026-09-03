@@ -58,6 +58,15 @@
 - [x] Today + Learnings prefer the imported schedule (`onboarding-imported-schedule` localStorage, validated read) with a dedicated status badge
 - [x] Tests: 38 new across csv/xlsx/import-schedule/imported-schedule suites
 
+### UI v3 polish (fresh theme + motion)
+
+- [x] Enable the Tailwind CSS PostCSS pipeline (`@tailwindcss/postcss` + `postcss.config.mjs`) — utilities had never compiled; the app ran on a minimal fallback stylesheet
+- [x] Remove the unlayered fallback CSS (it would have overridden every Tailwind utility under cascade layers)
+- [x] Add gradient theme: indigo page-top tint, `.hero-gradient` cards, `.bar-gradient` progress fills, `.text-gradient` page titles
+- [x] Add motion: staggered `fade-up` entrances, `pop-in` moments, `pulse-soft` live indicator, progress `shimmer`, animated nav underline, button hover lift — all disabled under `prefers-reduced-motion`
+- [x] Give every bare `border` utility an explicit color (Tailwind default is `currentColor`)
+- [x] Re-verify layout at desktop + mobile (no overflow/overlap regressions) and capture `screenshots/theme-*.png`
+
 ### Guide tour (first-run experience)
 
 - [x] Add `lib/guide-tour.ts` — validated tour state persistence (`onboarding-guide-tour` localStorage key)

@@ -213,21 +213,21 @@ export default function TodayPage() {
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-slate-900 sm:px-8 sm:py-8">
       <PrimaryNav active="Today" />
-      <div role="status" data-tour="status-bar" className={`mb-8 inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${statusBar.className}`}>
+      <div role="status" data-tour="status-bar" className={`mb-8 inline-flex animate-fade-up items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${statusBar.className}`}>
         <span aria-hidden="true">{statusBar.indicator}</span>{statusBar.label}
       </div>
 
       {/* Header */}
-      <header data-tour="progress-header" className="border-b border-slate-200 pb-8">
+      <header data-tour="progress-header" className="animate-fade-up border-b border-slate-200 pb-8">
         <p className="text-sm font-medium text-slate-500">{todayLabel}</p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">{greeting}, Noah</h1>
+        <h1 className="text-gradient mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">{greeting}, Noah</h1>
         <div className="mt-6 max-w-xl">
           <div className="flex items-baseline justify-between gap-4">
             <p className="font-semibold text-slate-900">Day {Math.min(dayNumber, totalDays)} of {totalDays}</p>
             <p className="text-sm text-slate-500">{completedCount} of {totalCount} today</p>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200" aria-label={`${dayProgress}% journey complete`}>
-            <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${dayProgress}%` }} />
+            <div className="bar-gradient progress-shimmer h-full rounded-full transition-all" style={{ width: `${dayProgress}%` }} />
           </div>
           <p className="mt-2 text-sm text-slate-500">{progressLabel}</p>
         </div>
@@ -235,7 +235,7 @@ export default function TodayPage() {
 
       {/* Done for today */}
       {completedCount === totalCount && totalCount > 0 && !currentActivity ? (
-        <section data-tour="current-activity" className="mt-10 rounded-2xl border border-emerald-100 bg-emerald-50 p-8 text-center">
+        <section data-tour="current-activity" className="animate-pop-in mt-10 rounded-2xl border border-emerald-100 bg-emerald-50 p-8 text-center">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Done for today</p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight">You’re done for today.</h2>
           <p className="mt-2 text-slate-700">{completedCount} activities completed. Nothing else is scheduled.</p>
@@ -246,7 +246,7 @@ export default function TodayPage() {
           {/* Current activity or completion moment */}
           {finishedAt ? (
             // Completion moment
-            <section data-tour="current-activity" className="mt-10 rounded-2xl border border-emerald-100 bg-emerald-50 p-8">
+            <section data-tour="current-activity" className="animate-pop-in mt-10 rounded-2xl border border-emerald-100 bg-emerald-50 p-8">
               <div className="flex items-center gap-3">
                 <span className="text-3xl text-emerald-600">✓</span>
                 <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">Done</p>
@@ -273,9 +273,9 @@ export default function TodayPage() {
             </section>
           ) : (
             // Current activity card
-            <section data-tour="current-activity" className="mt-10 rounded-2xl bg-slate-900 p-6 text-white shadow-xl shadow-slate-900/10 sm:p-8">
+            <section data-tour="current-activity" className="hero-gradient animate-fade-up stagger-1 mt-10 rounded-2xl p-6 text-white shadow-xl shadow-slate-900/10 sm:p-8">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-indigo-300">
-                <span aria-hidden="true">●</span>
+                <span aria-hidden="true" className="animate-pulse-soft">●</span>
                 {startedAt ? 'In progress' : 'Right now'}
               </div>
               <h2 className="mt-5 text-3xl font-semibold tracking-tight sm:text-4xl">{currentActivity?.name ?? 'No activities scheduled'}</h2>
@@ -342,7 +342,7 @@ export default function TodayPage() {
 
           {/* Learning capture */}
           {finishedAt && showLearningCapture && (
-            <section className="mt-6 rounded-2xl bg-white p-6 ring-1 ring-slate-200">
+            <section className="animate-pop-in mt-6 rounded-2xl bg-white p-6 ring-1 ring-slate-200">
               <h2 className="text-lg font-semibold">What did you learn?</h2>
               <textarea
                 aria-label="What did you learn?"
@@ -350,16 +350,16 @@ export default function TodayPage() {
                 value={notes}
                 onChange={event => setNotes(event.target.value)}
                 rows={4}
-                className="mt-3 w-full rounded-xl border p-3"
+                className="mt-3 w-full rounded-xl border border-slate-300 p-3"
               />
               <div className="mt-3 flex flex-wrap gap-3">
-                <button onClick={toggleVoice} className="rounded-xl border px-5 py-2">
+                <button onClick={toggleVoice} className="rounded-xl border border-slate-300 px-5 py-2">
                   {listening ? 'Stop speaking' : 'Speak'}
                 </button>
                 <button
                   onClick={() => void summarize()}
                   disabled={!notes.trim()}
-                  className="rounded-xl border px-5 py-2 disabled:opacity-40"
+                  className="rounded-xl border border-slate-300 px-5 py-2 disabled:opacity-40"
                 >
                   ✨ Summarize for me
                 </button>
@@ -382,7 +382,7 @@ export default function TodayPage() {
                     value={aiSummary}
                     onChange={event => { setAiSummary(event.target.value); setAiConfirmed(false); }}
                     rows={3}
-                    className="mt-2 w-full rounded-lg border p-2"
+                    className="mt-2 w-full rounded-lg border border-slate-300 p-2"
                   />
                   <label className="mt-2 flex items-center gap-2 text-sm">
                     <input type="checkbox" checked={aiConfirmed} onChange={event => setAiConfirmed(event.target.checked)} />
@@ -399,7 +399,7 @@ export default function TodayPage() {
       )}
 
       {/* Timeline: YOUR DAY */}
-      <section data-tour="day-timeline" className="mt-12">
+      <section data-tour="day-timeline" className="animate-fade-up stagger-2 mt-12">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Today</h2>
           <span className="text-sm text-slate-500">{activities.length} activities</span>

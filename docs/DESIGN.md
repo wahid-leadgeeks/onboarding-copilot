@@ -1,7 +1,7 @@
 # Design System — Onboarding Copilot
 
 **Product:** Onboarding Copilot
-**Status:** Active — v2
+**Status:** Active — v2.1
 **Last updated:** 2026-09-03
 
 ---
@@ -73,9 +73,44 @@ Base unit: 4px. Use multiples: 4, 8, 12, 16, 20, 24, 32, 48, 64.
 | Md | Hover / focus |
 | Lg | Modals, dropdowns |
 
+### Gradients (v2.1)
+
+| Class | Gradient | Usage |
+|---|---|---|
+| Body background | `#e0e7ff → #f8fafc` (vertical, top 18rem) | Fresh indigo-tinted page top |
+| `.hero-gradient` | `#0f172a → #1e1b4b → #312e81` (135°) | "Right now" card, Journey hero card |
+| `.bar-gradient` | `#6366f1 → #3b82f6` (90°) | Progress bar fills |
+| `.text-gradient` | `#4338ca → #2563eb → #0ea5e9` (90°, clipped to text) | Page h1 titles |
+
+### Fonts
+
+The app renders `Inter, 'Segoe UI', system-ui, -apple-system, Arial, sans-serif` — Inter when installed on the user's machine, otherwise the platform's native UI font. No webfont download is bundled.
+
 ---
 
-## 3. Screen Architecture
+## 3. Motion (v2.1)
+
+Motion is **calm, quick, and meaningful** — it explains where things come from, never distracts.
+
+| Class | Effect | Usage |
+|---|---|---|
+| `.animate-fade-up` | 0.5s rise + fade, cubic-bezier(.21,.61,.35,1) | Sections entering on page load |
+| `.stagger-1` … `.stagger-5` | +0.07s per step | Sequential entrance of sibling sections/cards |
+| `.animate-pop-in` | 0.35s scale-in (overshoot 1.04) | Completion moment, import preview, learning capture |
+| `.animate-pulse-soft` | 2s opacity pulse | "Right now" live indicator |
+| `.progress-shimmer` | Sweeping highlight across the bar fill | Both progress bars |
+| Nav underline | Gradient bar scaleX(0→1) on hover / active | Primary navigation |
+| Button lift | translateY(-1px) + soft shadow on hover | All buttons |
+
+Rules:
+
+- Every entrance animation plays once, on mount.
+- `prefers-reduced-motion: reduce` disables all animation and transition durations globally (globals.css).
+- The guide tour popover pops in per step and its backdrop/spotlight fade in.
+
+---
+
+## 4. Screen Architecture
 
 ### Navigation
 
@@ -130,7 +165,7 @@ Today     Journey     Learnings     Settings
 
 ---
 
-## 4. Components
+## 5. Components
 
 ### Status Indicators
 
@@ -315,7 +350,7 @@ here and kept on this device — nothing is uploaded elsewhere.
 
 ---
 
-## 5. Interaction Flows
+## 6. Interaction Flows
 
 ### Starting a Session
 
@@ -353,7 +388,7 @@ here and kept on this device — nothing is uploaded elsewhere.
 
 ---
 
-## 6. Responsive Behavior
+## 7. Responsive Behavior
 
 - Mobile: full-width, stacked, touch targets 44px min.
 - Tablet: two-column layout for timeline and detail.
@@ -361,7 +396,7 @@ here and kept on this device — nothing is uploaded elsewhere.
 
 ---
 
-## 7. Accessibility
+## 8. Accessibility
 
 - Keyboard navigable.
 - Color not the only indicator (use labels).
@@ -370,7 +405,7 @@ here and kept on this device — nothing is uploaded elsewhere.
 
 ---
 
-## 8. AI Interaction Rules
+## 9. AI Interaction Rules
 
 AI-generated content must be **visually distinguishable** from user-entered content at all times. Use a consistent visual treatment (e.g., a subtle background, an AI label, or a distinct border).
 
@@ -384,7 +419,7 @@ AI content that has not been confirmed must never be persisted.
 
 ---
 
-## 9. Tone of Voice
+## 10. Tone of Voice
 
 The interface should feel like a **calm personal assistant**, not an enterprise administration portal.
 
@@ -404,7 +439,7 @@ The interface should feel like a **calm personal assistant**, not an enterprise 
 
 ---
 
-## 10. Implementation Notes
+## 11. Implementation Notes
 
 - Keep existing local storage (session, diary, history).
 - Keep existing API routes for schedule, session, diary, AI.
@@ -412,10 +447,11 @@ The interface should feel like a **calm personal assistant**, not an enterprise 
 - Google Sheets sync remains as-is.
 - AI integration: use existing `/api/ai/summarize` for learning capture; add a `/api/ai/structure` for quick notes if needed.
 - All new components are in `app/components/`.
+- Tailwind v4 compiles via `@tailwindcss/postcss` (`postcss.config.mjs`); theme tokens and motion utilities live unlayered in `app/globals.css` — keep them free of element-level styling that would fight utility classes.
 
 ---
 
-## 11. Design Principles
+## 12. Design Principles
 
 1. **Decision simplicity over information density.** One question per screen.
 2. **Action dominates.** The primary action is the most prominent element.

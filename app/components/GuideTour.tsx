@@ -51,14 +51,14 @@ export const todayTourSteps: readonly GuideTourStep[] = [
   },
 ];
 
-// Self-contained styles: the tour must render correctly whether or not the
-// Tailwind pipeline is active (see the fallback note in globals.css).
+// Self-contained styles so the tour renders identically regardless of the
+// Tailwind pipeline state.
 const guideTourCss = `
 .guide-tour-shield { position: fixed; inset: 0; z-index: 40; }
-.guide-tour-shield--dim { background: rgb(2 6 23 / 0.45); }
-.guide-tour-spotlight { position: fixed; z-index: 41; pointer-events: none; border: 2px solid #2563eb; border-radius: 16px; box-shadow: 0 0 0 9999px rgb(2 6 23 / 0.45); }
-.guide-tour-popover { position: fixed; z-index: 50; width: min(24rem, calc(100vw - 2rem)); background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.25); font-family: inherit; }
-.guide-tour-popover--centered { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.guide-tour-shield--dim { background: rgb(2 6 23 / 0.45); animation: guide-fade 0.25s ease both; }
+.guide-tour-spotlight { position: fixed; z-index: 41; pointer-events: none; border: 2px solid #2563eb; border-radius: 16px; box-shadow: 0 0 0 9999px rgb(2 6 23 / 0.45); animation: guide-fade 0.25s ease both; }
+.guide-tour-popover { position: fixed; z-index: 50; width: min(24rem, calc(100vw - 2rem)); background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 25px 50px -12px rgb(15 23 42 / 0.25); font-family: inherit; animation: guide-pop-in 0.28s cubic-bezier(0.21, 0.61, 0.35, 1) both; }
+.guide-tour-popover--centered { left: 50%; top: 50%; transform: translate(-50%, -50%); animation-name: guide-pop-center; }
 .guide-tour-step-label { margin: 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.18em; color: #1d4ed8; }
 .guide-tour-title { margin: 8px 0 0; font-size: 20px; line-height: 1.2; font-weight: 600; color: #0f172a; }
 .guide-tour-body { margin: 8px 0 0; font-size: 14px; line-height: 24px; color: #475569; }
@@ -75,6 +75,9 @@ const guideTourCss = `
 .guide-tour-button--primary { background: #2563eb; border: 1px solid #2563eb; color: #ffffff; font-weight: 600; padding: 8px 20px; }
 .guide-tour-button--primary:hover { background: #1d4ed8; }
 .guide-tour-button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+@keyframes guide-fade { from { opacity: 0; } }
+@keyframes guide-pop-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes guide-pop-center { from { opacity: 0; transform: translate(-50%, calc(-50% + 10px)) scale(0.97); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
 `;
 
 const VIEWPORT_MARGIN = 16;
@@ -240,6 +243,7 @@ export function GuideTour({ steps, open, onFinish }: { steps: readonly GuideTour
         />
       )}
       <div
+        key={index}
         ref={popoverRef}
         role="dialog"
         aria-modal="true"

@@ -22,7 +22,7 @@ export function QuickNote({ onSave }: { onSave: (content: string) => void }) {
         </button>
       )}
       {expanded && (
-        <div className="flex gap-3">
+        <div className="animate-fade-up flex gap-3">
           <textarea
             autoFocus
             aria-label="Quick note"
@@ -30,7 +30,7 @@ export function QuickNote({ onSave }: { onSave: (content: string) => void }) {
             onChange={(event) => setValue(event.target.value)}
             rows={3}
             placeholder="Capture something for later..."
-            className="w-full rounded-xl border p-3 text-sm"
+            className="w-full rounded-xl border border-slate-300 p-3 text-sm"
           />
           <button onClick={save} className="min-h-11 self-end rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
             Save
