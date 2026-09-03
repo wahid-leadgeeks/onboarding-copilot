@@ -56,6 +56,7 @@
 - [x] `POST /api/import` — multipart boundary: 2 MB cap, size/type validation, `ImportError` → user-presentable 400s
 - [x] Settings → Schedule section: file picker, parse preview (count, skipped rows, warnings, first activities), explicit confirm/discard, remove
 - [x] Today + Learnings prefer the imported schedule (`onboarding-imported-schedule` localStorage, validated read) with a dedicated status badge
+- [x] Discoverability: "Import your own schedule" link on Today next to the status badge whenever the app runs on demo/offline data (hidden once a real schedule is loaded)
 - [x] Tests: 38 new across csv/xlsx/import-schedule/imported-schedule suites
 
 ### UI v3 polish (fresh theme + motion)

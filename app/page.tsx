@@ -213,8 +213,15 @@ export default function TodayPage() {
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-slate-900 sm:px-8 sm:py-8">
       <PrimaryNav active="Today" />
-      <div role="status" data-tour="status-bar" className={`mb-8 inline-flex animate-fade-up items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${statusBar.className}`}>
-        <span aria-hidden="true">{statusBar.indicator}</span>{statusBar.label}
+      <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div role="status" data-tour="status-bar" className={`inline-flex animate-fade-up items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${statusBar.className}`}>
+          <span aria-hidden="true">{statusBar.indicator}</span>{statusBar.label}
+        </div>
+        {(scheduleState === 'demo' || scheduleState === 'error') && (
+          <a href="/settings" className="animate-fade-up text-xs font-medium text-indigo-600 underline underline-offset-4 transition hover:text-indigo-800">
+            Import your own schedule →
+          </a>
+        )}
       </div>
 
       {/* Header */}
