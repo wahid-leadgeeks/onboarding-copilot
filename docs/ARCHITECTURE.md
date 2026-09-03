@@ -2,7 +2,7 @@
 
 **Product:** Onboarding Copilot
 **Status:** Active — MVP
-**Last updated:** 2026-09-02
+**Last updated:** 2026-09-03
 
 ---
 
@@ -97,6 +97,19 @@ Google Sheets
   → Today view (filtered by date)
 ```
 
+### Schedule — Import (local-first alternative source)
+
+```
+User picks a file in Settings (.xlsx / .csv / .tsv, ≤ 2 MB)
+  → API Route: POST /api/import (multipart)
+  → lib/import/ parses + validates rows into Activity[]
+  → Preview with explicit user confirmation
+  → Persisted to localStorage (onboarding-imported-schedule)
+  → Today and Learnings prefer the imported schedule over the demo fallback
+```
+
+The file is parsed server-side and never leaves the user's device afterward. Parsing uses `fflate` (ZIP container) + `fast-xml-parser` (sheet XML) — no SheetJS dependency. All parsed rows are validated at the boundary (`isActivity`) before entering the app.
+
 ### Session — Start
 
 ```
@@ -145,12 +158,14 @@ Application event (e.g., session completed)
 app/                  Next.js pages and layouts
 app/api/              API routes (server-only)
   ├── schedule/       Read and update schedule activities
+  ├── import/         Parse uploaded schedule files (.xlsx/.csv/.tsv)
   ├── diary/          Read and write diary entries
   ├── session/        Session state management
   └── ai/             AI processing endpoints
 
 lib/
   ├── sheets/         Google Sheets API client (isolated)
+  ├── import/         Uploaded-file parsing (CSV + XLSX → string matrix → Activity[])
   ├── ai/             AI provider client (provider-agnostic interface)
   ├── n8n/            n8n webhook client
   └── session/        Session business logic

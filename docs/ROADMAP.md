@@ -14,7 +14,7 @@
 
 | | |
 |---|---|
-| **Done** | Phases 0–3 are functionally complete in **local-first mode**: Today dashboard, Journey view, session timing with duration calculation, learning capture (text + voice + assistive AI), diary and quick notes, pending-sync queue with retry, and a first-run guide tour. |
+| **Done** | Phases 0–3 are functionally complete in **local-first mode**: Today dashboard, Journey view, session timing with duration calculation, learning capture (text + voice + assistive AI), diary and quick notes, pending-sync queue with retry, a first-run guide tour, and **schedule import from Excel/CSV files** (Settings → Schedule). |
 | **Next** | Phase 4 (Feedback) — interface design, then local capture with confirmation. |
 | **Blocked** | Connected Sheets/OAuth activation (Phase 0 remainder, Phase 2 sync). Waiting on Google Cloud credentials and the workbook column mapping from HR — see [`docs/TODO.md`](TODO.md#blocked). Until then, all writes are queued locally with an explicit pending state. |
 
@@ -56,6 +56,7 @@
 - [x] Error state (Sheets unavailable)
 - [x] Journey view (90-day timeline with phases and milestones)
 - [x] First-run guide tour (walkthrough of the cockpit, restartable from Settings)
+- [x] Schedule import from spreadsheet files (.xlsx/.csv/.tsv) with preview and confirmation — local alternative to the Sheets connection
 
 ---
 

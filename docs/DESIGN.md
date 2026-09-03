@@ -264,6 +264,33 @@ Understanding the company & IT environment
 - Current position highlighted
 - Phase detail below
 
+### Schedule Import (Settings)
+
+```
+SCHEDULE
+Import your onboarding schedule from an Excel or Google
+Sheets export (.xlsx, .csv, or .tsv). The file is parsed
+here and kept on this device — nothing is uploaded elsewhere.
+
+[ Choose file ]
+
+  ┌─ preview ──────────────────────────────────┐
+  │ 4 activities ready to import, 1 skipped    │
+  │ Row 5: could not read the start/end time   │
+  │ Company Orientation — 09:00–11:00          │
+  │ Security & Access Training — 09:30–11:30   │
+  │                                            │
+  │ [ Use this schedule ]  [ Discard ]         │
+  └────────────────────────────────────────────┘
+```
+
+- One section on Settings, between Connection and Sync
+- Preview before persist: activity count, skipped-row warnings (first 5), first activities with times
+- **Explicit confirmation required** — nothing is stored until "Use this schedule"
+- Importing is local-only; the Today status badge switches to `📄 Imported schedule · N activities`
+- Removing the imported schedule returns the app to the default (demo) schedule
+- Errors from parsing are user-presentable sentences, shown inline in red, never raw exceptions
+
 ### Guide Tour
 
 ```

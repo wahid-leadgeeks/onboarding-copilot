@@ -50,6 +50,14 @@
 - [x] Fix completion-moment activity name, header progress merge with local sessions, and reload hydration (found in browser QA)
 - [x] Consolidate design system into `docs/DESIGN.md` (v2)
 
+### Schedule import (local-first alternative to Sheets)
+
+- [x] `lib/import/` — CSV (RFC4180, auto-delimiter) and XLSX (fflate + fast-xml-parser, shared strings, inline strings) parsers with validated row→Activity mapping
+- [x] `POST /api/import` — multipart boundary: 2 MB cap, size/type validation, `ImportError` → user-presentable 400s
+- [x] Settings → Schedule section: file picker, parse preview (count, skipped rows, warnings, first activities), explicit confirm/discard, remove
+- [x] Today + Learnings prefer the imported schedule (`onboarding-imported-schedule` localStorage, validated read) with a dedicated status badge
+- [x] Tests: 38 new across csv/xlsx/import-schedule/imported-schedule suites
+
 ### Guide tour (first-run experience)
 
 - [x] Add `lib/guide-tour.ts` — validated tour state persistence (`onboarding-guide-tour` localStorage key)
