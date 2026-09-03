@@ -1,133 +1,323 @@
-# Design System & UX Guidelines
+# Design System — Onboarding Copilot
 
 **Product:** Onboarding Copilot
-**Status:** Active — MVP
-**Last updated:** 2026-09-02
+**Status:** Active — v2
+**Last updated:** 2026-09-03
 
 ---
 
-## 1. Core Principle
+## 1. Product Philosophy
 
-> The application should reduce cognitive load.
+> **The spreadsheet is the backend, not the interface.**
 
-The employee should never need to understand the underlying spreadsheet structure to complete onboarding. The interface handles interpretation, navigation, and administration on their behalf.
+The user should never think "I need to update my onboarding spreadsheet." They should think "I have one thing to do." The app handles the rest.
 
----
-
-## 2. Primary Question
+### Core Questions
 
 Every screen must answer:
 
-> **What do I need to do now?**
+1. **What do I need to do right now?** — primary
+2. **How much is left?** — secondary
+3. **What happens next?** — supporting
+4. **What do I need to record?** — after action
+5. **Where am I in the journey?** — context
 
-If a screen does not answer this question — or actively makes it harder to answer — the screen should not exist in MVP.
+### The Loop
+
+```
+Start → Do → Finish → Capture learning → Next
+```
+
+Not:
+
+```
+Open spreadsheet → find row → inspect columns → type stuff → wonder what comes next
+```
 
 ---
 
-## 3. Information Hierarchy
+## 2. Visual Identity
 
-When displaying information, prioritize in this order:
+### Palette
 
-1. **Current activity** — what is happening right now
-2. **Next activity** — what is coming up next
-3. **Today's remaining activities** — the rest of the day at a glance
-4. **Progress** — how much has been completed
-5. **Learning capture** — after a session completes
-6. **Historical information** — past sessions and diary (accessible but not prominent)
+| Role | Color | Hex | Usage |
+|---|---|---|---|
+| Background | Near-white | `#f8fafc` | Page background |
+| Surface | White | `#ffffff` | Cards, panels |
+| Primary | Deep navy | `#0f172a` | Headers, primary buttons, emphasis |
+| Accent | Calm blue | `#2563eb` | Primary CTA, highlights, progress |
+| Success | Emerald | `#059669` | Completed states |
+| Warning | Amber | `#d97706` | Attention states |
+| Text | Slate | `#0f172a` → `#64748b` | Hierarchy |
 
----
+### Typography
 
-## 4. Primary Navigation
+| Role | Font | Weight | Size |
+|---|---|---|---|
+| Display | Inter (sans-serif) | 600 | 2.25rem (36px) |
+| Heading | Inter | 600 | 1.5rem (24px) |
+| Body | Inter | 400 | 1rem (16px) |
+| Small | Inter | 400 | 0.875rem (14px) |
+| Mono | JetBrains Mono | 400 | 0.875rem (14px) |
 
-MVP navigation must have no more than three destinations:
+### Spacing
 
-| Destination | Purpose |
+Base unit: 4px. Use multiples: 4, 8, 12, 16, 20, 24, 32, 48, 64.
+
+### Shadows
+
+| Level | Usage |
 |---|---|
-| **Today** | Current day view — the primary screen |
-| **History** | Past sessions and diary entries |
-| **Settings** | Account and preferences |
-
-Do not add navigation items speculatively. Add only when a feature requires it.
-
----
-
-## 5. Today Screen
-
-The Today screen is the primary surface of the application. It must display:
-
-- Current date
-- Current activity (name, type, planned duration)
-- Current session status (not started / in progress / completed)
-- Primary action (Start / Finish)
-- Next activity (name, planned time)
-- Remaining activities count
-- Daily progress indicator
-
-Keep it scannable in under 10 seconds.
+| None | Flat surfaces |
+| Sm | Subtle elevation (cards) |
+| Md | Hover / focus |
+| Lg | Modals, dropdowns |
 
 ---
 
-## 6. Session Interaction States
+## 3. Screen Architecture
 
-### Before starting
-
-```
-┌─────────────────────────────────┐
-│  Introduction to IT Systems     │
-│  Planned: 09:00 – 11:00         │
-│                                 │
-│       [ Start Session ]         │
-└─────────────────────────────────┘
-```
-
-### During session
+### Navigation
 
 ```
-┌─────────────────────────────────┐
-│  🟢  Session in progress        │
-│                                 │
-│  Introduction to IT Systems     │
-│  Started: 09:02                 │
-│  Elapsed: 1h 14m                │
-│                                 │
-│       [ Finish Session ]        │
-└─────────────────────────────────┘
+Today     Journey     Learnings     Settings
 ```
 
-### After session — confirmation
+- **Today** — primary, answers "What do I need to do now?"
+- **Journey** — 90‑day timeline, shows where you are
+- **Learnings** — diary, history of completed sessions and notes (renamed from History)
+- **Settings** — preferences, sync, connection
+
+### Today Screen Layout
 
 ```
-┌─────────────────────────────────┐
-│  ✅  Session completed           │
-│                                 │
-│  Introduction to IT Systems     │
-│  Duration: 2h 03m               │
-│                                 │
-│       [ Capture Learning ]      │
-│       [ Skip for now ]          │
-└─────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  ONBOARDING COPILOT                                 │
+│  Today     Journey     Learnings     Settings        │
+│                                                     │
+│  Wednesday · 2 September                            │
+│                                                     │
+│  GOOD EVENING, NOAH                                 │
+│  Day 2 of 90                                        │
+│  ██████████░░░░░░░░░░  18%                          │
+│  2 of 3 today                                       │
+│                                                     │
+│  ┌───────────────────────────────────────────────┐  │
+│  │  ● RIGHT NOW                                  │  │
+│  │                                               │  │
+│  │  Team Welcome                                 │  │
+│  │  14:00 → 15:00                               │  │
+│  │  Experience Manager                           │  │
+│  │                                               │  │
+│  │              [ Continue ]                     │  │
+│  │                                               │  │
+│  └───────────────────────────────────────────────┘  │
+│                                                     │
+│  TODAY                                              │
+│                                                     │
+│  ✓  Introduction to IT Systems       09:00          │
+│  ✓  Security & Access Setup           11:30          │
+│  ●  Team Welcome                      14:00          │
+│                                                     │
+│  + Quick note                                       │
+│                                                     │
+│  90-DAY JOURNEY                                     │
+│  ●━━━━━━━●━━━━━━━━○━━━━━━━━○                        │
+│  Learn    Practice     Own      Graduate             │
+│                                                     │
+└─────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 7. Learning Capture
+## 4. Components
 
-Prefer conversational input over structured forms.
+### Status Indicators
 
-### Input options (in priority order)
+| State | Indicator | Color | Label |
+|---|---|---|---|
+| Completed | ✓ | Emerald | Completed |
+| In progress | ● | Blue | In progress |
+| Upcoming | ○ | Slate | Upcoming |
+| Needs attention | ! | Amber | Needs attention |
 
-| Option | UI element |
-|---|---|
-| **Voice** | 🎙 Speak — primary CTA |
-| **Text** | ✍ Type — secondary option |
-| **Skip** | Text link — always available |
+### Progress Component
 
-After input:
+```
+Day 2 of 90
+██████████░░░░░░░░░░  18%
+2 of 3 today
+```
 
-1. Show the raw input.
-2. Show the AI-structured version (if AI is available).
-3. Allow the user to edit either.
-4. Require explicit **Confirm** before saving to diary.
+- Shows overall journey progress and daily progress
+- Bar width reflects percentage
+- Clean, minimal, one strong signal
+
+### Activity Card (Current)
+
+```
+┌──────────────────────────────────────────────┐
+│  ● RIGHT NOW                                │
+│                                              │
+│  Team Welcome                                │
+│  14:00 → 15:00                               │
+│  Experience Manager                           │
+│                                              │
+│           [ Continue ]                       │
+│                                              │
+└──────────────────────────────────────────────┘
+```
+
+- Visually dominant, full-width
+- Action button is the hero
+- Metadata de-emphasized (smaller text, lighter color)
+
+### Timeline
+
+```
+TODAY
+
+✓  Introduction to IT Systems       09:00
+✓  Security & Access Setup           11:30
+●  Team Welcome                      14:00
+```
+
+- Compact, scannable
+- Status indicator on left
+- Time on right
+- No extra cards
+
+### Completion Moment
+
+```
+┌──────────────────────────────────────────────┐
+│  ✓ DONE                                     │
+│                                              │
+│  Introduction to IT Systems                  │
+│  09:00 → 11:05                              │
+│  2h 05m                                     │
+│                                              │
+│  Nice. One less thing to think about.        │
+│                                              │
+│  [ Record what I learned ]                   │
+│                                              │
+└──────────────────────────────────────────────┘
+```
+
+- Replaces the activity card after finishing
+- Celebratory but not over-the-top
+- Clear next step
+
+### Learning Capture
+
+```
+┌──────────────────────────────────────────────┐
+│  ✓ Activity complete                          │
+│                                              │
+│  What did you learn?                         │
+│                                              │
+│  ┌──────────────────────────────────────────┐│
+│  │ Just write a few words.                  ││
+│  │                                          ││
+│  └──────────────────────────────────────────┘│
+│                                              │
+│  ✨ Summarize for me                         │
+│                                              │
+│                 [ Save & continue ]          │
+└──────────────────────────────────────────────┘
+```
+
+- Conversational, not a form
+- One text area
+- One primary action ("Summarize for me") that uses AI
+- One secondary action ("Save & continue")
+
+### Quick Note
+
+```
++ Quick note
+```
+
+- Tiny input at bottom of Today page
+- Click → expands to a text area
+- AI structures the note later
+- Example: "MD explained company strategy..." → structured diary entry
+
+### Journey View
+
+```
+YOUR 90-DAY JOURNEY
+
+●━━━━━━━●━━━━━━━━○━━━━━━━━○
+Learn    Practice     Own      Graduate
+1 month  2 month      3 month
+
+          YOU ARE HERE ↑
+
+Month 1
+Understanding the company & IT environment
+
+████████░░░░░░░░ 42%
+```
+
+- Horizontal timeline with phases
+- Current position highlighted
+- Phase detail below
+
+---
+
+## 5. Interaction Flows
+
+### Starting a Session
+
+1. User sees "RIGHT NOW" card with activity name, time, owner.
+2. Clicks [Start] / [Continue].
+3. App records start timestamp.
+4. Card updates to "IN PROGRESS" with a timer (optional) or just "Started at HH:MM".
+5. Timeline updates to show activity as ●.
+
+### Finishing a Session
+
+1. User clicks [Finish].
+2. App records end timestamp, calculates duration.
+3. Card transforms to "✓ DONE" with duration and a "Record what I learned" action.
+4. Timeline updates to show activity as ✓.
+5. Next activity moves into the "RIGHT NOW" card.
+
+### Capturing Learning
+
+1. User sees "What did you learn?" with a text area.
+2. Types a few words.
+3. Clicks "Summarize for me".
+4. App sends to AI, returns a structured summary.
+5. User reviews, edits if needed, confirms.
+6. App saves to diary and syncs to Sheets.
+7. User moves to next activity.
+
+### Quick Note
+
+1. User clicks "+ Quick note" at bottom of Today page.
+2. A minimal text area appears.
+3. User types anything.
+4. App stores it as a draft (listed under Learnings).
+5. Later, AI structures it into a diary entry (or user does it manually).
+
+---
+
+## 6. Responsive Behavior
+
+- Mobile: full-width, stacked, touch targets 44px min.
+- Tablet: two-column layout for timeline and detail.
+- Desktop: max-width 1200px, centered.
+
+---
+
+## 7. Accessibility
+
+- Keyboard navigable.
+- Color not the only indicator (use labels).
+- WCAG AA contrast.
+- Reduced motion respected.
 
 ---
 
@@ -145,46 +335,7 @@ AI content that has not been confirmed must never be persisted.
 
 ---
 
-## 9. UX Rules
-
-### Avoid
-
-- Large data tables or spreadsheet-like grids
-- Excessive form fields
-- Empty state dashboards with no clear action
-- Multiple competing primary actions on one screen
-- Requiring the user to understand spreadsheet structure
-- Unnecessary confirmation dialogs for non-destructive actions
-- Jargon from the spreadsheet (tab names, column headers, etc.)
-
-### Prefer
-
-- One primary action per screen
-- Progressive disclosure (show details only when needed)
-- Short, plain-language status summaries
-- Clear, unambiguous status indicators
-- Large, accessible touch targets (min 44×44px)
-- Keyboard-friendly interaction patterns
-- Optimistic UI updates with sync status indicators
-
----
-
-## 10. Status Indicators
-
-Use consistent, plain-language status labels:
-
-| Status | Label | Visual |
-|---|---|---|
-| Not started | Not started | — |
-| Currently active | In progress | 🟢 |
-| Completed | Done | ✅ |
-| Missed / overdue | Overdue | 🔴 |
-| Syncing | Syncing... | ⏳ |
-| Sync failed | Not synced | ⚠️ |
-
----
-
-## 11. Tone of Voice
+## 9. Tone of Voice
 
 The interface should feel like a **calm personal assistant**, not an enterprise administration portal.
 
@@ -204,10 +355,23 @@ The interface should feel like a **calm personal assistant**, not an enterprise 
 
 ---
 
-## 12. Accessibility Baseline
+## 10. Implementation Notes
 
-- All interactive elements must be keyboard accessible.
-- Color must not be the only means of conveying status.
-- Text must meet WCAG AA contrast ratios.
-- Touch targets minimum 44×44px.
-- Form inputs must have associated visible labels.
+- Keep existing local storage (session, diary, history).
+- Keep existing API routes for schedule, session, diary, AI.
+- No new database.
+- Google Sheets sync remains as-is.
+- AI integration: use existing `/api/ai/summarize` for learning capture; add a `/api/ai/structure` for quick notes if needed.
+- All new components are in `app/components/`.
+
+---
+
+## 11. Design Principles
+
+1. **Decision simplicity over information density.** One question per screen.
+2. **Action dominates.** The primary action is the most prominent element.
+3. **Progress as a single signal.** One progress component, not four.
+4. **Timeline supports, not overshadows.** It shows the day's shape, not the hero.
+5. **Completion is a moment.** A tiny celebration and a clear next step.
+6. **Learning is conversational.** Forms are the enemy.
+7. **The app hides the spreadsheet.** The user never sees columns, rows, or tabs.

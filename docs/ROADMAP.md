@@ -1,7 +1,7 @@
 # Roadmap
 
 **Product:** Onboarding Copilot
-**Last updated:** 2026-09-02
+**Last updated:** 2026-09-03
 
 > The roadmap defines **where the product is going**.
 > For what to work on right now, see [`docs/TODO.md`](TODO.md).
@@ -36,6 +36,7 @@
 - [x] Remaining activities count
 - [x] Empty state (no activities today)
 - [x] Error state (Sheets unavailable)
+- [x] Journey view (90-day timeline with phases and milestones)
 
 ---
 
@@ -66,6 +67,7 @@
 - [x] User confirmation before saving
 - [x] Sync learning entry to Onboarding Diary sheet
 - [x] Skip / defer learning capture option
+- [x] Quick note drafts (captured on Today, listed under Learnings)
 
 ---
 

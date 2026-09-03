@@ -1,7 +1,7 @@
 # TODO
 
 **Product:** Onboarding Copilot
-**Last updated:** 2026-09-02
+**Last updated:** 2026-09-03
 
 > This file tracks **what to work on right now**.
 > For product direction, see [`docs/ROADMAP.md`](ROADMAP.md).
@@ -40,6 +40,15 @@
 - [x] Add local append-only session and diary history
 - [x] Add integration readiness endpoint without exposing credentials
 - [x] Add shared primary navigation for Today, History, and Settings
+
+### UI v2 redesign (credential-free MVP surface)
+
+- [x] Redesign Today page — progress header, current-activity focus card, "Something changed?" disclosure, dot-based timeline, status bar
+- [x] Add Journey page — 90-day timeline with phases and milestones
+- [x] Rename History to Learnings (navigation label, page title, copy)
+- [x] Replace quick-note stub with expanding capture; drafts listed under Learnings
+- [x] Fix completion-moment activity name, header progress merge with local sessions, and reload hydration (found in browser QA)
+- [x] Consolidate design system into `docs/DESIGN.md` (v2)
 
 ---
 
