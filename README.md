@@ -93,6 +93,9 @@ pnpm test        # Unit tests
 
 All three must pass before committing.
 
+Continuous integration runs these checks plus `pnpm build` on every push and
+pull request to `main` ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+
 ## Documentation
 
 | Document | Question it answers |

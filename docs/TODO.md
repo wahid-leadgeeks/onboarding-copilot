@@ -99,6 +99,12 @@
 - [x] Auto-start tour on first visit to Today; restart via Settings → "Restart the guide tour" (`/?tour=start`)
 - [x] Tag tour targets with `data-tour` attributes (status bar, progress header, activity card, timeline, quick note, primary nav)
 
+### Continuous integration
+
+- [x] GitHub Actions workflow (`.github/workflows/ci.yml`) — push/PR to `main`, pinned action versions, pnpm cache, least-privilege `contents: read`, 15-minute timeout, per-branch concurrency with cancel
+- [x] CI gates mirror the local definition of done: `pnpm typecheck` + `pnpm lint` + `pnpm test` + `pnpm build` — no secrets required (all env reads happen at request time, so the build runs without `.env.local`)
+- [x] `packageManager` field in `package.json` pins pnpm 11.15.0 so CI and local runs agree
+
 ---
 
 ## Bugs
