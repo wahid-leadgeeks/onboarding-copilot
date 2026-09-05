@@ -1,7 +1,7 @@
 # TODO
 
 **Product:** Onboarding Copilot
-**Last updated:** 2026-09-03
+**Last updated:** 2026-09-05
 
 > This file tracks **what to work on right now**.
 > For product direction, see [`docs/ROADMAP.md`](ROADMAP.md).
@@ -105,6 +105,18 @@
 - [x] GitHub Actions workflow (`.github/workflows/ci.yml`) — push/PR to `main`, pinned action versions, pnpm cache, least-privilege `contents: read`, 15-minute timeout, per-branch concurrency with cancel
 - [x] CI gates mirror the local definition of done: `pnpm typecheck` + `pnpm lint` + `pnpm test` + `pnpm build` — no secrets required (all env reads happen at request time, so the build runs without `.env.local`)
 - [x] `packageManager` field in `package.json` pins pnpm 11.15.0 so CI and local runs agree
+
+### Elevating the Learning Feature (structured local learning records, [ADR-0005](adr/0005-learning-records-and-ai-provider-chain.md))
+
+- [x] `lib/local-records.ts`: additive learning record schema with optional `id`, `activityId`, `activityName`, `source`, `updatedAt` on diary entries; legacy `{ content, createdAt }` records remain accepted; deterministic stable IDs derived at read time, persisted on new writes
+- [x] `LearningModal`: reusable accessible capture dialog (focus trap, Esc to dismiss) for manual and AI-assisted notes; AI summary rendered as an editable draft with an explicit review-and-confirm checkbox (ADR-0003); editing the summary resets confirmation
+- [x] AI summarize provider chain: server-side and deterministic (`lib/ai/providers.ts`); fully configured Groq first, generic OpenAI-compatible endpoint second, deterministic local heuristic fallback (`heuristicSummary` in `lib/ai/client.ts`)
+- [x] Diary sync projection: `diarySyncPayload` sends exactly `{ content }` to `POST /api/diary`; structured metadata is local-only
+- [x] Learnings filters: search, source (manual / quick-note / AI-assisted / legacy), and activity filters over diary entries and quick notes (`lib/learning-records-view.ts`)
+- [x] Explicit record management: inline diary edit (stamps `updatedAt`, keeps `createdAt`), two-step delete confirmation, quick-note → diary conversion preserving the original timestamp
+- [x] Deterministic structured export: CSV (RFC4180, UTF-8 BOM, metadata columns) and Markdown (UTC headings and metadata); record IDs are never exported; selection and export operate on the filtered list
+- [x] Run the full quality gates for this slice (`pnpm typecheck` / `lint` / `test` / `build`) — 23 suites / 246 tests passing
+- [x] Browser QA for the capture modal, Learnings filters, edit/delete/convert, filtered selection/export, and Settings import flows; responsive captures verified at 375px, 768px, and 1280px with no horizontal overflow
 
 ---
 
