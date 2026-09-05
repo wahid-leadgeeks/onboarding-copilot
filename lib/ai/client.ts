@@ -1,3 +1,5 @@
+import { buildSummarizeRequest, readSummarizeEnv, resolveSummarizeProvider, type EnvLike } from './providers';
+
 export type SummaryResult = { summary: string };
 
 function isSummaryResult(value: unknown): value is SummaryResult {
@@ -6,7 +8,8 @@ function isSummaryResult(value: unknown): value is SummaryResult {
   return typeof summary === 'string' && summary.trim().length > 0;
 }
 
-function extractSummary(value: unknown): string | null {
+/** Extracts a summary from either a `{summary}` or an OpenAI-compatible provider response. */
+export function extractSummary(value: unknown): string | null {
   if (isSummaryResult(value)) return value.summary.trim();
   if (!value || typeof value !== 'object') return null;
   const choices = (value as Record<string, unknown>).choices;
@@ -17,12 +20,34 @@ function extractSummary(value: unknown): string | null {
   return typeof content === 'string' && content.trim() ? content.trim() : null;
 }
 
-export async function requestSummary(content: string): Promise<SummaryResult | null> {
-  const baseUrl = process.env.AI_API_BASE_URL;
-  const token = process.env.AI_API_KEY;
-  if (!baseUrl || !token) return null;
-  const response = await fetch(baseUrl, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` }, body: JSON.stringify({ input: content }), cache: 'no-store' });
-  if (!response.ok) return null;
+/** Deterministic local fallback: the note itself, truncated at 240 characters. */
+export function heuristicSummary(raw: string): string {
+  return raw.length <= 240 ? raw : `${raw.slice(0, 237).trimEnd()}…`;
+}
+
+export type SummaryFetcher = (url: string, init: RequestInit) => Promise<Response>;
+
+/**
+ * Requests an AI summary from the resolved provider (Groq first, then the
+ * generic endpoint). Returns null when no provider is configured or on any
+ * request, response, or parsing failure; the caller falls back to
+ * `heuristicSummary`.
+ */
+export async function requestSummary(
+  content: string,
+  env: EnvLike = readSummarizeEnv(),
+  fetchSummary: SummaryFetcher = fetch,
+): Promise<SummaryResult | null> {
+  const provider = resolveSummarizeProvider(env);
+  if (!provider) return null;
+  const request = buildSummarizeRequest(provider, content);
+  const response = await fetchSummary(request.url, {
+    method: 'POST',
+    headers: request.headers,
+    body: request.body,
+    cache: 'no-store',
+  }).catch(() => null);
+  if (!response?.ok) return null;
   const payload: unknown = await response.json().catch(() => null);
   const summary = extractSummary(payload);
   return summary ? { summary: summary.slice(0, 10_000) } : null;
