@@ -6,15 +6,16 @@ import type { Activity } from '@/lib/types/activity';
 import { PrimaryNav } from '@/app/components/PrimaryNav';
 import { QuickNote } from '@/app/components/QuickNote';
 import { GuideTour, todayTourSteps } from '@/app/components/GuideTour';
+import { LearningModal } from '@/app/components/LearningModal';
+import type { LearningSubmission } from '@/app/components/LearningModal';
 import { GUIDE_TOUR_STORAGE_KEY, readGuideTourState, writeGuideTourState } from '@/lib/guide-tour';
 import { IMPORTED_SCHEDULE_STORAGE_KEY, readImportedSchedule } from '@/lib/imported-schedule';
-import { ACTIVE_SESSION_STORAGE_KEY, DIARY_STORAGE_KEY, QUICK_NOTES_STORAGE_KEY, SESSION_HISTORY_STORAGE_KEY, appendDiary, appendQuickNote, appendSession, completedActivityIds, readDiary, readQuickNotes, readSessions, type StoredDiary, type StoredSession } from '@/lib/local-records';
+import { ACTIVE_SESSION_STORAGE_KEY, DIARY_STORAGE_KEY, QUICK_NOTES_STORAGE_KEY, SESSION_HISTORY_STORAGE_KEY, appendDiary, appendQuickNote, appendSession, completedActivityIds, readDiary, readQuickNotes, readSessions, type StoredSession } from '@/lib/local-records';
+import { diarySyncPayload, learningDiaryEntry } from '@/lib/learning-capture';
 import { selectCurrentActivity } from '@/lib/session/activity-selection';
 import { enqueueSync, pendingSyncStorageKey, readPendingSyncs, writePendingSyncs } from '@/lib/sync-queue';
 import { formatStartedAt, getProgressLabel, mergeCompletedCount } from '@/lib/session/presentation';
 
-type SpeechRecognitionLike = { start: () => void; stop: () => void; onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onerror: (() => void) | null };
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 const fallback: Activity[] = [{ id: 'intro-it', name: 'Introduction to IT Systems', type: 'learning', plannedStart: '09:00', plannedEnd: '11:00', status: 'not-started' }, { id: 'security', name: 'Security & Access Setup', type: 'setup', plannedStart: '11:30', plannedEnd: '12:30', status: 'not-started' }, { id: 'welcome', name: 'Team Welcome', type: 'welcome', plannedStart: '14:00', plannedEnd: '15:00', status: 'not-started' }];
 
 const activityDot = (type: string) =>
@@ -32,11 +33,7 @@ export default function TodayPage() {
   const [activeActivityId, setActiveActivityId] = useState<string | null>(null);
   const [finishedActivityName, setFinishedActivityName] = useState<string | null>(null);
   const [historySessions, setHistorySessions] = useState<StoredSession[]>([]);
-  const [notes, setNotes] = useState('');
-  const [aiSummary, setAiSummary] = useState('');
-  const [aiConfirmed, setAiConfirmed] = useState(false);
   const [sync, setSync] = useState('');
-  const [listening, setListening] = useState(false);
   const [now, setNow] = useState(Date.now());
   const [progress, setProgress] = useState<{ completed: number; total: number; remaining: number } | null>(null);
   const [scheduleState, setScheduleState] = useState<'demo' | 'connected' | 'error' | 'imported'>('demo');
@@ -154,24 +151,16 @@ export default function TodayPage() {
     setSync(response?.ok ? 'Pending Google Sheets sync' : 'Not synced');
   }
 
-  async function saveNotes() {
-    const content = (aiSummary && aiConfirmed ? aiSummary : notes).trim();
-    if (!content) return;
-    const entry: StoredDiary = { content, createdAt: new Date().toISOString() };
+  async function handleLearningSave(submission: LearningSubmission) {
+    const entry = learningDiaryEntry(submission, { activityId: activeActivityId, activityName: finishedActivityName }, new Date().toISOString());
     const existing = readDiary(localStorage.getItem(DIARY_STORAGE_KEY));
     localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(appendDiary(existing, entry)));
-    const response = await fetch('/api/diary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content }) }).catch(() => null);
+    const response = await fetch('/api/diary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(diarySyncPayload(entry)) }).catch(() => null);
     setSync(response?.ok ? 'Learning saved · pending sync' : 'Not synced');
     setShowLearningCapture(false);
-    setNotes('');
-    setAiSummary('');
-    setAiConfirmed(false);
   }
 
-  function skipNotes() {
-    setNotes('');
-    setAiSummary('');
-    setAiConfirmed(false);
+  function handleLearningSkip() {
     setSync('Learning capture skipped · you can add it later from Learnings');
     setShowLearningCapture(false);
   }
@@ -181,34 +170,9 @@ export default function TodayPage() {
     setFinishedAt(null);
     setActiveActivityId(null);
     setFinishedActivityName(null);
-    setNotes('');
-    setAiSummary('');
-    setAiConfirmed(false);
     setSync('');
     setShowLearningCapture(false);
     localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
-  }
-
-  async function summarize() {
-    const response = await fetch('/api/ai/summarize', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content: notes }) }).catch(() => null);
-    if (!response?.ok) { setSync('Summary unavailable'); return; }
-    const data = await response.json() as { summary?: string; requiresConfirmation?: boolean };
-    if (data.summary) { setAiSummary(data.summary); setAiConfirmed(!data.requiresConfirmation); }
-  }
-
-  function toggleVoice() {
-    const speechWindow = window as Window & { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor };
-    const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
-    if (!Recognition) { setSync('Voice input is not available in this browser'); return; }
-    const recognition = new Recognition();
-    recognition.onresult = event => {
-      const transcript = event.results[0]?.[0]?.transcript ?? '';
-      setNotes(current => `${current} ${transcript}`.trim());
-      setListening(false);
-    };
-    recognition.onerror = () => { setListening(false); setSync('Voice input was unavailable'); };
-    if (listening) recognition.stop();
-    else { setListening(true); recognition.start(); }
   }
 
   const statusBar = scheduleState === 'imported' ? { indicator: '📄', label: `Imported schedule · ${activities.length} activities`, className: 'bg-sky-50 text-sky-900' } : scheduleState === 'demo' ? { indicator: '🧪', label: 'Demo data', className: 'bg-sun-50 text-sun-700' } : scheduleState === 'error' ? { indicator: '🟡', label: 'Offline · Using saved schedule', className: 'bg-peach-50 text-peach-700' } : { indicator: '🟢', label: sync || 'Synced just now', className: 'bg-mint-50 text-mint-700' };
@@ -380,59 +344,6 @@ export default function TodayPage() {
           {/* Deviation message */}
           {deviation && <p className="mt-3 text-center text-sm text-stone-600">Noted: {deviation}. You can continue when ready.</p>}
 
-          {/* Learning capture */}
-          {finishedAt && showLearningCapture && (
-            <section className="animate-pop-in mt-6 rounded-card bg-white p-6 shadow-soft">
-              <h2 className="text-lg font-semibold text-stone-900">What did you learn?</h2>
-              <textarea
-                aria-label="What did you learn?"
-                placeholder="Just write a few words..."
-                value={notes}
-                onChange={event => setNotes(event.target.value)}
-                rows={4}
-                className="mt-3 w-full rounded-2xl border border-stone-200 p-3 text-stone-900 placeholder:text-stone-400 focus:border-mint-300"
-              />
-              <div className="mt-3 flex flex-wrap gap-3">
-                <button onClick={toggleVoice} className="min-h-11 rounded-full border border-stone-200 px-5 py-2 text-stone-700 transition hover:bg-stone-50">
-                  {listening ? 'Stop speaking' : 'Speak'}
-                </button>
-                <button
-                  onClick={() => void summarize()}
-                  disabled={!notes.trim()}
-                  className="min-h-11 rounded-full border border-stone-200 px-5 py-2 text-stone-700 transition hover:bg-stone-50 disabled:opacity-40"
-                >
-                  ✨ Summarize for me
-                </button>
-                <button
-                  onClick={() => void saveNotes()}
-                  disabled={!notes.trim() || (!!aiSummary && !aiConfirmed)}
-                  className="min-h-11 rounded-full bg-stone-900 px-5 py-2 font-semibold text-white transition hover:bg-stone-700 disabled:opacity-40"
-                >
-                  {aiSummary ? 'Confirm & save' : 'Save & continue'}
-                </button>
-                <button onClick={skipNotes} className="min-h-11 rounded-full px-3 py-2 text-sm text-stone-500 underline underline-offset-4 transition hover:text-stone-700">
-                  Skip for now
-                </button>
-              </div>
-              {aiSummary && (
-                <div className="mt-4 rounded-2xl bg-lavender-50 p-4">
-                  <p className="text-xs font-medium text-lavender-700">AI-generated summary</p>
-                  <textarea
-                    aria-label="Editable AI summary"
-                    value={aiSummary}
-                    onChange={event => { setAiSummary(event.target.value); setAiConfirmed(false); }}
-                    rows={3}
-                    className="mt-2 w-full rounded-xl border border-stone-200 bg-white p-2 text-stone-900"
-                  />
-                  <label className="mt-2 flex items-center gap-2 text-sm text-stone-700">
-                    <input type="checkbox" checked={aiConfirmed} onChange={event => setAiConfirmed(event.target.checked)} />
-                    I reviewed and confirm this summary
-                  </label>
-                </div>
-              )}
-            </section>
-          )}
-
           {/* Sync status */}
           {sync && <p className="mt-4 text-center text-sm text-stone-500" role="status">{sync}</p>}
         </>
@@ -483,6 +394,11 @@ export default function TodayPage() {
           localStorage.setItem(QUICK_NOTES_STORAGE_KEY, JSON.stringify(appendQuickNote(readQuickNotes(localStorage.getItem(QUICK_NOTES_STORAGE_KEY)), entry)));
           setSync('Quick note saved · find it later under Learnings');
         }}
+      />
+      <LearningModal
+        open={finishedAt !== null && showLearningCapture}
+        onSave={submission => void handleLearningSave(submission)}
+        onSkip={handleLearningSkip}
       />
       <GuideTour steps={todayTourSteps} open={tourOpen} onFinish={handleTourFinish} />
     </main>
