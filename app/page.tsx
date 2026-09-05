@@ -115,8 +115,10 @@ export default function TodayPage() {
   }, [finishedAt]);
 
   const completedIds = completedActivityIds(historySessions);
+  const isActivityDone = (activity: Activity) => completedIds.has(activity.id) || activity.status === 'done';
   const currentActivity = activeActivityId && !finishedAt ? activities.find((item) => item.id === activeActivityId) ?? null : selectCurrentActivity(activities, completedIds);
-  const completedCount = mergeCompletedCount(progress?.completed ?? null, completedIds.size);
+  const doneActivitiesCount = activities.filter(isActivityDone).length;
+  const completedCount = Math.max(doneActivitiesCount, mergeCompletedCount(progress?.completed ?? null, completedIds.size));
   const totalCount = progress?.total ?? activities.length;
   const inProgressCount = startedAt && !finishedAt ? 1 : 0;
   const remainingCount = Math.max(0, totalCount - completedCount - inProgressCount);
@@ -318,7 +320,11 @@ export default function TodayPage() {
                 {currentActivity ? `${currentActivity.type === 'welcome' ? 'Experience Manager' : 'IT Manager'} · ${currentActivity.type === 'learning' ? 'Knowledge Sharing' : currentActivity.type === 'setup' ? 'Access & setup' : 'Team welcome'}` : 'Enjoy the rest of your day'}
               </p>
               {currentActivity && (
-                <p className="mt-1 text-sm text-stone-500">Scheduled {currentActivity.plannedStart}–{currentActivity.plannedEnd}</p>
+                <p className="mt-1 text-sm text-stone-500">
+                  {currentActivity.plannedStart === 'TBD'
+                    ? (currentActivity.durationMinutes ? `${currentActivity.durationMinutes} min · Schedule: Flexible / TBD` : 'Schedule: Flexible / TBD')
+                    : `Scheduled ${currentActivity.plannedStart}–${currentActivity.plannedEnd}`}
+                </p>
               )}
               {!finishedAt && currentActivity && (
                 <button
@@ -446,7 +452,7 @@ export default function TodayPage() {
             </div>
           )}
           {activities.map(activity => {
-            const done = completedIds.has(activity.id);
+            const done = isActivityDone(activity);
             const current = activity.id === currentActivity?.id;
             return (
               <div key={activity.id} className="grid grid-cols-[2rem_1fr_auto] items-center gap-3 border-l-2 border-stone-100 py-3 pl-4">
@@ -457,7 +463,7 @@ export default function TodayPage() {
                   {done ? '✓' : current ? '●' : '○'}
                 </span>
                 <p className={`font-medium ${done ? 'text-stone-500' : current ? 'text-stone-900' : 'text-stone-700'}`}>{activity.name}</p>
-                <span className="text-sm text-stone-400">{activity.plannedStart}</span>
+                <span className="text-sm text-stone-400">{activity.plannedStart === 'TBD' ? (activity.durationMinutes ? `${activity.durationMinutes}m` : 'TBD') : activity.plannedStart}</span>
               </div>
             );
           })}

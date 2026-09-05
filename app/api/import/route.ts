@@ -21,5 +21,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'The file could not be processed.' }, { status: 500 });
   }
   if (!result.activities.every(isActivity)) return NextResponse.json({ error: 'The imported schedule contained invalid rows.' }, { status: 422 });
-  return NextResponse.json({ activities: result.activities, skipped: result.skipped, warnings: result.warnings });
+  return NextResponse.json({ activities: result.activities, skipped: result.skipped, warnings: result.warnings, diary: result.diary });
 }

@@ -10,4 +10,5 @@ export interface Activity {
   actualStart?: string;
   actualEnd?: string;
   durationMinutes?: number;
+  date?: string;
 }
