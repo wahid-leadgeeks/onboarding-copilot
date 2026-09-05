@@ -62,6 +62,16 @@ Use `.env.example` as the starting template. All Google, automation, and AI valu
 
 > Never commit `.env.local` or any file containing credentials.
 
+### AI provider precedence
+
+AI features resolve their provider server-side in a fixed order
+([ADR-0005](docs/adr/0005-learning-records-and-ai-provider-chain.md)): a fully
+configured Groq provider (`GROQ_API_KEY` + `GROQ_MODEL`, optional
+`GROQ_BASE_URL`) wins over a fully configured generic endpoint
+(`AI_API_BASE_URL` + `AI_API_KEY`). Partially configured providers are ignored.
+When neither is fully configured, the app falls back to a deterministic local
+heuristic and every feature stays usable without AI.
+
 ### Integration contract
 
 `SHEETS_SCHEDULE_URL` is a server-side read proxy that returns a JSON array of
