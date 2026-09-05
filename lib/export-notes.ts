@@ -1,7 +1,14 @@
+import type { DiarySource } from './local-records';
+
+/** Optional structured metadata mirrors `StoredDiary`; internal record ids are never exported. */
 export type ExportableNote = {
   kind: 'diary' | 'quick-note';
   content: string;
   createdAt: string; // ISO timestamp
+  activityId?: string;
+  activityName?: string;
+  source?: DiarySource;
+  updatedAt?: string; // ISO timestamp
 };
 
 function kindLabel(kind: ExportableNote['kind']): string {
@@ -24,8 +31,16 @@ function formatTimestamp(date: Date): string {
 
 /** Serializes notes to UTF-8 (BOM-prefixed) RFC4180 CSV for Excel import. */
 export function notesToCsv(notes: ExportableNote[]): string {
-  const rows = notes.map((note) => [kindLabel(note.kind), note.createdAt, note.content]);
-  const body = [['Type', 'Created At', 'Content'], ...rows]
+  const rows = notes.map((note) => [
+    kindLabel(note.kind),
+    note.createdAt,
+    note.content,
+    note.activityId ?? '',
+    note.activityName ?? '',
+    note.source ?? '',
+    note.updatedAt ?? '',
+  ]);
+  const body = [['Type', 'Created At', 'Content', 'Activity ID', 'Activity Name', 'Source', 'Updated At'], ...rows]
     .map((row) => row.map(csvField).join(','))
     .join('\r\n');
   return `\uFEFF${body}\r\n`;
@@ -37,7 +52,14 @@ export function notesToMarkdown(notes: ExportableNote[]): string {
   const parts: string[] = ['# Onboarding Notes', ''];
   for (const note of notes) {
     const when = formatTimestamp(new Date(note.createdAt));
-    parts.push(`## ${kindLabel(note.kind)} — ${when}`, '', note.content, '');
+    parts.push(`## ${kindLabel(note.kind)} — ${when}`, '');
+    const metadata: string[] = [];
+    if (note.activityId !== undefined) metadata.push(`Activity ID: ${note.activityId}`);
+    if (note.activityName !== undefined) metadata.push(`Activity Name: ${note.activityName}`);
+    if (note.source !== undefined) metadata.push(`Source: ${note.source}`);
+    if (note.updatedAt !== undefined) metadata.push(`Updated At: ${formatTimestamp(new Date(note.updatedAt))}`);
+    if (metadata.length > 0) parts.push(`*${metadata.join(' · ')}*`, '');
+    parts.push(note.content, '');
   }
   return parts.join('\n');
 }
