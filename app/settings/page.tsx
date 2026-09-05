@@ -3,7 +3,7 @@ import { useEffect, useState, type ChangeEvent } from 'react';
 import { PrimaryNav } from '@/app/components/PrimaryNav';
 import { pendingSyncStorageKey, readPendingSyncs, removePendingSync, writePendingSyncs } from '@/lib/sync-queue';
 import { IMPORTED_SCHEDULE_STORAGE_KEY, readImportedSchedule, writeImportedSchedule, type ImportedSchedule } from '@/lib/imported-schedule';
-import { DIARY_STORAGE_KEY, appendDiary, readDiary, type StoredDiary } from '@/lib/local-records';
+import { DIARY_STORAGE_KEY, mergeImportedDiary, readDiary, type StoredDiary } from '@/lib/local-records';
 import { isActivityList } from '@/lib/sheets/types';
 import type { Activity } from '@/lib/types/activity';
 
@@ -74,20 +74,15 @@ export default function SettingsPage() {
     if (!preview) return;
     const schedule: ImportedSchedule = { activities: preview.activities, importedAt: new Date().toISOString() };
     localStorage.setItem(IMPORTED_SCHEDULE_STORAGE_KEY, writeImportedSchedule(schedule));
+    let diaryMsg = '';
     if (preview.diary && preview.diary.length > 0) {
       const existingDiary = readDiary(localStorage.getItem(DIARY_STORAGE_KEY));
-      const existingContents = new Set(existingDiary.map((d) => d.content));
-      let merged = existingDiary;
-      for (const entry of preview.diary) {
-        if (!existingContents.has(entry.content)) {
-          merged = appendDiary(merged, entry);
-          existingContents.add(entry.content);
-        }
-      }
+      const merged = mergeImportedDiary(existingDiary, preview.diary);
+      const importedCount = merged.length - existingDiary.length;
       localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(merged));
+      diaryMsg = ` and ${importedCount} diary note${importedCount === 1 ? '' : 's'}`;
     }
     setImported(schedule);
-    const diaryMsg = preview.diary && preview.diary.length > 0 ? ` and ${preview.diary.length} diary notes` : '';
     setImportMessage(`Schedule imported · ${schedule.activities.length} activities${diaryMsg}`);
     setPreview(null);
   }
