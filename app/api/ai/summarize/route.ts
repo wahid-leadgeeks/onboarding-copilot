@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { requestSummary } from '@/lib/ai/client';
+import { heuristicSummary, requestSummary } from '@/lib/ai/client';
 
 type SummarizeBody = { content?: unknown };
 
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
 
   const raw = body.content.trim();
   if (raw.length > 10_000) return NextResponse.json({ error: 'Learning content is too long' }, { status: 413 });
-  const generated = await requestSummary(raw).catch(() => null);
-  const summary = generated?.summary ?? (raw.length <= 240 ? raw : `${raw.slice(0, 237).trimEnd()}…`);
+  const generated = await requestSummary(raw);
+  const summary = generated?.summary ?? heuristicSummary(raw);
   return NextResponse.json({ raw, summary, confirmed: false, requiresConfirmation: true });
 }
