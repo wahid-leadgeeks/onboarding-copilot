@@ -53,11 +53,12 @@
 ### Schedule import (local-first alternative to Sheets)
 
 - [x] `lib/import/` — CSV (RFC4180, auto-delimiter) and XLSX (fflate + fast-xml-parser, shared strings, inline strings) parsers with validated row→Activity mapping
+- [x] Multi-sheet HR workbook support (`parseXlsxSheets`) with smart sheet selection (`Schedule`), diary sheet extraction (`Onboarding Diary`), HR column aliases (`Topic`, `Progress`, `Main Media`, `Duration (minutes)`, `Date`), and flexible/TBD session timings
 - [x] `POST /api/import` — multipart boundary: 2 MB cap, size/type validation, `ImportError` → user-presentable 400s
-- [x] Settings → Schedule section: file picker, parse preview (count, skipped rows, warnings, first activities), explicit confirm/discard, remove
+- [x] Settings → Schedule section: file picker, parse preview (count, skipped rows, warnings, first activities, diary notes count), explicit confirm/discard, remove
 - [x] Today + Learnings prefer the imported schedule (`onboarding-imported-schedule` localStorage, validated read) with a dedicated status badge
 - [x] Discoverability: "Import your own schedule" link on Today next to the status badge whenever the app runs on demo/offline data (hidden once a real schedule is loaded)
-- [x] Tests: 38 new across csv/xlsx/import-schedule/imported-schedule suites
+- [x] Tests: 40 tests across csv/xlsx/import-schedule/imported-schedule and actual HR workbook integration suites
 
 ### UI v3 polish (fresh theme + motion)
 
@@ -122,7 +123,7 @@
 ## Blocked
 
 - [ ] Google Cloud project credentials — waiting on: *(owner TBD)*
-- [ ] Google Sheets workbook structure — need column mapping from HR
+- [x] Google Sheets workbook structure — structure and column mapping identified & supported from HR Onboarding Kit 2026 (Schedule + Onboarding Diary worksheets)
 
 > Roadmap note: credential-free MVP behavior is implemented locally, including
 > schedule fallback, session timing, learning capture, assistive AI, history,

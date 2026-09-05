@@ -3,12 +3,13 @@ import { useEffect, useState, type ChangeEvent } from 'react';
 import { PrimaryNav } from '@/app/components/PrimaryNav';
 import { pendingSyncStorageKey, readPendingSyncs, removePendingSync, writePendingSyncs } from '@/lib/sync-queue';
 import { IMPORTED_SCHEDULE_STORAGE_KEY, readImportedSchedule, writeImportedSchedule, type ImportedSchedule } from '@/lib/imported-schedule';
+import { DIARY_STORAGE_KEY, appendDiary, readDiary, type StoredDiary } from '@/lib/local-records';
 import { isActivityList } from '@/lib/sheets/types';
 import type { Activity } from '@/lib/types/activity';
 
 type Health = { mode: string; integrations: { sheets: boolean; sheetsRead?: boolean; sheetsWrite?: boolean; diaryWrite?: boolean; oauth: boolean; ai: boolean } };
 
-type ImportPreview = { activities: Activity[]; skipped: number; warnings: string[] };
+type ImportPreview = { activities: Activity[]; skipped: number; warnings: string[]; diary?: StoredDiary[] };
 
 function isHealth(value: unknown): value is Health {
   if (!value || typeof value !== 'object') return false;
@@ -27,7 +28,8 @@ function isImportPreview(value: unknown): value is ImportPreview {
   return isActivityList(record.activities)
     && typeof record.skipped === 'number'
     && Array.isArray(record.warnings)
-    && record.warnings.every((warning) => typeof warning === 'string');
+    && record.warnings.every((warning) => typeof warning === 'string')
+    && (record.diary === undefined || Array.isArray(record.diary));
 }
 
 export default function SettingsPage() {
@@ -72,8 +74,21 @@ export default function SettingsPage() {
     if (!preview) return;
     const schedule: ImportedSchedule = { activities: preview.activities, importedAt: new Date().toISOString() };
     localStorage.setItem(IMPORTED_SCHEDULE_STORAGE_KEY, writeImportedSchedule(schedule));
+    if (preview.diary && preview.diary.length > 0) {
+      const existingDiary = readDiary(localStorage.getItem(DIARY_STORAGE_KEY));
+      const existingContents = new Set(existingDiary.map((d) => d.content));
+      let merged = existingDiary;
+      for (const entry of preview.diary) {
+        if (!existingContents.has(entry.content)) {
+          merged = appendDiary(merged, entry);
+          existingContents.add(entry.content);
+        }
+      }
+      localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(merged));
+    }
     setImported(schedule);
-    setImportMessage(`Schedule imported · ${schedule.activities.length} activities`);
+    const diaryMsg = preview.diary && preview.diary.length > 0 ? ` and ${preview.diary.length} diary notes` : '';
+    setImportMessage(`Schedule imported · ${schedule.activities.length} activities${diaryMsg}`);
     setPreview(null);
   }
   function discardImport() {
@@ -91,7 +106,7 @@ export default function SettingsPage() {
     <section className="animate-fade-up stagger-1 mt-10 rounded-card bg-white p-6 shadow-soft sm:p-8"><div className="flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900"><span aria-hidden="true" className="inline-block size-2 rounded-full bg-sky-300" />Connection</h2><button onClick={() => void refreshHealth()} className="min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50">Refresh</button></div><p className="mt-3 text-stone-500">{healthError && <span className="text-peach-700">Health check unavailable · </span>}Mode: <span className="font-medium text-stone-700">{health?.mode ?? 'Checking…'}</span></p><div className="mt-4 space-y-2 text-sm"><p><span className={`inline-block w-4 text-center ${health?.integrations.oauth ? 'text-mint-600' : 'text-stone-300'}`} aria-hidden="true">{health?.integrations.oauth ? '●' : '○'}</span> Google sign-in</p><p><span className={`inline-block w-4 text-center ${health?.integrations.sheets ? 'text-mint-600' : 'text-stone-300'}`} aria-hidden="true">{health?.integrations.sheets ? '●' : '○'}</span> Google Sheets sync</p>{health && !health.integrations.sheets && (health.integrations.sheetsRead || health.integrations.sheetsWrite) && <p className="text-peach-700">⚠️ Sheets is partially configured</p>}<p><span className={`inline-block w-4 text-center ${health?.integrations.ai ? 'text-mint-600' : 'text-stone-300'}`} aria-hidden="true">{health?.integrations.ai ? '●' : '○'}</span> AI provider</p></div></section>
     <section className="animate-fade-up stagger-2 mt-6 rounded-card bg-white p-6 shadow-soft sm:p-8"><h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900"><span aria-hidden="true" className="inline-block size-2 rounded-full bg-sky-300" />Schedule</h2><p className="mt-3 text-stone-500">Import your onboarding schedule from an Excel or Google Sheets export (.xlsx, .csv, or .tsv). The file is parsed here and kept on this device — nothing is uploaded elsewhere.</p>
       {imported ? <div><p className="mt-4 text-stone-700">Imported schedule · {imported.activities.length} activities · {new Date(imported.importedAt).toLocaleString()}</p><button onClick={removeImported} className="mt-4 min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50">Remove imported schedule</button></div>
-        : preview ? <div className="animate-pop-in mt-4 rounded-2xl bg-sun-50 p-5"><p className="font-medium text-sun-700">Ready to import ✨</p><p className="mt-1 text-sm text-stone-700">{preview.activities.length} activities{preview.skipped > 0 ? `, ${preview.skipped} skipped` : ''}</p>{preview.skipped > 0 && preview.warnings.length > 0 && <ul className="mt-2 space-y-1 text-xs text-peach-700">{preview.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}<ul className="mt-3 space-y-1">{preview.activities.slice(0, 5).map((activity, index) => <li key={`${activity.id}-${index}`} className="text-sm text-stone-700">{activity.name} — {activity.plannedStart}–{activity.plannedEnd}</li>)}</ul><div className="mt-4 flex flex-wrap gap-3"><button onClick={confirmImport} className="min-h-11 rounded-full bg-stone-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-stone-700">Use this schedule</button><button onClick={discardImport} className="min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-white">Discard</button></div></div>
+        : preview ? <div className="animate-pop-in mt-4 rounded-2xl bg-sun-50 p-5"><p className="font-medium text-sun-700">Ready to import ✨</p><p className="mt-1 text-sm text-stone-700">{preview.activities.length} activities{preview.skipped > 0 ? `, ${preview.skipped} skipped` : ''}{preview.diary && preview.diary.length > 0 ? ` · ${preview.diary.length} diary notes` : ''}</p>{preview.skipped > 0 && preview.warnings.length > 0 && <ul className="mt-2 space-y-1 text-xs text-peach-700">{preview.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}<ul className="mt-3 space-y-1">{preview.activities.slice(0, 5).map((activity, index) => <li key={`${activity.id}-${index}`} className="text-sm text-stone-700">{activity.name} — {activity.plannedStart === 'TBD' ? 'Flexible / TBD' : `${activity.plannedStart}–${activity.plannedEnd}`}</li>)}</ul><div className="mt-4 flex flex-wrap gap-3"><button onClick={confirmImport} className="min-h-11 rounded-full bg-stone-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-stone-700">Use this schedule</button><button onClick={discardImport} className="min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-white">Discard</button></div></div>
         : <label className="mt-4 inline-flex min-h-11 cursor-pointer items-center rounded-full bg-stone-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-stone-700">{parsing ? 'Reading file…' : 'Choose file'}<input type="file" accept=".xlsx,.csv,.tsv" disabled={parsing} onChange={event => void importSchedule(event)} style={{ display: 'none' }} /></label>}
       {importError && <p className="animate-pop-in mt-3 text-sm text-peach-700" role="alert">{importError}</p>}
       {importMessage && <p className="mt-3 text-sm text-stone-600" role="status">{importMessage}</p>}

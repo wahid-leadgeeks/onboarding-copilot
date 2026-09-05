@@ -7,24 +7,52 @@ const MAX_COLUMNS = 16384; // Excel's XFD limit; refs beyond it are malformed in
 
 const parser = new XMLParser({ ignoreAttributes: false, parseTagValue: false, trimValues: false });
 
-/** Extracts the first worksheet of an .xlsx into a dense string matrix. Untrusted input. */
-export function parseXlsx(bytes: Uint8Array): string[][] {
+export type XlsxParsedSheet = {
+  name: string;
+  matrix: string[][];
+};
+
+/** Extracts parsed worksheets from an .xlsx workbook. Untrusted input. */
+export function parseXlsxSheets(bytes: Uint8Array): XlsxParsedSheet[] {
   let files;
   try {
     files = unzipSync(bytes);
   } catch {
     throw new ImportError(INVALID_WORKBOOK);
   }
-  const rid = firstSheetId(readXml(files, 'xl/workbook.xml'));
-  if (rid === null) throw new ImportError(INVALID_WORKBOOK);
-  const target = sheetTarget(readXml(files, 'xl/_rels/workbook.xml.rels'), rid);
-  if (target === null) throw new ImportError(INVALID_WORKBOOK);
-  const path = resolveTarget(target);
-  const sheetBytes = files[path];
-  if (!sheetBytes) throw new ImportError(INVALID_WORKBOOK);
+  const workbookXml = readXml(files, 'xl/workbook.xml');
+  const sheets = listSheets(workbookXml);
+  if (sheets.length === 0) throw new ImportError(INVALID_WORKBOOK);
+  const relsXml = readXml(files, 'xl/_rels/workbook.xml.rels');
   const shared = readXml(files, 'xl/sharedStrings.xml');
   const sharedStrings = shared === null ? [] : parseSharedStrings(shared);
-  return parseSheet(strFromU8(sheetBytes), sharedStrings);
+
+  const results: XlsxParsedSheet[] = [];
+  for (const sheet of sheets) {
+    const target = sheetTarget(relsXml, sheet.rid);
+    if (!target) continue;
+    const path = resolveTarget(target);
+    const sheetBytes = files[path];
+    if (!sheetBytes) continue;
+    results.push({
+      name: sheet.name,
+      matrix: parseSheet(strFromU8(sheetBytes), sharedStrings),
+    });
+  }
+  if (results.length === 0) throw new ImportError(INVALID_WORKBOOK);
+  return results;
+}
+
+/** Extracts the schedule worksheet (or preferred sheet, or first worksheet) of an .xlsx into a dense string matrix. Untrusted input. */
+export function parseXlsx(bytes: Uint8Array, preferredSheetName?: string): string[][] {
+  const sheets = parseXlsxSheets(bytes);
+  if (preferredSheetName) {
+    const found = sheets.find((s) => s.name.toLowerCase().includes(preferredSheetName.toLowerCase()));
+    if (found) return found.matrix;
+  }
+  const scheduleSheet = sheets.find((s) => s.name.toLowerCase().includes('schedule'));
+  if (scheduleSheet) return scheduleSheet.matrix;
+  return sheets[0].matrix;
 }
 
 function readXml(files: Record<string, Uint8Array>, path: string): string | null {
@@ -32,13 +60,22 @@ function readXml(files: Record<string, Uint8Array>, path: string): string | null
   return bytes ? strFromU8(bytes) : null;
 }
 
-function firstSheetId(workbookXml: string | null): string | null {
-  if (workbookXml === null) return null;
+type SheetRef = { name: string; rid: string };
+
+function listSheets(workbookXml: string | null): SheetRef[] {
+  if (workbookXml === null) return [];
   const doc: unknown = parser.parse(workbookXml);
   const sheets = recordOf(recordOf(doc)?.['workbook'])?.['sheets'];
-  const sheet = asArray(recordOf(sheets)?.['sheet'])[0];
-  const rid = recordOf(sheet)?.['@_r:id'];
-  return typeof rid === 'string' && rid !== '' ? rid : null;
+  const sheetList = asArray(recordOf(sheets)?.['sheet']);
+  const result: SheetRef[] = [];
+  for (const sheetNode of sheetList) {
+    const record = recordOf(sheetNode);
+    if (!record) continue;
+    const name = typeof record['@_name'] === 'string' ? record['@_name'] : '';
+    const rid = typeof record['@_r:id'] === 'string' ? record['@_r:id'] : typeof record['@_id'] === 'string' ? record['@_id'] : '';
+    if (rid) result.push({ name, rid });
+  }
+  return result;
 }
 
 function sheetTarget(relsXml: string | null, rid: string): string | null {
