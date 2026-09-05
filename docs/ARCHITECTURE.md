@@ -2,7 +2,7 @@
 
 **Product:** Onboarding Copilot
 **Status:** Active — MVP
-**Last updated:** 2026-09-03
+**Last updated:** 2026-09-05
 
 ---
 
@@ -81,6 +81,7 @@ See: [`docs/adr/0001-google-sheets-as-source-of-truth.md`](adr/0001-google-sheet
 - Temporary session state (in-progress timer)
 - UI state
 - AI processing state (pre-confirmation drafts)
+- Local learning records (diary entries and quick notes with structured metadata in browser storage; the structured metadata is local-only per [ADR-0005](adr/0005-learning-records-and-ai-provider-chain.md))
 - Integration metadata (sync status, last sync timestamp)
 - Pending writes (when Sheets is temporarily unavailable)
 
@@ -132,13 +133,38 @@ User taps Finish
 ### Learning Capture
 
 ```
-User speaks or types
-  → Raw input sent to AI service
-  → AI extracts and structures learning notes
-  → Structured draft presented to user
-  → User edits / confirms
-  → API Route: POST /api/diary
-  → Sheets API (write): entry appended to Onboarding Diary
+User finishes an activity (or writes a quick note)
+  → LearningModal (accessible dialog: focus trap, Esc to dismiss) collects typed notes
+  → Optional "Summarize for me" → POST /api/ai/summarize
+  → Server resolves the AI provider deterministically (ADR-0005):
+     fully configured Groq first, generic OpenAI-compatible endpoint second,
+     deterministic local heuristic when neither is configured or the call fails
+  → AI summary presented as an editable draft; the user must review and
+    explicitly confirm it before saving (ADR-0003); editing resets confirmation
+  → Save → structured local diary record in browser storage
+     (optional id, activity identity, source, updatedAt; legacy
+     {content, createdAt} records stay accepted and gain a derived
+     stable ID at read time)
+  → POST /api/diary with exactly { content }; structured fields never
+     leave the device (diarySyncPayload in lib/learning-capture)
+  → Sheets write: when the diary proxy is configured, the server forwards
+     the content to the Onboarding Diary (row timestamp stamped server-side);
+     otherwise the note stays local with syncStatus "pending"
+```
+
+### Learnings: Manage and Export
+
+```
+Diary entries and quick notes (browser storage, validated at the boundary)
+  → Read-only views with resolved stable IDs (derived for legacy records)
+  → Filter by search text, source (manual / quick-note / AI-assisted /
+    legacy), and activity (lib/learning-records-view)
+  → Explicit user actions only: inline diary edit (stamps updatedAt,
+    keeps createdAt), two-step delete (confirmation step), and
+    quick-note → diary conversion preserving the original timestamp
+  → Export selected notes from the filtered list as deterministic CSV
+    (RFC4180, UTF-8 BOM, metadata columns) or Markdown (UTC headings and
+    metadata) via client-side Blob download; record IDs are never exported
 ```
 
 ### Automation
@@ -159,14 +185,17 @@ app/                  Next.js pages and layouts
 app/api/              API routes (server-only)
   ├── schedule/       Read and update schedule activities
   ├── import/         Parse uploaded schedule files (.xlsx/.csv/.tsv)
-  ├── diary/          Read and write diary entries
+  ├── diary/          Diary sync boundary (accepts exactly { content })
   ├── session/        Session state management
   └── ai/             AI processing endpoints
 
 lib/
   ├── sheets/         Google Sheets API client (isolated)
   ├── import/         Uploaded-file parsing (CSV + XLSX → string matrix → Activity[])
-  ├── ai/             AI provider client (provider-agnostic interface)
+  ├── ai/             AI provider resolution + clients (Groq → generic → local heuristic; provider-agnostic)
+  ├── local-records   Local session/diary/quick-note storage: boundary validation, stable IDs, edit/delete/convert
+  ├── learning-*      Capture projection ({ content } sync payload), Learnings filters and views, modal draft state
+  ├── export-notes    Deterministic CSV/Markdown note serialization
   ├── n8n/            n8n webhook client
   └── session/        Session business logic
 
@@ -189,7 +218,8 @@ components/           React components (UI only, no API calls)
 
 ### If the AI service is unavailable:
 
-- Fall back to manual text input immediately.
+- Provider resolution is server-side and deterministic ([ADR-0005](adr/0005-learning-records-and-ai-provider-chain.md)): a fully configured Groq provider first, a fully configured generic OpenAI-compatible endpoint second. Partially configured providers are skipped, never guessed into service.
+- When no provider is configured or the provider call fails, the summarize endpoint returns a deterministic local heuristic summary (the note itself, truncated) and capture stays fully manual.
 - Never block completion of an onboarding activity because AI is down.
 - AI summarization is an enhancement, not a requirement.
 
