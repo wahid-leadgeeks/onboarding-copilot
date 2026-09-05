@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
+import { summarizeConfigured } from '@/lib/ai/providers';
 
 export async function GET() {
   const sheetsReadConfigured = Boolean(process.env.GOOGLE_SHEETS_ID && process.env.SHEETS_SCHEDULE_URL);
   const sheetsWriteConfigured = Boolean(process.env.GOOGLE_SHEETS_ID && process.env.SHEETS_WRITE_URL);
   const diaryWriteConfigured = Boolean(process.env.GOOGLE_SHEETS_ID && process.env.SHEETS_DIARY_URL);
   const oauthConfigured = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
-  const aiConfigured = Boolean((process.env.AI_API_KEY && process.env.AI_API_BASE_URL) || (process.env.GROQ_API_KEY && process.env.GROQ_MODEL));
+  const aiConfigured = summarizeConfigured();
   return NextResponse.json({
     status: 'ok',
     mode: sheetsReadConfigured && sheetsWriteConfigured && oauthConfigured ? 'connected' : 'local',
