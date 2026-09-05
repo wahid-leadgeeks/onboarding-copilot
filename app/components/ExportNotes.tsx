@@ -30,7 +30,15 @@ export function ExportNotes({ notes, selectedIds, onToggleSelectAll, onClearSele
     if (selectedCount === 0) return;
     const selected: ExportableNote[] = notes
       .filter((note) => selectedIds.has(note.id))
-      .map((note) => ({ kind: note.kind, content: note.content, createdAt: note.createdAt }))
+      .map((note) => ({
+        kind: note.kind,
+        content: note.content,
+        createdAt: note.createdAt,
+        ...(note.activityId === undefined ? {} : { activityId: note.activityId }),
+        ...(note.activityName === undefined ? {} : { activityName: note.activityName }),
+        ...(note.source === undefined ? {} : { source: note.source }),
+        ...(note.updatedAt === undefined ? {} : { updatedAt: note.updatedAt }),
+      }))
       .sort((a, b) => createdAtTime(a.createdAt) - createdAtTime(b.createdAt));
     const content = format === 'csv' ? notesToCsv(selected) : notesToMarkdown(selected);
     const blob = new Blob([content], { type: format === 'csv' ? 'text/csv;charset=utf-8' : 'text/markdown;charset=utf-8' });
