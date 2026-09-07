@@ -1,11 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { clipboardRowForModule, type TrainingModule } from '@/lib/glossary';
+import { clipboardRowForModule, type TrainingModule, type MaterialLink } from '@/lib/glossary';
 
 interface GlossaryDetailModalProps {
   module: TrainingModule | null;
   onClose: () => void;
+}
+
+function getLinkIcon(type: MaterialLink['type']) {
+  switch (type) {
+    case 'video':
+      return '🎥';
+    case 'slides':
+      return '📑';
+    case 'doc':
+      return '📄';
+    case 'sheet':
+      return '📊';
+    default:
+      return '🔗';
+  }
 }
 
 export function GlossaryDetailModal({ module, onClose }: GlossaryDetailModalProps) {
@@ -34,6 +49,8 @@ export function GlossaryDetailModal({ module, onClose }: GlossaryDetailModalProp
       /* ignore */
     }
   }
+
+  const links = module.materialLinks || [];
 
   return (
     <div
@@ -106,22 +123,51 @@ export function GlossaryDetailModal({ module, onClose }: GlossaryDetailModalProp
             </div>
           </section>
 
-          {/* Section 3: Material Access */}
+          {/* Section 3: Material Access (Clickable Links & Live Resources) */}
           <section aria-labelledby="section-access">
             <div className="flex items-center gap-2 mb-2">
               <span className="flex size-6 items-center justify-center rounded-md bg-sky-100 text-xs text-sky-800">
                 🔗
               </span>
               <h3 id="section-access" className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-                Material Access
+                Material Access &amp; Links
               </h3>
             </div>
-            <div className="rounded-2xl bg-sky-50/50 p-4 text-xs sm:text-sm leading-relaxed text-sky-900 whitespace-pre-line border border-sky-100">
-              {module.materialAccess || 'Refer to company drive or HR onboarding pack for materials.'}
+
+            <div className="rounded-2xl bg-sky-50/40 p-4 border border-sky-100 space-y-3">
+              {/* If structured clickable links are present */}
+              {links.length > 0 && (
+                <div className="space-y-2">
+                  {links.map((link) => (
+                    <a
+                      key={link.url}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-center justify-between rounded-xl bg-white p-3 shadow-xs border border-sky-200 transition hover:border-sky-400 hover:shadow-sm"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-base">{getLinkIcon(link.type)}</span>
+                        <span className="text-xs sm:text-sm font-semibold text-sky-900 group-hover:text-sky-700">
+                          {link.label}
+                        </span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-0.5 text-[11px] font-bold text-sky-800 group-hover:bg-sky-200 transition">
+                        Open Link ↗
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              {/* Text description from worksheet */}
+              <div className="text-xs sm:text-sm leading-relaxed text-stone-600 whitespace-pre-line">
+                {module.materialAccess}
+              </div>
             </div>
           </section>
 
-          {/* Section 4: Notes */}
+          {/* Section 4: Notes & Guidelines */}
           {module.notes && (
             <section aria-labelledby="section-notes">
               <div className="flex items-center gap-2 mb-2">

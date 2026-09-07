@@ -202,13 +202,29 @@ export default function GlossaryPage() {
                     </p>
                   </div>
 
-                  {/* Access & Notes Badges */}
+                  {/* Access Links & Badges */}
                   <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
-                    {mod.materialAccess && (
+                    {mod.materialLinks && mod.materialLinks.length > 0 ? (
+                      mod.materialLinks.map((l) => (
+                        <a
+                          key={l.url}
+                          href={l.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-sky-800 font-semibold text-[10px] border border-sky-200 hover:bg-sky-100 transition truncate max-w-[220px]"
+                        >
+                          <span>{l.type === 'video' ? '🎥' : l.type === 'slides' ? '📑' : '📄'}</span>
+                          <span>{l.label}</span>
+                          <span>↗</span>
+                        </a>
+                      ))
+                    ) : mod.materialAccess ? (
                       <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-sky-800 font-medium text-[10px] border border-sky-100 truncate max-w-[200px]">
                         <span>🔗</span> {mod.materialAccess.split('\n')[0].replace(/^- /, '')}
                       </span>
-                    )}
+                    ) : null}
+
                     {mod.notes && (
                       <span className="inline-flex items-center gap-1 rounded-md bg-sun-50 px-2 py-0.5 text-sun-800 font-medium text-[10px] border border-sun-100">
                         <span>📝</span> Has Notes &amp; Q&amp;A
@@ -219,7 +235,7 @@ export default function GlossaryPage() {
 
                 {/* Card Action Footer */}
                 <div className="mt-4 border-t border-stone-100 pt-3 flex items-center justify-between">
-                  <span className="text-[11px] text-stone-400">Click to expand all details</span>
+                  <span className="text-[11px] text-stone-400">Click card for full syllabus</span>
                   <button
                     type="button"
                     onClick={(e) => {
