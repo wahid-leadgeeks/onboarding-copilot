@@ -8,6 +8,7 @@ import {
   type SheetGuideItem,
   type TrainingModule,
 } from '@/lib/glossary';
+import { GlossaryDetailModal } from '@/app/components/GlossaryDetailModal';
 
 const sheetRoutes: Record<string, string> = {
   Schedule: '/',
@@ -22,16 +23,21 @@ export default function GlossaryPage() {
   const [activeTab, setActiveTab] = useState<'modules' | 'guide'>('modules');
   const [searchQuery, setSearchQuery] = useState('');
   const [mediaFilter, setMediaFilter] = useState<'all' | 'Video' | 'Online Meeting'>('all');
+  const [selectedModule, setSelectedModule] = useState<TrainingModule | null>(null);
 
   const filteredModules = OFFICIAL_TRAINING_MODULES.filter((mod) => {
-    if (mediaFilter !== 'all' && mod.media !== mediaFilter) return false;
+    if (mediaFilter !== 'all' && !mod.media.toLowerCase().includes(mediaFilter.toLowerCase())) {
+      return false;
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
         mod.topic.toLowerCase().includes(q) ||
         mod.pic.toLowerCase().includes(q) ||
         mod.objectives.toLowerCase().includes(q) ||
-        mod.materials.toLowerCase().includes(q)
+        mod.frameworkMaterials.toLowerCase().includes(q) ||
+        (mod.materialAccess && mod.materialAccess.toLowerCase().includes(q)) ||
+        (mod.notes && mod.notes.toLowerCase().includes(q))
       );
     }
     return true;
@@ -43,13 +49,20 @@ export default function GlossaryPage() {
 
       {/* Header */}
       <header className="animate-fade-up pb-6">
-        <p className="text-sm font-medium text-stone-500">Sheet: Glossaries & Guide · Master Catalog</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
-          Glossary & Guides 📚
-        </h1>
-        <p className="mt-1 text-sm text-stone-600">
-          Curriculum directory of mandatory onboarding training modules and guide to all 6 sheets in your workbook.
-        </p>
+        <p className="text-sm font-medium text-stone-500">Sheet: Glossaries &amp; Guide · Master Curriculum Catalog</p>
+        <div className="mt-2 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
+              Glossary &amp; Guides 📚
+            </h1>
+            <p className="mt-1 text-sm text-stone-600">
+              Master syllabus covering all 19 mandatory onboarding training modules and guide to all 6 sheets in your workbook.
+            </p>
+          </div>
+          <span className="rounded-full bg-stone-100 px-3.5 py-1 text-xs font-semibold text-stone-700 w-fit shrink-0">
+            {OFFICIAL_TRAINING_MODULES.length} Official Modules
+          </span>
+        </div>
       </header>
 
       {/* Tabs */}
@@ -66,7 +79,7 @@ export default function GlossaryPage() {
                 : 'text-stone-500 hover:text-stone-800'
             }`}
           >
-            <span>Training Modules</span>
+            <span>Training Modules &amp; Topics</span>
             <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] text-stone-600">
               {OFFICIAL_TRAINING_MODULES.length}
             </span>
@@ -134,52 +147,89 @@ export default function GlossaryPage() {
             <div className="mt-3 sm:mt-0">
               <input
                 type="search"
-                placeholder="Search modules, PIC, objectives..."
+                placeholder="Search topic, object, materials, notes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-full border border-stone-200 bg-stone-50 px-3.5 py-1.5 text-xs text-stone-800 placeholder:text-stone-400 focus:border-stone-900 focus:bg-white focus:outline-none sm:w-64"
+                className="w-full rounded-full border border-stone-200 bg-stone-50 px-3.5 py-1.5 text-xs text-stone-800 placeholder:text-stone-400 focus:border-stone-900 focus:bg-white focus:outline-none sm:w-72"
               />
             </div>
           </div>
 
           {/* Module Cards Grid */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {filteredModules.map((mod: TrainingModule) => (
               <article
                 key={mod.id}
-                className="rounded-card bg-white p-5 shadow-soft transition hover:shadow-lift flex flex-col justify-between"
+                onClick={() => setSelectedModule(mod)}
+                className="group cursor-pointer rounded-card bg-white p-5 shadow-soft transition hover:shadow-lift hover:border-stone-300 border border-stone-100 flex flex-col justify-between"
               >
                 <div>
-                  <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                  {/* Badge Bar */}
+                  <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
                     <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-700">
-                      {mod.media === 'Video' ? '🎥 Video' : '💬 Meeting'}
+                      {mod.media.includes('Video') ? '🎥 Video' : '💬 Meeting'}
                     </span>
                     <span className="rounded-full bg-mint-50 px-2 py-0.5 text-[10px] font-semibold text-mint-700">
                       {mod.durationMinutes} min
                     </span>
-                    <span className="ml-auto text-[11px] font-medium text-stone-400">
+                    <span className="ml-auto text-[11px] font-medium text-stone-400 truncate max-w-[140px]">
                       PIC: {mod.pic}
                     </span>
                   </div>
 
-                  <h2 className="text-sm font-semibold text-stone-900 leading-snug">
+                  {/* Topic Title */}
+                  <h2 className="text-base font-semibold text-stone-900 leading-snug group-hover:text-mint-700 transition">
                     {mod.topic}
                   </h2>
-                  <p className="mt-1.5 text-xs text-stone-500 line-clamp-2 leading-relaxed">
-                    {mod.objectives}
-                  </p>
+
+                  {/* Section: Objectives */}
+                  <div className="mt-3 rounded-xl bg-stone-50/70 p-2.5 border border-stone-100">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-0.5">
+                      🎯 Objectives
+                    </span>
+                    <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                      {mod.objectives}
+                    </p>
+                  </div>
+
+                  {/* Section: Framework / Materials */}
+                  <div className="mt-2 rounded-xl bg-lavender-50/50 p-2.5 border border-lavender-100/60">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-lavender-700 block mb-0.5">
+                      🧩 Framework / Materials
+                    </span>
+                    <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                      {mod.frameworkMaterials.replace(/\n/g, ' · ')}
+                    </p>
+                  </div>
+
+                  {/* Access & Notes Badges */}
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
+                    {mod.materialAccess && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-sky-800 font-medium text-[10px] border border-sky-100 truncate max-w-[200px]">
+                        <span>🔗</span> {mod.materialAccess.split('\n')[0].replace(/^- /, '')}
+                      </span>
+                    )}
+                    {mod.notes && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-sun-50 px-2 py-0.5 text-sun-800 font-medium text-[10px] border border-sun-100">
+                        <span>📝</span> Has Notes &amp; Q&amp;A
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <div className="mt-4 border-t border-stone-100 pt-3 flex items-center justify-between text-[11px]">
-                  <span className="text-stone-400 truncate max-w-[180px]">
-                    {mod.materialAccess || 'Workbook materials'}
-                  </span>
-                  <a
-                    href="/diary"
-                    className="font-medium text-mint-700 hover:text-mint-800 underline underline-offset-2"
+                {/* Card Action Footer */}
+                <div className="mt-4 border-t border-stone-100 pt-3 flex items-center justify-between">
+                  <span className="text-[11px] text-stone-400">Click to expand all details</span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedModule(mod);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-full bg-stone-900 px-3.5 py-1 text-xs font-semibold text-white transition hover:bg-stone-800"
                   >
-                    View Diary →
-                  </a>
+                    View Details →
+                  </button>
                 </div>
               </article>
             ))}
@@ -216,7 +266,7 @@ export default function GlossaryPage() {
                       </span>
                     </div>
                     <h2 className="mt-2 text-sm font-semibold text-stone-900">
-                      Function & Purpose
+                      Function &amp; Purpose
                     </h2>
                     <p className="mt-1 text-xs text-stone-600 leading-relaxed">
                       {item.function}
@@ -240,6 +290,14 @@ export default function GlossaryPage() {
             })}
           </div>
         </section>
+      )}
+
+      {/* Detail Modal */}
+      {selectedModule && (
+        <GlossaryDetailModal
+          module={selectedModule}
+          onClose={() => setSelectedModule(null)}
+        />
       )}
     </main>
   );
