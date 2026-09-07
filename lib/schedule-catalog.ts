@@ -5,6 +5,8 @@ import type { Activity, ActivityStatus } from '@/lib/types/activity';
  * in the HR onboarding workbook.
  */
 
+export type ScheduleProgress = 'Done' | 'In Progress' | 'On-Hold' | 'Reschedule' | '';
+
 export interface ScheduleActivity {
   readonly id: string;
   readonly rowNumber: number; // Row number in sheet 'Schedule' (e.g. 3, 4, 20...)
@@ -18,7 +20,7 @@ export interface ScheduleActivity {
   readonly durationMinutes?: number; // Column G
   readonly startTime?: string; // Column H (HH:MM)
   readonly endTime?: string; // Column I (HH:MM)
-  readonly progress: 'Done' | 'In Progress' | 'Not Started' | 'Reschedule' | string; // Column J
+  readonly progress: ScheduleProgress | string; // Column J: 'Done' | 'In Progress' | 'On-Hold' | 'Reschedule' | ''
   readonly notes?: string; // Column K
 }
 
@@ -341,7 +343,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 175,
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -356,7 +358,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Independent Learning",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -371,7 +373,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Weekly Check-in",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -386,7 +388,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Knowledge Sharing & Discussion",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -401,7 +403,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Learning and Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -416,7 +418,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Knowledge Sharing & Discussion",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -431,7 +433,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Learning and Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -446,7 +448,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Knowledge Sharing & Discussion",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -461,7 +463,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Learning and Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -476,7 +478,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Knowledge Sharing & Discussion",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -491,7 +493,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Learning and Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -506,7 +508,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Knowledge Sharing & Discussion",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -521,7 +523,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Learning and Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -536,7 +538,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Weekly Check-in",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -551,7 +553,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Knowledge Sharing & Discussion",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -566,7 +568,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Learning and Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -596,7 +598,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Knowledge Sharing & Discussion",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -611,7 +613,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Learning and Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -626,7 +628,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Knowledge Sharing & Discussion",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -641,7 +643,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Learning and Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -656,7 +658,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Knowledge Sharing & Discussion",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -671,7 +673,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Learning and Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -686,7 +688,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Knowledge Sharing & Discussion",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -701,7 +703,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Learning and Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -716,7 +718,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Weekly Check-in",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -731,7 +733,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Discussion",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -746,7 +748,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -761,7 +763,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Daily Check-in",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -776,7 +778,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -791,7 +793,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Daily Check-in",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -806,7 +808,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -821,7 +823,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Daily Check-in",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -836,7 +838,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -851,7 +853,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Daily Check-in",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -866,7 +868,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Personal Task",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -881,7 +883,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Weekly Check-in",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -896,7 +898,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Monthly Review",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -911,7 +913,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Monthly Review",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   },
   {
@@ -926,7 +928,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "mainMedia": "Monthly Review",
     "startTime": "",
     "endTime": "",
-    "progress": "Not Started",
+    "progress": "",
     "notes": ""
   }
 ];
@@ -944,12 +946,15 @@ export function escapeTsv(val: unknown): string {
 /**
  * Returns 5-column TSV string for Columns G–K of sheet 'Schedule':
  * [Duration (minutes), Start Time, End Time, Progress, Notes]
+ *
+ * NOTE: Google Sheets Column J only accepts: 'Done', 'In Progress', 'On-Hold', 'Reschedule', or '' (blank).
+ * Unstarted activities must be serialized as '' to satisfy Google Sheets data validation.
  */
 export function clipboardRowForScheduleGtoK(activity: ScheduleActivity): string {
   const duration = activity.durationMinutes !== undefined ? String(activity.durationMinutes) : "";
   const start = activity.startTime || "";
   const end = activity.endTime || "";
-  const progress = activity.progress || "Not Started";
+  const progress = activity.progress && activity.progress !== "Not Started" ? activity.progress : "";
   const notes = activity.notes || "";
 
   return [duration, start, end, progress, notes].map(escapeTsv).join("\t");
@@ -964,7 +969,7 @@ export function clipboardRowForScheduleFull(activity: ScheduleActivity): string 
   const count = String(activity.activityCount || "");
   const start = activity.startTime || "";
   const end = activity.endTime || "";
-  const progress = activity.progress || "Not Started";
+  const progress = activity.progress && activity.progress !== "Not Started" ? activity.progress : "";
   const notes = activity.notes || "";
 
   return [
@@ -989,7 +994,15 @@ export function calculateDurationFromTimes(start: string, end: string): number |
   const [sh, sm] = start.split(":").map(Number);
   const [eh, em] = end.split(":").map(Number);
   if (isNaN(sh) || isNaN(sm) || isNaN(eh) || isNaN(em)) return undefined;
-  const diff = (eh * 60 + em) - (sh * 60 + sm);
+  let diff = (eh * 60 + em) - (sh * 60 + sm);
+  if (diff < 0) {
+    // If started in late evening (>= 18:00) and ended after midnight (<= 06:00), handle midnight crossover
+    if (sh >= 18 && eh <= 6) {
+      diff += 24 * 60;
+    } else {
+      return undefined;
+    }
+  }
   return diff >= 0 ? diff : undefined;
 }
 
@@ -1051,4 +1064,23 @@ export function getMergedScheduleActivities(
       ...custom,
     };
   });
+}
+
+export function getProgressBadge(progress?: string): string {
+  const p = progress?.toLowerCase();
+  if (p === 'done') return 'bg-mint-50 text-mint-700 border-mint-200';
+  if (p === 'in progress') return 'bg-peach-50 text-peach-700 border-peach-200';
+  if (p === 'on-hold') return 'bg-amber-50 text-amber-700 border-amber-200';
+  if (p === 'reschedule') return 'bg-sky-50 text-sky-700 border-sky-200';
+  return 'bg-stone-50 text-stone-600 border-stone-200';
+}
+
+export function getPicBadge(pic?: string): string {
+  const p = pic?.toLowerCase() || '';
+  if (p.includes('it manager')) return 'bg-sky-50 text-sky-700 border-sky-200';
+  if (p.includes('hrd')) return 'bg-purple-50 text-purple-700 border-purple-200';
+  if (p.includes('ceo')) return 'bg-peach-50 text-peach-700 border-peach-200';
+  if (p.includes('experience')) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (p.includes('md')) return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+  return 'bg-stone-50 text-stone-700 border-stone-200';
 }

@@ -111,6 +111,42 @@ describe('/api/sheets/update-cell route', () => {
       expect(updateRangeSpy.mock.calls.length).toBe(1);
     });
 
+    it('sanitizes "Not Started" to empty string for Schedule Col J to comply with Sheets data validation', async () => {
+      jest.spyOn(sessionModule, 'getSessionAccessToken').mockResolvedValue('valid-token');
+      const updateRangeSpy = jest.spyOn(extractorModule, 'updateSheetRange').mockResolvedValue({
+        updatedRange: "'Schedule'!G27:K27",
+        updatedRows: 1,
+        updatedColumns: 5,
+        updatedCells: 5,
+      });
+
+      const req = new Request('http://localhost/api/sheets/update-cell', {
+        method: 'POST',
+        body: JSON.stringify({
+          sheet: 'Schedule',
+          rowNumber: 27,
+          durationMinutes: 45,
+          startTime: '09:00',
+          endTime: '09:45',
+          progress: 'Not Started',
+          notes: 'Testing sanitization',
+        }),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.progress).toBe('');
+
+      expect(updateRangeSpy.mock.calls.length).toBe(1);
+      expect(updateRangeSpy.mock.calls[0]).toEqual([
+        'test-spreadsheet-id-123',
+        "'Schedule'!G27:K27",
+        [['45', '09:00', '09:45', '', 'Testing sanitization']],
+        { accessToken: 'valid-token' },
+      ]);
+    });
+
     it('rejects invalid Schedule row numbers', async () => {
       jest.spyOn(sessionModule, 'getSessionAccessToken').mockResolvedValue('valid-token');
 
