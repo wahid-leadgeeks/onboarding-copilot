@@ -358,7 +358,11 @@ export default function TodayPage() {
 
   const headline = allDone ? 'That’s everything for today. ✨' : completedCount === 0 ? 'Your day is still unwritten.' : progressPercent >= 50 ? 'Almost there! 🌱' : 'You’ve had a pretty productive day.';
 
+  const todayFormatted = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(now);
+  const todayActivities = scheduleCatalog.filter((a) => a.date === todayFormatted || (a.day === 'Monday' && a.week === 'Week 2'));
+
   const weekCounts: Record<string, number> = {
+    'Today': todayActivities.length,
     'Week 1': scheduleCatalog.filter((a) => a.week === 'Week 1').length,
     'Week 2': scheduleCatalog.filter((a) => a.week === 'Week 2').length,
     'Week 3': scheduleCatalog.filter((a) => a.week === 'Week 3').length,
@@ -368,16 +372,22 @@ export default function TodayPage() {
   };
 
   const currentWeekActivities = scheduleCatalog.filter((a) => {
+    if (selectedWeek === 'Today') {
+      return a.date === todayFormatted || (a.day === 'Monday' && a.week === 'Week 2');
+    }
     if (selectedWeek === 'All') return true;
     if (selectedWeek === 'Month 2 & 3') return a.week === 'Month 2' || a.week === 'Month 3';
     return a.week === selectedWeek;
   });
 
+  const standardDaysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   const dayCounts: Record<string, number> = {};
   currentWeekActivities.forEach((a) => {
-    dayCounts[a.day] = (dayCounts[a.day] || 0) + 1;
+    if (a.day && a.day !== 'TBD') {
+      dayCounts[a.day] = (dayCounts[a.day] || 0) + 1;
+    }
   });
-  const availableDays = Object.keys(dayCounts);
+  const availableDays = standardDaysOrder.filter((d) => (dayCounts[d] || 0) > 0);
 
   const filteredScheduleActivities = currentWeekActivities.filter((item) => {
     if (selectedDay !== 'All' && item.day !== selectedDay) return false;
@@ -640,9 +650,10 @@ export default function TodayPage() {
 
         {/* Week Filter Tabs */}
         <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-stone-100 pb-3">
-          {(['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Month 2 & 3', 'All'] as const).map((w) => {
+          {(['Today', 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Month 2 & 3', 'All'] as const).map((w) => {
             const active = selectedWeek === w;
             const count = weekCounts[w] || 0;
+            const label = w === 'Today' ? '⚡ Today' : w;
             return (
               <button
                 key={w}
@@ -657,7 +668,7 @@ export default function TodayPage() {
                     : 'bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900'
                 }`}
               >
-                <span>{w}</span>
+                <span>{label}</span>
                 <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${active ? 'bg-stone-800 text-stone-200' : 'bg-stone-200 text-stone-700'}`}>
                   {count}
                 </span>
@@ -666,10 +677,32 @@ export default function TodayPage() {
           })}
         </div>
 
+        {/* Why no Monday in Week 1 helper note */}
+        {selectedWeek === 'Week 1' && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amber-50/90 border border-amber-200/70 p-3 text-xs text-amber-900">
+            <div className="flex items-center gap-2">
+              <span className="text-base">📅</span>
+              <span>
+                <strong>Why is Monday not in Week 1?</strong> Day 1 of onboarding started on <strong>Tuesday, September 1st, 2026</strong>. Monday activities appear in <strong>Week 2 (07/09)</strong>, Week 3, and Week 4!
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedWeek('Week 2');
+                setSelectedDay('Monday');
+              }}
+              className="shrink-0 rounded-full bg-amber-200/80 px-3 py-1 font-semibold text-amber-950 transition hover:bg-amber-300 active:scale-95"
+            >
+              View Week 2 Monday →
+            </button>
+          </div>
+        )}
+
         {/* Filter Toolbar: Day pills, Status, and Search */}
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           {/* Day filter pills */}
-          {selectedWeek !== 'All' && availableDays.length > 1 && (
+          {availableDays.length > 1 && (
             <div className="flex flex-wrap items-center gap-1">
               <button
                 type="button"
