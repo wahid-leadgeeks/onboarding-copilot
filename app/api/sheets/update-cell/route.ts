@@ -40,12 +40,17 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
+    sheet?: 'Schedule' | 'Onboarding Diary' | string;
     range?: string;
     value?: string;
     values?: string[][];
     rowNumber?: number;
     learned?: string;
     notes?: string;
+    durationMinutes?: number | string;
+    startTime?: string;
+    endTime?: string;
+    progress?: string;
     spreadsheetId?: string;
   } | null;
 
@@ -69,7 +74,38 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 1. If rowNumber is specified for Onboarding Diary (G: Learned, H: Notes)
+    // 1. If updating Schedule sheet (G: Duration, H: Start, I: End, J: Progress, K: Notes)
+    if (body?.sheet === 'Schedule' && typeof body?.rowNumber === 'number') {
+      const row = body.rowNumber;
+      if (row < 2 || row > 200) {
+        return NextResponse.json({ error: 'Invalid schedule rowNumber' }, { status: 400 });
+      }
+      const range = `'Schedule'!G${row}:K${row}`;
+      const values = [
+        [
+          body.durationMinutes !== undefined ? String(body.durationMinutes) : '',
+          body.startTime ?? '',
+          body.endTime ?? '',
+          body.progress ?? 'Done',
+          body.notes ?? '',
+        ],
+      ];
+      const result = await updateSheetRange(spreadsheetId, range, values, { accessToken });
+      return NextResponse.json({
+        success: true,
+        sheet: 'Schedule',
+        rowNumber: row,
+        range,
+        ...result,
+        durationMinutes: body.durationMinutes,
+        startTime: body.startTime,
+        endTime: body.endTime,
+        progress: body.progress,
+        notes: body.notes,
+      });
+    }
+
+    // 2. If rowNumber is specified for Onboarding Diary (G: Learned, H: Notes)
     if (typeof body?.rowNumber === 'number') {
       const row = body.rowNumber;
       if (row < 2 || row > 100) {
