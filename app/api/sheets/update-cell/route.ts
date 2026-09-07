@@ -80,13 +80,18 @@ export async function POST(request: Request) {
       if (row < 2 || row > 200) {
         return NextResponse.json({ error: 'Invalid schedule rowNumber' }, { status: 400 });
       }
+      // Google Sheets Column J dropdown strictly accepts: 'Done', 'In Progress', 'On-Hold', 'Reschedule', or '' (empty for unstarted).
+      // Writing 'Not Started' triggers Google Sheets data validation rejection.
+      const rawProgress = body.progress !== undefined ? String(body.progress).trim() : 'Done';
+      const progressValue = (rawProgress === 'Not Started' || !rawProgress) ? '' : rawProgress;
+
       const range = `'Schedule'!G${row}:K${row}`;
       const values = [
         [
           body.durationMinutes !== undefined ? String(body.durationMinutes) : '',
           body.startTime ?? '',
           body.endTime ?? '',
-          body.progress ?? 'Done',
+          progressValue,
           body.notes ?? '',
         ],
       ];
@@ -100,7 +105,7 @@ export async function POST(request: Request) {
         durationMinutes: body.durationMinutes,
         startTime: body.startTime,
         endTime: body.endTime,
-        progress: body.progress,
+        progress: progressValue,
         notes: body.notes,
       });
     }

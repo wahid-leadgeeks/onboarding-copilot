@@ -16,6 +16,23 @@ import { CommandPalette } from '@/app/components/CommandPalette';
 import { StopwatchCard } from '@/app/components/StopwatchCard';
 import { FloatingTimer } from '@/app/components/FloatingTimer';
 import {
+  IconEdit,
+  IconSearch,
+  IconClipboard,
+  IconCheck,
+  IconLightbulb,
+  IconCalendar,
+  IconX,
+  IconTrophy,
+  IconSprout,
+  IconTree,
+  IconClock,
+  IconZap,
+  IconExternalLink,
+  IconRocket,
+  IconPause,
+} from '@/app/components/Icons';
+import {
   calculateElapsedSeconds,
   calculateStopwatchDurationMinutes,
   formatTimeHHMM,
@@ -29,6 +46,7 @@ import {
   clipboardRowForScheduleFull,
   scheduleActivityToActivity,
   getMergedScheduleActivities,
+  calculateDurationFromTimes,
   type ScheduleActivity,
 } from '@/lib/schedule-catalog';
 import { GUIDE_TOUR_STORAGE_KEY, readGuideTourState, writeGuideTourState } from '@/lib/guide-tour';
@@ -63,7 +81,13 @@ const getPicBadge = (pic: string) => {
 };
 
 const seedlingStage = (percent: number) =>
-  percent <= 0 ? '🌱 Just planted' : percent < 50 ? '🌱 Growing' : percent < 100 ? '🌿 Almost there' : '🌳 Day complete';
+  percent <= 0
+    ? { label: 'Just planted', stage: 'sprout' as const }
+    : percent < 50
+    ? { label: 'Growing', stage: 'sprout' as const }
+    : percent < 100
+    ? { label: 'Almost there', stage: 'tree' as const }
+    : { label: 'Day complete', stage: 'trophy' as const };
 
 const formatClock = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -99,6 +123,7 @@ export default function TodayPage() {
   const [selectedActivityForLearning, setSelectedActivityForLearning] = useState<Activity | null>(null);
   const [copiedScheduleId, setCopiedScheduleId] = useState<string | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
+  const [isSyncingDirectSheets, setIsSyncingDirectSheets] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -261,10 +286,16 @@ export default function TodayPage() {
   async function finish() {
     if (!startedAt || !currentActivity) return;
     const end = Date.now();
-    const totalElapsedSecs = calculateElapsedSeconds(startedAt, end, pausedAt, accumulatedMs);
-    const finalElapsedMins = calculateStopwatchDurationMinutes(totalElapsedSecs);
     const startStr = formatTimeHHMM(startedAt);
     const endStr = formatTimeHHMM(end);
+    const timeWindowMins = calculateDurationFromTimes(startStr, endStr);
+
+    const totalElapsedSecs = calculateElapsedSeconds(startedAt, end, pausedAt, accumulatedMs);
+    let finalElapsedMins = calculateStopwatchDurationMinutes(totalElapsedSecs);
+
+    if (finalElapsedMins <= 1 && timeWindowMins && timeWindowMins > 1) {
+      finalElapsedMins = timeWindowMins;
+    }
 
     setFinishedAt(end);
     setPausedAt(null);
@@ -301,22 +332,90 @@ export default function TodayPage() {
     );
 
     // Auto-update schedule catalog item to Done with duration and timestamps
+    const updatedDoneFields = {
+      progress: 'Done' as const,
+      durationMinutes: finalElapsedMins || undefined,
+      startTime: startStr,
+      endTime: endStr,
+    };
+
     setScheduleCatalog((prev) =>
       prev.map((s) =>
         s.id === currentActivity.id
           ? {
               ...s,
-              progress: 'Done',
+              ...updatedDoneFields,
               durationMinutes: finalElapsedMins || s.durationMinutes,
-              startTime: s.startTime || startStr,
-              endTime: s.endTime || endStr,
             }
           : s
       )
     );
 
+    // Persist to SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY so customizations survive reload
+    const existingCustom = readScheduleCustomizations(localStorage.getItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY));
+    const nextCustom = {
+      ...existingCustom,
+      [currentActivity.id]: {
+        ...existingCustom[currentActivity.id],
+        progress: 'Done',
+        durationMinutes: finalElapsedMins,
+        startTime: startStr,
+        endTime: endStr,
+      },
+    };
+    localStorage.setItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY, writeScheduleCustomizations(nextCustom));
+
+    // Also update activities state
+    setActivities((prev) =>
+      prev.map((a) =>
+        a.id === currentActivity.id
+          ? {
+              ...a,
+              status: 'done',
+              actualStart: startStr,
+              actualEnd: endStr,
+              durationMinutes: finalElapsedMins,
+            }
+          : a
+      )
+    );
+
     const titleSnippet = currentActivity.name.split('\n')[0].slice(0, 30);
-    toast.success(`Stopwatch finished: ${finalElapsedMins}m logged for ${titleSnippet}! ⏱️🌿`);
+    toast.success(`Stopwatch finished: ${finalElapsedMins}m logged for ${titleSnippet}!`);
+
+    // Direct Google Sheets API update for this row
+    const matchedSched = scheduleCatalog.find((s) => s.id === currentActivity.id);
+    if (matchedSched) {
+      void fetch('/api/sheets/update-cell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sheet: 'Schedule',
+          rowNumber: matchedSched.rowNumber,
+          durationMinutes: finalElapsedMins,
+          startTime: startStr,
+          endTime: endStr,
+          progress: 'Done',
+          notes: matchedSched.notes || '',
+        }),
+      })
+        .then(async (res) => {
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              toast.success(`Row ${matchedSched.rowNumber} synchronized to Google Sheets!`);
+              setSync(`Row ${matchedSched.rowNumber} synchronized to Google Sheets`);
+            } else {
+              setSync(`Row ${matchedSched.rowNumber} saved locally · Google sign-in required to sync`);
+            }
+          } else {
+            setSync(`Row ${matchedSched.rowNumber} saved locally · Google sign-in required to sync`);
+          }
+        })
+        .catch(() => {
+          setSync(`Row ${matchedSched.rowNumber} saved locally`);
+        });
+    }
 
     const response = await fetch('/api/session', {
       method: 'POST',
@@ -332,7 +431,6 @@ export default function TodayPage() {
     } | null;
     if (payload?.pendingSync)
       writePendingSyncs(localStorage, enqueueSync(readPendingSyncs(localStorage.getItem(pendingSyncStorageKey())), payload.pendingSync));
-    setSync(response?.ok ? 'Pending Google Sheets sync' : 'Not synced');
   }
 
   async function handleLearningSave(submission: LearningSubmission) {
@@ -412,8 +510,8 @@ export default function TodayPage() {
     );
 
     const titleSnippet = updated.topic.split('\n')[0].slice(0, 30);
-    setSync(`Row ${updated.rowNumber} (${titleSnippet}...) saved & synchronized! 🌿`);
-    toast.success(`Row ${updated.rowNumber} (${titleSnippet}...) saved! 🌿`);
+    setSync(`Row ${updated.rowNumber} (${titleSnippet}...) saved & synchronized!`);
+    toast.success(`Row ${updated.rowNumber} (${titleSnippet}...) saved!`);
     setEditingScheduleItem(null);
   }
 
@@ -452,17 +550,155 @@ export default function TodayPage() {
     }
     setActiveActivityId(act.id);
     const timestamp = Date.now();
+    const startStr = formatTimeHHMM(timestamp);
     setStartedAt(timestamp);
     setPausedAt(null);
     setAccumulatedMs(0);
     setFinishedAt(null);
+
+    // Update schedule catalog item to In Progress with start time
+    const updatedItem: ScheduleActivity = {
+      ...item,
+      progress: 'In Progress',
+      startTime: item.startTime || startStr,
+    };
+
+    setScheduleCatalog((prev) =>
+      prev.map((s) => (s.id === item.id ? updatedItem : s))
+    );
+
+    // Persist to SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY
+    const existing = readScheduleCustomizations(localStorage.getItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY));
+    const nextCustom = {
+      ...existing,
+      [item.id]: {
+        ...existing[item.id],
+        progress: 'In Progress',
+        startTime: existing[item.id]?.startTime || startStr,
+      },
+    };
+    localStorage.setItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY, writeScheduleCustomizations(nextCustom));
+
+    // Update activities array
+    setActivities((prev) =>
+      prev.map((a) => (a.id === act.id ? { ...a, status: 'in-progress', actualStart: startStr } : a))
+    );
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    toast.info(`⏱️ Stopwatch started: ${item.topic.split('\n')[0].slice(0, 32)}...`);
+    toast.info(`Stopwatch started: ${item.topic.split('\n')[0].slice(0, 32)}...`);
+
+    // Optional background sync to Google Sheets to mark In Progress
+    void fetch('/api/sheets/update-cell', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sheet: 'Schedule',
+        rowNumber: item.rowNumber,
+        startTime: updatedItem.startTime,
+        progress: 'In Progress',
+        durationMinutes: item.durationMinutes,
+        notes: item.notes || '',
+      }),
+    }).then(async (res) => {
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setSync(`Row ${item.rowNumber} started · Synced to Google Sheets`);
+        }
+      }
+    }).catch(() => undefined);
+
     void fetch('/api/session/start', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ activityId: act.id, startedAt: new Date(timestamp).toISOString(), plannedStart: act.plannedStart })
     }).catch(() => setSync('Stopwatch started locally'));
+  }
+
+  async function handleDirectSyncScheduleRow(item: ScheduleActivity) {
+    try {
+      const progressVal = (item.progress && item.progress !== 'Not Started')
+        ? item.progress
+        : (activeActivityId === item.id ? 'In Progress' : '');
+
+      const startStr = item.startTime || '';
+      const endStr = item.endTime || '';
+      const timeWindowMins = (startStr && endStr) ? calculateDurationFromTimes(startStr, endStr) : undefined;
+      let durationMins = item.durationMinutes;
+      if ((!durationMins || durationMins <= 1) && timeWindowMins && timeWindowMins > 1) {
+        durationMins = timeWindowMins;
+      }
+
+      const res = await fetch('/api/sheets/update-cell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sheet: 'Schedule',
+          rowNumber: item.rowNumber,
+          durationMinutes: durationMins,
+          startTime: startStr,
+          endTime: endStr,
+          progress: progressVal,
+          notes: item.notes || '',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(`Row ${item.rowNumber} synchronized to Google Sheets!`);
+        setSync(`Row ${item.rowNumber} synchronized to Google Sheets`);
+      } else {
+        toast.error(data.message || data.error || 'Google Sheets sync requires active Google sign-in. Use TSV copy as fallback.');
+      }
+    } catch {
+      toast.error('Network error connecting to Google Sheets. Use TSV copy as fallback.');
+    }
+  }
+
+  async function handleDirectSyncForFinishedActivity() {
+    const target = currentActivity ?? (activeActivityId ? activities.find((a) => a.id === activeActivityId) ?? null : null);
+    if (!target) return;
+    const schedItem = scheduleCatalog.find((s) => s.id === target.id);
+    if (!schedItem) return;
+
+    setIsSyncingDirectSheets(true);
+    try {
+      const progressVal = (schedItem.progress && schedItem.progress !== 'Not Started')
+        ? schedItem.progress
+        : 'Done';
+
+      const startStr = schedItem.startTime || (startedAt ? formatTimeHHMM(startedAt) : '');
+      const endStr = schedItem.endTime || (finishedAt ? formatTimeHHMM(finishedAt) : '');
+      const timeWindowMins = (startStr && endStr) ? calculateDurationFromTimes(startStr, endStr) : undefined;
+      let durationMins = schedItem.durationMinutes;
+      if ((!durationMins || durationMins <= 1) && timeWindowMins && timeWindowMins > 1) {
+        durationMins = timeWindowMins;
+      }
+
+      const res = await fetch('/api/sheets/update-cell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sheet: 'Schedule',
+          rowNumber: schedItem.rowNumber,
+          durationMinutes: durationMins,
+          startTime: startStr,
+          endTime: endStr,
+          progress: progressVal,
+          notes: schedItem.notes || '',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        toast.success(`Row ${schedItem.rowNumber} synchronized to Google Sheets!`);
+        setSync(`Row ${schedItem.rowNumber} synchronized to Google Sheets`);
+      } else {
+        toast.error(data.message || data.error || 'Google Sheets sync requires active Google sign-in. Use TSV copy as fallback.');
+      }
+    } catch {
+      toast.error('Network error connecting to Google Sheets. Use TSV copy as fallback.');
+    } finally {
+      setIsSyncingDirectSheets(false);
+    }
   }
 
   function resetSession() {
@@ -478,7 +714,14 @@ export default function TodayPage() {
     localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
   }
 
-  const statusBar = scheduleState === 'imported' ? { indicator: '📄', label: `Imported schedule · ${activities.length} activities`, className: 'bg-sky-50 text-sky-900' } : scheduleState === 'demo' ? { indicator: '🧪', label: 'Demo data', className: 'bg-sun-50 text-sun-700' } : scheduleState === 'error' ? { indicator: '🟡', label: 'Offline · Using saved schedule', className: 'bg-peach-50 text-peach-700' } : { indicator: '🟢', label: sync || 'Synced just now', className: 'bg-mint-50 text-mint-700' };
+  const statusBar =
+    scheduleState === 'imported'
+      ? { dotColor: 'bg-sky-500', label: `Imported schedule · ${activities.length} activities`, className: 'bg-sky-50 text-sky-900' }
+      : scheduleState === 'demo'
+      ? { dotColor: 'bg-sun-500', label: 'Demo data', className: 'bg-sun-50 text-sun-700' }
+      : scheduleState === 'error'
+      ? { dotColor: 'bg-peach-500', label: 'Offline · Using saved schedule', className: 'bg-peach-50 text-peach-700' }
+      : { dotColor: 'bg-mint-500', label: sync || 'Synced just now', className: 'bg-mint-50 text-mint-700' };
 
   const seedling = seedlingStage(progressPercent);
   const diaryCount = typeof window === 'undefined' ? 0 : readDiary(localStorage.getItem(DIARY_STORAGE_KEY)).length;
@@ -487,7 +730,13 @@ export default function TodayPage() {
   const durationHours = Math.floor(duration / 60);
   const durationMinutes = duration % 60;
 
-  const headline = allDone ? 'That’s everything for today. ✨' : completedCount === 0 ? 'Your day is still unwritten.' : progressPercent >= 50 ? 'Almost there! 🌱' : 'You’ve had a pretty productive day.';
+  const headline = allDone
+    ? 'That’s everything for today.'
+    : completedCount === 0
+    ? 'Your day is still unwritten.'
+    : progressPercent >= 50
+    ? 'Almost there!'
+    : 'You’ve had a pretty productive day.';
 
   const todayFormatted = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(now);
   const todayActivities = scheduleCatalog.filter((a) => a.date === todayFormatted || (a.day === 'Monday' && a.week === 'Week 2'));
@@ -526,8 +775,9 @@ export default function TodayPage() {
     if (statusFilter !== 'All') {
       if (statusFilter === 'Done' && item.progress !== 'Done') return false;
       if (statusFilter === 'In Progress' && item.progress !== 'In Progress') return false;
-      if (statusFilter === 'Not Started' && item.progress !== 'Not Started' && item.progress !== '') return false;
+      if (statusFilter === 'On-Hold' && item.progress !== 'On-Hold') return false;
       if (statusFilter === 'Reschedule' && item.progress !== 'Reschedule') return false;
+      if (statusFilter === 'Not Started' && item.progress !== 'Not Started' && item.progress !== '' && item.progress !== undefined) return false;
     }
 
     if (scheduleSearch.trim()) {
@@ -547,7 +797,8 @@ export default function TodayPage() {
       <PrimaryNav active="Schedule" />
       <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2">
         <div role="status" data-tour="status-bar" className={`inline-flex animate-fade-up items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${statusBar.className}`}>
-          <span aria-hidden="true">{statusBar.indicator}</span>{statusBar.label}
+          <span aria-hidden="true" className={`size-2 rounded-full ${statusBar.dotColor}`} />
+          {statusBar.label}
         </div>
         {(scheduleState === 'demo' || scheduleState === 'error') && (
           <a href="/settings" className="animate-fade-up text-xs font-medium text-mint-700 underline underline-offset-4 transition hover:text-mint-600">
@@ -559,7 +810,7 @@ export default function TodayPage() {
       {/* Header */}
       <header data-tour="progress-header" className="animate-fade-up">
         <p className="text-sm font-medium text-stone-500">{todayLabel} · Day {Math.min(dayNumber, totalDays)} of {totalDays}</p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">{greeting}, Noah <span aria-hidden="true" className="animate-float">👋</span></h1>
+        <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">{greeting}, Noah</h1>
         <p className="mt-3 text-lg text-stone-500">{headline}</p>
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
@@ -571,8 +822,15 @@ export default function TodayPage() {
               <div className="bar-gradient progress-shimmer h-full rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
             </div>
           </div>
-          <p className="text-lg text-stone-600">
-            <span aria-hidden="true" className="mr-2 inline-block">{seedling.split(' ')[0]}</span>{seedling.split(' ').slice(1).join(' ')}
+          <p className="flex items-center text-lg text-stone-600">
+            {seedling.stage === 'trophy' ? (
+              <IconTrophy className="mr-2 h-5 w-5 text-sun-500 shrink-0" />
+            ) : seedling.stage === 'tree' ? (
+              <IconTree className="mr-2 h-5 w-5 text-emerald-600 shrink-0" />
+            ) : (
+              <IconSprout className="mr-2 h-5 w-5 text-mint-600 shrink-0" />
+            )}
+            <span>{seedling.label}</span>
           </p>
         </div>
         <p className="mt-3 text-sm text-stone-500">{progressLabel}</p>
@@ -581,9 +839,12 @@ export default function TodayPage() {
       {allDone ? (
         /* Day wrapped up */
         <section data-tour="current-activity" className="animate-pop-in mt-10 rounded-card bg-sun-50 p-8 text-center shadow-soft">
-          <p aria-hidden="true" className="animate-celebrate text-5xl">🎉</p>
+          <div aria-hidden="true" className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-sun-100 text-sun-700 animate-celebrate">
+            <IconTrophy className="h-8 w-8" />
+          </div>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-stone-900">Day wrapped up</h2>
-          <p className="mt-2 text-stone-600">{completedCount} activities{diaryCount > 0 ? ` · ${diaryCount} ${diaryCount === 1 ? 'thing' : 'things'} learned` : ''}</p>          <p className="mt-1 text-stone-500">See you tomorrow.</p>
+          <p className="mt-2 text-stone-600">{completedCount} activities{diaryCount > 0 ? ` · ${diaryCount} ${diaryCount === 1 ? 'thing' : 'things'} learned` : ''}</p>
+          <p className="mt-1 text-stone-500">See you tomorrow.</p>
           <a href="/diary" className="mt-6 inline-flex min-h-11 items-center rounded-full bg-stone-900 px-5 py-3 font-semibold text-white transition hover:bg-stone-700">Open Onboarding Diary →</a>
         </section>
       ) : (
@@ -651,13 +912,23 @@ export default function TodayPage() {
               if (target) {
                 const schedItem = scheduleCatalog.find((s) => s.id === target.id);
                 if (schedItem) {
-                  const finalElapsedMins = Math.max(1, Math.round(calculateElapsedSeconds(startedAt, finishedAt || Date.now(), pausedAt, accumulatedMs) / 60));
+                  const startStr = startedAt ? formatTimeHHMM(startedAt) : schedItem.startTime;
+                  const endStr = finishedAt ? formatTimeHHMM(finishedAt) : schedItem.endTime;
+                  const timeWindowMins = (startStr && endStr) ? calculateDurationFromTimes(startStr, endStr) : undefined;
+                  const totalElapsedSecs = calculateElapsedSeconds(startedAt, finishedAt || Date.now(), pausedAt, accumulatedMs);
+                  let finalElapsedMins = calculateStopwatchDurationMinutes(totalElapsedSecs);
+                  if (finalElapsedMins <= 1 && timeWindowMins && timeWindowMins > 1) {
+                    finalElapsedMins = timeWindowMins;
+                  }
+                  if (!finalElapsedMins && schedItem.durationMinutes) {
+                    finalElapsedMins = schedItem.durationMinutes;
+                  }
                   setEditingScheduleItem({
                     ...schedItem,
                     durationMinutes: finalElapsedMins || schedItem.durationMinutes,
-                    startTime: startedAt ? formatTimeHHMM(startedAt) : schedItem.startTime,
-                    endTime: finishedAt ? formatTimeHHMM(finishedAt) : schedItem.endTime,
-                    progress: 'Done',
+                    startTime: startStr,
+                    endTime: endStr,
+                    progress: schedItem.progress && schedItem.progress !== 'Not Started' ? schedItem.progress : 'Done',
                   });
                 }
               }
@@ -678,6 +949,8 @@ export default function TodayPage() {
               }
             }}
             copiedGtoKToast={copiedRowToast?.type === 'G-K'}
+            onDirectSyncToSheets={handleDirectSyncForFinishedActivity}
+            isSyncingSheets={isSyncingDirectSheets}
           />
 
           {/* Sync status */}
@@ -706,12 +979,12 @@ export default function TodayPage() {
         {/* How to fill instruction banner */}
         <div className="mb-5 rounded-2xl bg-sky-50/80 border border-sky-100 p-4 text-xs text-sky-900 shadow-2xs">
           <div className="flex items-start gap-2.5">
-            <span className="text-base leading-none">💡</span>
+            <IconLightbulb className="h-4 w-4 text-sky-600 shrink-0 mt-0.5" />
             <div className="space-y-1">
               <p className="font-bold">How to fill Duration, Start Time, End Time, Progress & Notes:</p>
               <p className="text-sky-800 leading-relaxed">
-                Click <span className="font-semibold text-stone-900">“✏️ Fill Row”</span> on any topic to update <span className="font-medium">Duration (Col G), Start Time (Col H), End Time (Col I), Progress (Col J), and Notes (Col K)</span>.
-                You can sync directly to Google Sheets with 1 click, or click <span className="font-semibold text-stone-900">“📋 Copy G–K”</span> and paste straight into cell <code className="rounded bg-sky-100 px-1 py-0.2 font-mono font-bold">G&#123;row&#125;</code> in Google Sheets!
+                Click <span className="font-semibold text-stone-900">“Fill Row”</span> on any topic to update <span className="font-medium">Duration (Col G), Start Time (Col H), End Time (Col I), Progress (Col J), and Notes (Col K)</span>.
+                You can sync directly to Google Sheets with 1 click, or click <span className="font-semibold text-stone-900">“Copy G–K”</span> and paste straight into cell <code className="rounded bg-sky-100 px-1 py-0.2 font-mono font-bold">G&#123;row&#125;</code> in Google Sheets!
               </p>
             </div>
           </div>
@@ -722,7 +995,6 @@ export default function TodayPage() {
           {(['Today', 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Month 2 & 3', 'All'] as const).map((w) => {
             const active = selectedWeek === w;
             const count = weekCounts[w] || 0;
-            const label = w === 'Today' ? '⚡ Today' : w;
             return (
               <button
                 key={w}
@@ -737,7 +1009,8 @@ export default function TodayPage() {
                     : 'bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900'
                 }`}
               >
-                <span>{label}</span>
+                {w === 'Today' && <IconZap className="h-3 w-3 text-amber-400" />}
+                <span>{w}</span>
                 <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${active ? 'bg-stone-800 text-stone-200' : 'bg-stone-200 text-stone-700'}`}>
                   {count}
                 </span>
@@ -750,7 +1023,7 @@ export default function TodayPage() {
         {selectedWeek === 'Week 1' && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amber-50/90 border border-amber-200/70 p-3 text-xs text-amber-900">
             <div className="flex items-center gap-2">
-              <span className="text-base">📅</span>
+              <IconCalendar className="h-4 w-4 text-amber-700 shrink-0" />
               <span>
                 <strong>Why is Monday not in Week 1?</strong> Day 1 of onboarding started on <strong>Tuesday, September 1st, 2026</strong>. Monday activities appear in <strong>Week 2 (07/09)</strong>, Week 3, and Week 4!
               </span>
@@ -816,8 +1089,9 @@ export default function TodayPage() {
               <option value="All">All Statuses</option>
               <option value="Done">Done</option>
               <option value="In Progress">In Progress</option>
-              <option value="Not Started">Not Started</option>
+              <option value="On-Hold">On-Hold</option>
               <option value="Reschedule">Reschedule</option>
+              <option value="Not Started">Not Started</option>
             </select>
 
             <div className="relative min-w-44 max-w-xs grow">
@@ -834,7 +1108,7 @@ export default function TodayPage() {
                   onClick={() => setScheduleSearch('')}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700"
                 >
-                  ✕
+                  <IconX className="h-3 w-3" />
                 </button>
               )}
             </div>
@@ -863,6 +1137,8 @@ export default function TodayPage() {
             {filteredScheduleActivities.map((item) => {
               const done = item.progress === 'Done';
               const isCurrentTimer = activeActivityId === item.id;
+              const isTimerRunning = isCurrentTimer && Boolean(startedAt && !finishedAt && !pausedAt);
+              const isTimerPaused = isCurrentTimer && Boolean(startedAt && !finishedAt && pausedAt);
               const hasSubtopics = item.topic.includes('\n');
               const lines = item.topic.split('\n');
               const title = lines[0];
@@ -898,8 +1174,20 @@ export default function TodayPage() {
                       <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[11px] font-medium text-stone-600">
                         {item.mainMedia}
                       </span>
-                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${getProgressBadge(item.progress)}`}>
-                        {item.progress || 'Not Started'}
+                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${getProgressBadge(isTimerRunning || isTimerPaused ? 'In Progress' : item.progress)}`}>
+                        {isTimerRunning ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-peach-500 animate-pulse" />
+                            <span>In Progress</span>
+                          </span>
+                        ) : isTimerPaused ? (
+                          <span className="inline-flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                            <span>Paused</span>
+                          </span>
+                        ) : (
+                          item.progress || 'Not Started'
+                        )}
                       </span>
                     </div>
                   </div>
@@ -946,16 +1234,26 @@ export default function TodayPage() {
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 block">
                         Col G · Duration
                       </span>
-                      <span className="font-semibold text-stone-800">
-                        {item.durationMinutes !== undefined ? `${item.durationMinutes} min` : '—'}
+                      <span className={`font-semibold ${isTimerRunning ? 'text-mint-700' : 'text-stone-800'}`}>
+                        {isTimerRunning || isTimerPaused
+                          ? `${Math.max(1, Math.round(calculateElapsedSeconds(startedAt, Date.now(), pausedAt, accumulatedMs) / 60))} min (live)`
+                          : item.durationMinutes !== undefined
+                          ? `${item.durationMinutes} min`
+                          : '—'}
                       </span>
                     </div>
                     <div>
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 block">
                         Col H & I · Time
                       </span>
-                      <span className="font-semibold text-stone-800">
-                        {item.startTime ? `${item.startTime} → ${item.endTime || '?'}` : '—'}
+                      <span className={`font-semibold ${isTimerRunning ? 'text-mint-700' : 'text-stone-800'}`}>
+                        {isTimerRunning
+                          ? `${item.startTime || (startedAt ? formatTimeHHMM(startedAt) : '')} → (live...)`
+                          : isTimerPaused
+                          ? `${item.startTime || (startedAt ? formatTimeHHMM(startedAt) : '')} → (paused)`
+                          : item.startTime
+                          ? `${item.startTime} → ${item.endTime || '?'}`
+                          : '—'}
                       </span>
                     </div>
                     <div>
@@ -963,7 +1261,17 @@ export default function TodayPage() {
                         Col J · Progress
                       </span>
                       <span className="font-semibold text-stone-800">
-                        {item.progress || 'Not Started'}
+                        {isTimerRunning ? (
+                          <span className="inline-flex items-center gap-1.5 text-peach-700 font-bold">
+                            <span className="h-2 w-2 rounded-full bg-peach-500 animate-pulse" /> In Progress
+                          </span>
+                        ) : isTimerPaused ? (
+                          <span className="inline-flex items-center gap-1.5 text-amber-700 font-bold">
+                            <span className="h-2 w-2 rounded-full bg-amber-500" /> Paused
+                          </span>
+                        ) : (
+                          item.progress || 'Not Started'
+                        )}
                       </span>
                     </div>
                     <div>
@@ -976,9 +1284,10 @@ export default function TodayPage() {
                             href={item.notes}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="font-medium text-mint-700 underline truncate block max-w-full"
+                            className="inline-flex items-center gap-1 font-medium text-mint-700 underline truncate max-w-full"
                           >
-                            Open Link ↗
+                            <span>Open Link</span>
+                            <IconExternalLink className="h-3 w-3 shrink-0" />
                           </a>
                         ) : (
                           <span className="font-medium text-stone-700 truncate block max-w-full" title={item.notes}>
@@ -999,7 +1308,18 @@ export default function TodayPage() {
                         onClick={() => setEditingScheduleItem(item)}
                         className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-stone-700 active:scale-95 shadow-2xs"
                       >
-                        ✏️ Fill Row (Cols G–K)
+                        <IconEdit className="h-3.5 w-3.5" />
+                        <span>Fill Row (Cols G–K)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleDirectSyncScheduleRow(item)}
+                        className="inline-flex min-h-9 items-center gap-1 rounded-full bg-stone-50 px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900 transition active:scale-95"
+                        title="Sync this row to Google Sheets via API"
+                      >
+                        <IconRocket className="h-3.5 w-3.5" />
+                        <span>Sync</span>
                       </button>
 
                       <button
@@ -1008,7 +1328,8 @@ export default function TodayPage() {
                         className="inline-flex min-h-9 items-center gap-1 rounded-full bg-stone-50 px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900 transition active:scale-95"
                         title="View full topic objectives & details"
                       >
-                        🔍 Details
+                        <IconSearch className="h-3.5 w-3.5" />
+                        <span>Details</span>
                       </button>
 
                       <button
@@ -1017,9 +1338,17 @@ export default function TodayPage() {
                         className="inline-flex min-h-9 items-center gap-1 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
                         title="Copies tab-separated: Duration, Start, End, Progress, Notes to paste into cell G"
                       >
-                        {copiedRowToast?.rowNumber === item.rowNumber && copiedRowToast.type === 'G-K'
-                          ? '✓ Copied G–K TSV! 🌿'
-                          : '📋 Copy G–K'}
+                        {copiedRowToast?.rowNumber === item.rowNumber && copiedRowToast.type === 'G-K' ? (
+                          <>
+                            <IconCheck className="h-3.5 w-3.5 text-mint-600" />
+                            <span>Copied G–K TSV!</span>
+                          </>
+                        ) : (
+                          <>
+                            <IconClipboard className="h-3.5 w-3.5" />
+                            <span>Copy G–K</span>
+                          </>
+                        )}
                       </button>
 
                       <button
@@ -1028,21 +1357,57 @@ export default function TodayPage() {
                         className="inline-flex min-h-9 items-center gap-1 rounded-full bg-stone-50 px-2.5 py-1.5 text-xs font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-700 active:scale-95"
                         title="Copies full 11 columns A–K for this row"
                       >
-                        {copiedRowToast?.rowNumber === item.rowNumber && copiedRowToast.type === 'Full'
-                          ? '✓ Copied Row A–K!'
-                          : 'Row A–K'}
+                        {copiedRowToast?.rowNumber === item.rowNumber && copiedRowToast.type === 'Full' ? (
+                          <>
+                            <IconCheck className="h-3.5 w-3.5 text-mint-600" />
+                            <span>Copied Row A–K!</span>
+                          </>
+                        ) : (
+                          <>
+                            <IconClipboard className="h-3.5 w-3.5" />
+                            <span>Row A–K</span>
+                          </>
+                        )}
                       </button>
                     </div>
 
                     <div className="flex items-center gap-2">
                       {!done && (
-                        <button
-                          type="button"
-                          onClick={() => handleStartTimerForScheduleRow(item)}
-                          className="inline-flex min-h-9 items-center gap-1 rounded-full bg-mint-50 px-3 py-1 text-xs font-semibold text-mint-700 transition hover:bg-mint-100 active:scale-95"
-                        >
-                          ⏱️ Start Stopwatch
-                        </button>
+                        isTimerRunning ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-peach-100 px-3.5 py-1 text-xs font-semibold text-peach-800 transition hover:bg-peach-200 active:scale-95 animate-pulse-soft"
+                            title="Stopwatch is running above. Click to view."
+                          >
+                            <span className="h-2 w-2 rounded-full bg-peach-600 animate-ping" />
+                            <IconClock className="h-3.5 w-3.5" />
+                            <span>Stopwatch Running ▴</span>
+                          </button>
+                        ) : isTimerPaused ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-amber-100 px-3.5 py-1 text-xs font-semibold text-amber-800 transition hover:bg-amber-200 active:scale-95"
+                            title="Stopwatch is paused above. Click to view."
+                          >
+                            <IconPause className="h-3.5 w-3.5" />
+                            <span>Stopwatch Paused ▴</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleStartTimerForScheduleRow(item)}
+                            className="inline-flex min-h-9 items-center gap-1 rounded-full bg-mint-50 px-3 py-1 text-xs font-semibold text-mint-700 transition hover:bg-mint-100 active:scale-95"
+                          >
+                            <IconClock className="h-3.5 w-3.5" />
+                            <span>Start Stopwatch</span>
+                          </button>
+                        )
                       )}
                       {done && (
                         <button
@@ -1124,6 +1489,7 @@ export default function TodayPage() {
       <FloatingTimer
         activity={currentActivity}
         startedAt={startedAt}
+        finishedAt={finishedAt}
         pausedAt={pausedAt}
         accumulatedMs={accumulatedMs}
         onPause={() => {

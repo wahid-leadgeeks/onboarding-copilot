@@ -7,6 +7,16 @@ import {
   clipboardRowForScheduleFull,
   type ScheduleActivity,
 } from '@/lib/schedule-catalog';
+import {
+  IconX,
+  IconClock,
+  IconCheckCircle,
+  IconCheck,
+  IconAlertTriangle,
+  IconNote,
+  IconClipboard,
+  IconRocket,
+} from './Icons';
 
 interface ScheduleFillModalProps {
   activity: ScheduleActivity | null;
@@ -36,7 +46,10 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
       setDurationMinutes(activity.durationMinutes !== undefined ? activity.durationMinutes : '');
       setStartTime(activity.startTime || '');
       setEndTime(activity.endTime || '');
-      setProgress(activity.progress || 'Done');
+      const initialProgress = activity.progress && activity.progress !== 'Not Started'
+        ? activity.progress
+        : (activity.durationMinutes || activity.startTime ? 'Done' : '');
+      setProgress(initialProgress);
       setNotes(activity.notes || '');
       setSyncStatus(null);
     }
@@ -71,12 +84,13 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
 
   function getUpdatedActivity(): ScheduleActivity {
     const durNum = typeof durationMinutes === 'number' ? durationMinutes : parseFloat(String(durationMinutes));
+    const cleanProgress = progress.trim() === 'Not Started' ? '' : progress.trim();
     return {
       ...currentActivity,
       durationMinutes: !isNaN(durNum) ? durNum : undefined,
       startTime: startTime.trim(),
       endTime: endTime.trim(),
-      progress: progress.trim() || 'Done',
+      progress: cleanProgress,
       notes: notes.trim(),
     };
   }
@@ -103,7 +117,7 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
 
       const data = (await res.json()) as { success?: boolean; message?: string; error?: string };
       if (res.ok && data.success) {
-        setSyncStatus({ success: true, message: `Synced Row ${currentActivity.rowNumber} to Google Sheets! 🌿` });
+        setSyncStatus({ success: true, message: `Synced Row ${currentActivity.rowNumber} to Google Sheets successfully!` });
         onSave(updated);
       } else {
         setSyncStatus({
@@ -187,7 +201,7 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
             aria-label="Close modal"
             className="flex size-8 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-500 transition hover:bg-stone-200 hover:text-stone-800"
           >
-            ✕
+            <IconX className="h-4 w-4" />
           </button>
         </div>
 
@@ -202,8 +216,9 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
             {/* Start Time (Column H) */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label htmlFor="sched-start" className="block text-xs font-semibold text-stone-700">
-                  🕒 Start Time (Col H)
+                <label htmlFor="sched-start" className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700">
+                  <IconClock className="h-3.5 w-3.5 text-stone-500" />
+                  Start Time (Col H)
                 </label>
                 <button
                   type="button"
@@ -225,8 +240,9 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
             {/* End Time (Column I) */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label htmlFor="sched-end" className="block text-xs font-semibold text-stone-700">
-                  🏁 End Time (Col I)
+                <label htmlFor="sched-end" className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700">
+                  <IconClock className="h-3.5 w-3.5 text-stone-500" />
+                  End Time (Col I)
                 </label>
                 <button
                   type="button"
@@ -249,8 +265,9 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Duration Minutes (Column G) */}
             <div>
-              <label htmlFor="sched-duration" className="block text-xs font-semibold text-stone-700 mb-1">
-                ⏱️ Duration (minutes) (Col G)
+              <label htmlFor="sched-duration" className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 mb-1">
+                <IconClock className="h-3.5 w-3.5 text-stone-500" />
+                Duration (minutes) (Col G)
               </label>
               <input
                 id="sched-duration"
@@ -266,8 +283,9 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
 
             {/* Progress (Column J) */}
             <div>
-              <label htmlFor="sched-progress" className="block text-xs font-semibold text-stone-700 mb-1">
-                📊 Progress (Col J)
+              <label htmlFor="sched-progress" className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 mb-1">
+                <IconCheckCircle className="h-3.5 w-3.5 text-stone-500" />
+                Progress (Col J)
               </label>
               <select
                 id="sched-progress"
@@ -275,18 +293,20 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
                 onChange={(e) => setProgress(e.target.value)}
                 className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 focus:border-stone-900 focus:bg-white focus:outline-none"
               >
-                <option value="Done">Done ✓</option>
-                <option value="In Progress">In Progress ●</option>
-                <option value="Not Started">Not Started ○</option>
-                <option value="Reschedule">Rescheduled</option>
+                <option value="Done">Done</option>
+                <option value="In Progress">In Progress</option>
+                <option value="On-Hold">On-Hold</option>
+                <option value="Reschedule">Reschedule</option>
+                <option value="">Not Started (Blank in Sheet)</option>
               </select>
             </div>
           </div>
 
           {/* Notes (Column K) */}
           <div>
-            <label htmlFor="sched-notes" className="block text-xs font-semibold text-stone-700 mb-1">
-              📝 Notes / Drive Link (Col K)
+            <label htmlFor="sched-notes" className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 mb-1">
+              <IconNote className="h-3.5 w-3.5 text-stone-500" />
+              Notes / Drive Link (Col K)
             </label>
             <textarea
               id="sched-notes"
@@ -305,7 +325,11 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
                 syncStatus.success ? 'bg-mint-50 text-mint-800' : 'bg-peach-50 text-peach-800'
               }`}
             >
-              <span>{syncStatus.success ? '✓' : '⚠️'}</span>
+              {syncStatus.success ? (
+                <IconCheck className="h-4 w-4 shrink-0 text-mint-700" />
+              ) : (
+                <IconAlertTriangle className="h-4 w-4 shrink-0 text-peach-700" />
+              )}
               <span>{syncStatus.message}</span>
             </div>
           )}
@@ -319,14 +343,34 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
               onClick={handleCopyGtoK}
               className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-white border border-stone-200 px-3.5 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-100 active:scale-95"
             >
-              {copiedGtoK ? '✓ Copied G–K!' : '📋 Copy Cols G–K TSV'}
+              {copiedGtoK ? (
+                <>
+                  <IconCheck className="h-3.5 w-3.5 text-mint-600" />
+                  <span>Copied G–K!</span>
+                </>
+              ) : (
+                <>
+                  <IconClipboard className="h-3.5 w-3.5" />
+                  <span>Copy Cols G–K TSV</span>
+                </>
+              )}
             </button>
             <button
               type="button"
               onClick={handleCopyFull}
               className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-white border border-stone-200 px-3.5 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-100 active:scale-95"
             >
-              {copiedFull ? '✓ Copied Full Row!' : '📋 Copy Row A–K'}
+              {copiedFull ? (
+                <>
+                  <IconCheck className="h-3.5 w-3.5 text-mint-600" />
+                  <span>Copied Full Row!</span>
+                </>
+              ) : (
+                <>
+                  <IconClipboard className="h-3.5 w-3.5" />
+                  <span>Copy Row A–K</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -344,7 +388,14 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
               onClick={handleDirectSync}
               className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-stone-900 px-4 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800 active:scale-95 disabled:opacity-50"
             >
-              {isSyncing ? 'Syncing...' : '🚀 1-Click Sync to Sheet'}
+              {isSyncing ? (
+                'Syncing...'
+              ) : (
+                <>
+                  <IconRocket className="h-3.5 w-3.5" />
+                  <span>1-Click Sync to Sheet</span>
+                </>
+              )}
             </button>
           </div>
         </div>
