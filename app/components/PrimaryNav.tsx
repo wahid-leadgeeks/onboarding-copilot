@@ -1,3 +1,5 @@
+import { NovaLogo } from '@/app/components/NovaLogo';
+
 const destinations = [
   { label: 'Today', href: '/' },
   { label: 'Journey', href: '/journey' },
@@ -8,9 +10,12 @@ const destinations = [
 export function PrimaryNav({ active }: { active: 'Today' | 'Journey' | 'Learnings' | 'Settings' }) {
   return (
     <nav aria-label="Primary navigation" data-tour="primary-nav" className="animate-fade-up mb-10 flex flex-wrap items-center gap-x-2 gap-y-3 text-sm">
-      <div className="mr-auto flex items-baseline gap-2">
-        <a href="/" className="text-sm font-bold tracking-[0.16em] text-stone-900 transition hover:text-stone-700">
-          NOVA
+      <div className="mr-auto flex items-center gap-2.5">
+        <a href="/" className="group flex items-center gap-2">
+          <NovaLogo className="size-5 transition group-hover:scale-110" />
+          <span className="text-sm font-bold tracking-[0.16em] text-stone-900 transition group-hover:text-stone-700">
+            NOVA
+          </span>
         </a>
         <span className="hidden text-[11px] font-medium tracking-wide text-stone-400 sm:inline" title="Newcomer Onboarding & Virtual Assistant">
           · Newcomer Onboarding &amp; Virtual Assistant
