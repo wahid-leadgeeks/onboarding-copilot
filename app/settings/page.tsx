@@ -42,6 +42,32 @@ export default function SettingsPage() {
   const [parsing, setParsing] = useState(false);
   const [importError, setImportError] = useState('');
   const [importMessage, setImportMessage] = useState('');
+  const [session, setSession] = useState<{ authenticated: boolean; user: { name: string; email: string; picture?: string } | null } | null>(null);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
+
+  async function refreshSession() {
+    try {
+      const res = await fetch('/api/auth/session', { cache: 'no-store' });
+      if (res.ok) {
+        const data = (await res.json()) as { authenticated: boolean; user: { name: string; email: string; picture?: string } | null };
+        setSession(data);
+      }
+    } catch {
+      /* ignore session fetch error */
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      setSession({ authenticated: false, user: null });
+      setAuthNotice('Signed out successfully.');
+      void refreshHealth();
+    } catch {
+      /* ignore logout error */
+    }
+  }
+
   async function retryPending() { const pending = readPendingSyncs(localStorage.getItem(pendingSyncStorageKey())); const results = await Promise.all(pending.map(async (item) => { const response = await fetch('/api/session/retry', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(item) }).catch(() => null); const value = response?.ok ? await response.json().catch(() => null) as { synced?: boolean } : null; return value?.synced ? item : null; })); const synced = results.filter((item): item is typeof pending[number] => item !== null); const remaining = synced.reduce((items, item) => removePendingSync(items, item), pending); writePendingSyncs(localStorage, remaining); setPendingCount(remaining.length); setSyncMessage(synced.length ? `${synced.length} session${synced.length === 1 ? '' : 's'} synced` : pending.length ? 'No pending sessions could be synced yet' : 'No sessions are waiting to sync'); }
   async function refreshHealth() {
     const response = await fetch('/api/health', { cache: 'no-store' }).catch(() => null);
@@ -95,10 +121,132 @@ export default function SettingsPage() {
     setImported(null);
     setImportMessage('Imported schedule removed. Using the default schedule.');
   }
-  useEffect(() => { void refreshHealth(); setPendingCount(readPendingSyncs(localStorage.getItem(pendingSyncStorageKey())).length); setImported(readImportedSchedule(localStorage.getItem(IMPORTED_SCHEDULE_STORAGE_KEY))); }, []);
+  useEffect(() => {
+    void refreshHealth();
+    void refreshSession();
+    setPendingCount(readPendingSyncs(localStorage.getItem(pendingSyncStorageKey())).length);
+    setImported(readImportedSchedule(localStorage.getItem(IMPORTED_SCHEDULE_STORAGE_KEY)));
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auth') === 'success') {
+      setAuthNotice('Connected to Google successfully! 🌿');
+      window.history.replaceState(null, '', '/settings');
+    } else if (params.get('error')) {
+      const err = params.get('error');
+      setAuthNotice(err === 'access_denied' ? 'Sign in was cancelled.' : `Google authentication failed (${err}).`);
+      window.history.replaceState(null, '', '/settings');
+    }
+  }, []);
+
   return <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8"><PrimaryNav active="Settings" />
     <header className="animate-fade-up pb-8"><p className="text-sm font-medium text-stone-500">Preferences</p><h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">Settings</h1><p className="mt-3 text-lg text-stone-600">Your app, your way.</p></header>
-    <section className="animate-fade-up stagger-1 mt-10 rounded-card bg-white p-6 shadow-soft sm:p-8"><div className="flex items-center justify-between"><h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900"><span aria-hidden="true" className="inline-block size-2 rounded-full bg-sky-300" />Connection</h2><button onClick={() => void refreshHealth()} className="min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50">Refresh</button></div><p className="mt-3 text-stone-500">{healthError && <span className="text-peach-700">Health check unavailable · </span>}Mode: <span className="font-medium text-stone-700">{health?.mode ?? 'Checking…'}</span></p><div className="mt-4 space-y-2 text-sm"><p><span className={`inline-block w-4 text-center ${health?.integrations.oauth ? 'text-mint-600' : 'text-stone-300'}`} aria-hidden="true">{health?.integrations.oauth ? '●' : '○'}</span> Google sign-in</p><p><span className={`inline-block w-4 text-center ${health?.integrations.sheets ? 'text-mint-600' : 'text-stone-300'}`} aria-hidden="true">{health?.integrations.sheets ? '●' : '○'}</span> Google Sheets sync</p>{health && !health.integrations.sheets && (health.integrations.sheetsRead || health.integrations.sheetsWrite) && <p className="text-peach-700">⚠️ Sheets is partially configured</p>}<p><span className={`inline-block w-4 text-center ${health?.integrations.ai ? 'text-mint-600' : 'text-stone-300'}`} aria-hidden="true">{health?.integrations.ai ? '●' : '○'}</span> AI provider</p></div></section>
+    <section className="animate-fade-up stagger-1 mt-10 rounded-card bg-white p-6 shadow-soft sm:p-8">
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900">
+          <span aria-hidden="true" className="inline-block size-2 rounded-full bg-sky-300" />
+          Connection
+        </h2>
+        <button
+          onClick={() => {
+            void refreshHealth();
+            void refreshSession();
+          }}
+          className="min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+        >
+          Refresh
+        </button>
+      </div>
+
+      {authNotice && (
+        <p className="mt-3 rounded-xl bg-sun-50 p-3 text-sm text-stone-700" role="status">
+          {authNotice}
+        </p>
+      )}
+
+      {session?.authenticated && session.user ? (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-mint-50/80 p-4 ring-1 ring-mint-200">
+          <div className="flex items-center gap-3 min-w-0">
+            {session.user.picture ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={session.user.picture}
+                alt={session.user.name}
+                className="size-10 shrink-0 rounded-full border border-mint-200"
+              />
+            ) : (
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-mint-200 font-semibold text-mint-800">
+                {session.user.name?.[0] || 'U'}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="font-semibold text-stone-900 truncate">{session.user.name}</p>
+              <p className="text-xs text-stone-500 truncate">{session.user.email}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            className="rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 transition hover:bg-stone-50"
+          >
+            Sign out
+          </button>
+        </div>
+      ) : (
+        health?.integrations.oauth && (
+          <div className="mt-4">
+            <a
+              href="/api/auth/login"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-stone-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-stone-700 active:scale-95"
+            >
+              <svg className="size-4 shrink-0" viewBox="0 0 24 24">
+                <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"/>
+                <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+                <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.8 0-1.3.2-2.1.4-2.8L1.9 6.3C.7 8.7 0 10.3 0 12s.7 3.3 1.9 5.7l3.7-2.9z"/>
+                <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"/>
+              </svg>
+              Sign in with Google
+            </a>
+          </div>
+        )
+      )}
+
+      <p className="mt-4 text-stone-500">
+        {healthError && <span className="text-peach-700">Health check unavailable · </span>}
+        Mode: <span className="font-medium text-stone-700">{health?.mode ?? 'Checking…'}</span>
+      </p>
+      <div className="mt-4 space-y-2 text-sm">
+        <p>
+          <span
+            className={`inline-block w-4 text-center ${session?.authenticated ? 'text-mint-600' : health?.integrations.oauth ? 'text-amber-500' : 'text-stone-300'}`}
+            aria-hidden="true"
+          >
+            {session?.authenticated ? '●' : '○'}
+          </span>{' '}
+          Google sign-in {session?.authenticated ? '(Connected)' : health?.integrations.oauth ? '(Configured)' : '(Not configured)'}
+        </p>
+        <p>
+          <span
+            className={`inline-block w-4 text-center ${health?.integrations.sheets ? 'text-mint-600' : 'text-stone-300'}`}
+            aria-hidden="true"
+          >
+            {health?.integrations.sheets ? '●' : '○'}
+          </span>{' '}
+          Google Sheets sync
+        </p>
+        {health && !health.integrations.sheets && (health.integrations.sheetsRead || health.integrations.sheetsWrite) && (
+          <p className="text-peach-700">⚠️ Sheets is partially configured</p>
+        )}
+        <p>
+          <span
+            className={`inline-block w-4 text-center ${health?.integrations.ai ? 'text-mint-600' : 'text-stone-300'}`}
+            aria-hidden="true"
+          >
+            {health?.integrations.ai ? '●' : '○'}
+          </span>{' '}
+          AI provider
+        </p>
+      </div>
+    </section>
     <section className="animate-fade-up stagger-2 mt-6 rounded-card bg-white p-6 shadow-soft sm:p-8"><h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900"><span aria-hidden="true" className="inline-block size-2 rounded-full bg-sky-300" />Schedule</h2><p className="mt-3 text-stone-500">Import your onboarding schedule from an Excel or Google Sheets export (.xlsx, .csv, or .tsv). The file is parsed here and kept on this device — nothing is uploaded elsewhere.</p>
       {imported ? <div><p className="mt-4 text-stone-700">Imported schedule · {imported.activities.length} activities · {new Date(imported.importedAt).toLocaleString()}</p><button onClick={removeImported} className="mt-4 min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50">Remove imported schedule</button></div>
         : preview ? <div className="animate-pop-in mt-4 rounded-2xl bg-sun-50 p-5"><p className="font-medium text-sun-700">Ready to import ✨</p><p className="mt-1 text-sm text-stone-700">{preview.activities.length} activities{preview.skipped > 0 ? `, ${preview.skipped} skipped` : ''}{preview.diary && preview.diary.length > 0 ? ` · ${preview.diary.length} diary notes` : ''}</p>{preview.skipped > 0 && preview.warnings.length > 0 && <ul className="mt-2 space-y-1 text-xs text-peach-700">{preview.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}<ul className="mt-3 space-y-1">{preview.activities.slice(0, 5).map((activity, index) => <li key={`${activity.id}-${index}`} className="text-sm text-stone-700">{activity.name} — {activity.plannedStart === 'TBD' ? 'Flexible / TBD' : `${activity.plannedStart}–${activity.plannedEnd}`}</li>)}</ul><div className="mt-4 flex flex-wrap gap-3"><button onClick={confirmImport} className="min-h-11 rounded-full bg-stone-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-stone-700">Use this schedule</button><button onClick={discardImport} className="min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-white">Discard</button></div></div>
