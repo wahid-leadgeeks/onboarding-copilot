@@ -248,7 +248,7 @@ export default function TodayPage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
-      <PrimaryNav active="Today" />
+      <PrimaryNav active="Schedule" />
       <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2">
         <div role="status" data-tour="status-bar" className={`inline-flex animate-fade-up items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${statusBar.className}`}>
           <span aria-hidden="true">{statusBar.indicator}</span>{statusBar.label}
@@ -288,7 +288,7 @@ export default function TodayPage() {
           <p aria-hidden="true" className="animate-celebrate text-5xl">🎉</p>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-stone-900">Day wrapped up</h2>
           <p className="mt-2 text-stone-600">{completedCount} activities{diaryCount > 0 ? ` · ${diaryCount} ${diaryCount === 1 ? 'thing' : 'things'} learned` : ''}</p>          <p className="mt-1 text-stone-500">See you tomorrow.</p>
-          <a href="/history" className="mt-6 inline-flex min-h-11 items-center rounded-full bg-stone-900 px-5 py-3 font-semibold text-white transition hover:bg-stone-700">Review your learnings →</a>
+          <a href="/diary" className="mt-6 inline-flex min-h-11 items-center rounded-full bg-stone-900 px-5 py-3 font-semibold text-white transition hover:bg-stone-700">Open Onboarding Diary →</a>
         </section>
       ) : (
         <>
