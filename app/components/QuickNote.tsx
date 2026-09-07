@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { IconSparkles } from './Icons';
 
 export function QuickNote({ onSave }: { onSave: (content: string) => void }) {
   const [expanded, setExpanded] = useState(false);
@@ -16,9 +17,10 @@ export function QuickNote({ onSave }: { onSave: (content: string) => void }) {
       {!expanded && (
         <button
           onClick={() => setExpanded(true)}
-          className="min-h-11 rounded-full bg-white px-4 py-2 text-sm text-stone-500 shadow-soft transition hover:text-stone-700 hover:shadow-lift"
+          className="inline-flex items-center gap-1.5 min-h-11 rounded-full bg-white px-4 py-2 text-sm text-stone-500 shadow-soft transition hover:text-stone-700 hover:shadow-lift"
         >
-          + Quick note <span aria-hidden="true">✨</span>
+          <span>+ Quick note</span>
+          <IconSparkles className="h-3.5 w-3.5 text-lavender-500" />
         </button>
       )}
       {expanded && (

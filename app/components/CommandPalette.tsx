@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { OFFICIAL_SCHEDULE_ACTIVITIES, type ScheduleActivity } from '@/lib/schedule-catalog';
+import { IconSearch } from './Icons';
 
 export interface CommandPaletteProps {
   isOpen: boolean;
@@ -201,7 +202,7 @@ export function CommandPalette({
       <div className="relative flex max-h-[80vh] w-full max-w-xl flex-col rounded-3xl bg-white shadow-2xl overflow-hidden animate-pop-in border border-stone-100">
         {/* Search header */}
         <div className="flex items-center gap-3 border-b border-stone-100 px-5 py-4">
-          <span className="text-base text-stone-400">🔍</span>
+          <IconSearch className="h-4 w-4 text-stone-400 shrink-0" />
           <input
             ref={inputRef}
             type="text"

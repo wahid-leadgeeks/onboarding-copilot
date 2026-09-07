@@ -3,6 +3,7 @@
 import React from 'react';
 import { ModalDialog } from './ModalDialog';
 import type { ScheduleActivity } from '@/lib/schedule-catalog';
+import { IconClipboard, IconEdit, IconPlay, IconNote, IconExternalLink } from './Icons';
 
 export interface ActivityDetailModalProps {
   activity: ScheduleActivity | null;
@@ -57,10 +58,11 @@ export function ActivityDetailModal({
             <button
               type="button"
               onClick={() => onCopyGtoK(activity)}
-              className="rounded-full bg-stone-100 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-200 transition"
+              className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-200 transition"
               title="Copy tab-separated Duration, Start, End, Progress, Notes"
             >
-              📋 Copy Cols G–K
+              <IconClipboard className="h-3.5 w-3.5" />
+              <span>Copy Cols G–K</span>
             </button>
             <button
               type="button"
@@ -68,9 +70,10 @@ export function ActivityDetailModal({
                 onClose();
                 onEdit(activity);
               }}
-              className="rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white hover:bg-stone-700 transition"
+              className="inline-flex items-center gap-1.5 rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white hover:bg-stone-700 transition"
             >
-              ✏️ Fill / Edit Row
+              <IconEdit className="h-3.5 w-3.5" />
+              <span>Fill / Edit Row</span>
             </button>
           </div>
 
@@ -82,9 +85,10 @@ export function ActivityDetailModal({
                   onClose();
                   onStartTimer(activity);
                 }}
-                className="rounded-full bg-mint-700 px-4 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition"
+                className="inline-flex items-center gap-1.5 rounded-full bg-mint-700 px-4 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition"
               >
-                ⏱️ Start Stopwatch
+                <IconPlay className="h-3.5 w-3.5 fill-current" />
+                <span>Start Stopwatch</span>
               </button>
             )}
             {isDone && onWriteReflection && (
@@ -94,9 +98,10 @@ export function ActivityDetailModal({
                   onClose();
                   onWriteReflection(activity);
                 }}
-                className="rounded-full bg-mint-700 px-4 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition"
+                className="inline-flex items-center gap-1.5 rounded-full bg-mint-700 px-4 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition"
               >
-                📝 Diary Reflection
+                <IconNote className="h-3.5 w-3.5" />
+                <span>Diary Reflection</span>
               </button>
             )}
           </div>
@@ -182,9 +187,10 @@ export function ActivityDetailModal({
                   href={activity.notes}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-semibold text-mint-700 underline break-all mt-1 inline-block hover:text-mint-800"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-mint-700 underline break-all mt-1 hover:text-mint-800"
                 >
-                  {activity.notes} ↗
+                  <span>{activity.notes}</span>
+                  <IconExternalLink className="h-3 w-3 shrink-0" />
                 </a>
               ) : (
                 <p className="text-xs text-stone-700 mt-1 whitespace-pre-wrap leading-relaxed">

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { IconCheck, IconAlertTriangle, IconX, IconInfo } from './Icons';
 
 export type ToastType = 'success' | 'info' | 'warning' | 'error';
 
@@ -174,7 +175,15 @@ function ToastCard({
     ? 'bg-rose-100 text-rose-700'
     : 'bg-sky-100 text-sky-700';
 
-  const icon = isSuccess ? '✓' : isWarning ? '!' : isError ? '✕' : 'ℹ';
+  const icon = isSuccess ? (
+    <IconCheck className="h-3.5 w-3.5" />
+  ) : isWarning ? (
+    <IconAlertTriangle className="h-3.5 w-3.5" />
+  ) : isError ? (
+    <IconX className="h-3.5 w-3.5" />
+  ) : (
+    <IconInfo className="h-3.5 w-3.5" />
+  );
 
   return (
     <div
@@ -184,7 +193,7 @@ function ToastCard({
       <div className="flex items-center gap-3 min-w-0">
         <span
           aria-hidden="true"
-          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${iconBg}`}
+          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${iconBg}`}
         >
           {icon}
         </span>
@@ -212,7 +221,7 @@ function ToastCard({
           aria-label="Dismiss notification"
           className="rounded-md p-1 text-stone-400 hover:bg-stone-800 hover:text-stone-200 transition"
         >
-          <span aria-hidden="true" className="text-xs">✕</span>
+          <IconX className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>

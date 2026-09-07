@@ -9,6 +9,16 @@ import {
   type FeedbackSession,
   type LikertScore,
 } from '@/lib/feedback';
+import {
+  IconUser,
+  IconCalendar,
+  IconFileText,
+  IconX,
+  IconAlertTriangle,
+  IconLightbulb,
+  IconCheck,
+  IconClipboard,
+} from './Icons';
 
 export interface FeedbackModalProps {
   readonly session: FeedbackSession;
@@ -208,14 +218,17 @@ export function FeedbackModal({ session, existingEntry, onSave, onClose }: Feedb
               {session.title}
             </h2>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-stone-500">
-              <span className="rounded-full bg-stone-100 px-2.5 py-1 font-medium text-stone-700">
-                👤 PIC: {session.pic}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-1 font-medium text-stone-700">
+                <IconUser className="h-3 w-3 text-stone-500" />
+                PIC: {session.pic}
               </span>
-              <span className="rounded-full bg-stone-100 px-2.5 py-1 font-medium text-stone-700">
-                📋 Sheet Row {session.rowNumber}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-1 font-medium text-stone-700">
+                <IconFileText className="h-3 w-3 text-stone-500" />
+                Sheet Row {session.rowNumber}
               </span>
-              <label className="flex items-center gap-1.5 font-medium text-stone-600">
-                📅 Date:
+              <label className="inline-flex items-center gap-1.5 font-medium text-stone-600">
+                <IconCalendar className="h-3 w-3 text-stone-500" />
+                Date:
                 <input
                   type="text"
                   value={date}
@@ -234,7 +247,7 @@ export function FeedbackModal({ session, existingEntry, onSave, onClose }: Feedb
             aria-label="Close feedback modal"
             className="flex size-9 shrink-0 items-center justify-center rounded-full text-stone-400 hover:bg-stone-100 hover:text-stone-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-stone-400"
           >
-            ✕
+            <IconX className="h-4 w-4" />
           </button>
         </div>
 
@@ -242,9 +255,10 @@ export function FeedbackModal({ session, existingEntry, onSave, onClose }: Feedb
         {validationError && (
           <div
             role="alert"
-            className="mt-4 rounded-xl border border-peach-200 bg-peach-50 px-4 py-3 text-xs font-medium text-peach-900"
+            className="mt-4 flex items-center gap-2 rounded-xl border border-peach-200 bg-peach-50 px-4 py-3 text-xs font-medium text-peach-900"
           >
-            ⚠️ {validationError}
+            <IconAlertTriangle className="h-4 w-4 text-peach-700 shrink-0" />
+            <span>{validationError}</span>
           </div>
         )}
 
@@ -342,19 +356,20 @@ export function FeedbackModal({ session, existingEntry, onSave, onClose }: Feedb
                     : 'border border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
                 }`}
               >
-                NO · Everything was clear 👍
+                NO · Everything was clear
               </button>
               <button
                 type="button"
                 aria-pressed={hasQuestions}
                 onClick={() => setHasQuestions(true)}
-                className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-semibold transition ${
+                className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-semibold transition ${
                   hasQuestions
                     ? 'border-2 border-peach-500 bg-peach-50 text-peach-900 shadow-xs'
                     : 'border border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
                 }`}
               >
-                YES · I have questions 💡
+                <IconLightbulb className="h-3.5 w-3.5 text-peach-700" />
+                <span>YES · I have questions</span>
               </button>
             </div>
           </div>
@@ -437,13 +452,23 @@ export function FeedbackModal({ session, existingEntry, onSave, onClose }: Feedb
             <button
               type="button"
               onClick={handleCopy}
-              className={`rounded-full px-4 py-2.5 text-xs font-medium transition focus-visible:outline focus-visible:outline-2 ${
+              className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-xs font-medium transition focus-visible:outline focus-visible:outline-2 ${
                 copied
                   ? 'bg-mint-100 text-mint-800'
                   : 'bg-stone-100 text-stone-800 hover:bg-stone-200'
               }`}
             >
-              {copied ? '✓ Copied for Feedback Sheet!' : '📋 Copy for Feedback Sheet'}
+              {copied ? (
+                <>
+                  <IconCheck className="h-3.5 w-3.5 text-mint-600" />
+                  <span>Copied for Feedback Sheet!</span>
+                </>
+              ) : (
+                <>
+                  <IconClipboard className="h-3.5 w-3.5" />
+                  <span>Copy for Feedback Sheet</span>
+                </>
+              )}
             </button>
 
             <button

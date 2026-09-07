@@ -9,6 +9,17 @@ import {
   type TrainingModule,
 } from '@/lib/glossary';
 import { GlossaryDetailModal } from '@/app/components/GlossaryDetailModal';
+import {
+  IconVideo,
+  IconMeeting,
+  IconTarget,
+  IconLayers,
+  IconSlide,
+  IconFileText,
+  IconLink,
+  IconExternalLink,
+  IconNote,
+} from '@/app/components/Icons';
 
 const sheetRoutes: Record<string, string> = {
   Schedule: '/',
@@ -53,15 +64,12 @@ export default function GlossaryPage() {
         <div className="mt-2 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
-              Glossary &amp; Guides 📚
+              Glossary &amp; Guides
             </h1>
             <p className="mt-1 text-sm text-stone-600">
               Master syllabus covering all 19 mandatory onboarding training modules and guide to all 6 sheets in your workbook.
             </p>
           </div>
-          <span className="rounded-full bg-stone-100 px-3.5 py-1 text-xs font-semibold text-stone-700 w-fit shrink-0">
-            {OFFICIAL_TRAINING_MODULES.length} Official Modules
-          </span>
         </div>
       </header>
 
@@ -79,10 +87,7 @@ export default function GlossaryPage() {
                 : 'text-stone-500 hover:text-stone-800'
             }`}
           >
-            <span>Training Modules &amp; Topics</span>
-            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] text-stone-600">
-              {OFFICIAL_TRAINING_MODULES.length}
-            </span>
+            Syllabus Modules ({OFFICIAL_TRAINING_MODULES.length})
           </button>
           <button
             type="button"
@@ -95,20 +100,17 @@ export default function GlossaryPage() {
                 : 'text-stone-500 hover:text-stone-800'
             }`}
           >
-            <span>Spreadsheet Guide</span>
-            <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] text-stone-600">
-              {OFFICIAL_SHEET_GUIDES.length} Sheets
-            </span>
+            Workbook Guide (6 Sheets)
           </button>
         </div>
       </div>
 
-      {/* Tab 1: Training Modules */}
       {activeTab === 'modules' && (
-        <section className="animate-fade-up stagger-2 mt-4 space-y-4" aria-label="Training Modules">
-          {/* Controls Bar */}
-          <div className="rounded-card bg-white p-4 shadow-soft sm:flex sm:items-center sm:justify-between sm:gap-4">
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Media format filter">
+        <section className="animate-fade-up stagger-2 mt-6 space-y-6" aria-label="Syllabus Modules">
+          {/* Controls Bar: Filters & Search */}
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            {/* Filter Pills */}
+            <div className="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setMediaFilter('all')}
@@ -123,24 +125,26 @@ export default function GlossaryPage() {
               <button
                 type="button"
                 onClick={() => setMediaFilter('Video')}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                   mediaFilter === 'Video'
                     ? 'bg-stone-900 text-white'
                     : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                 }`}
               >
-                🎥 Video
+                <IconVideo className="h-3.5 w-3.5" />
+                <span>Video</span>
               </button>
               <button
                 type="button"
                 onClick={() => setMediaFilter('Online Meeting')}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
                   mediaFilter === 'Online Meeting'
                     ? 'bg-stone-900 text-white'
                     : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
                 }`}
               >
-                💬 Online Meeting
+                <IconMeeting className="h-3.5 w-3.5" />
+                <span>Online Meeting</span>
               </button>
             </div>
 
@@ -166,8 +170,18 @@ export default function GlossaryPage() {
                 <div>
                   {/* Badge Bar */}
                   <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
-                    <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-700">
-                      {mod.media.includes('Video') ? '🎥 Video' : '💬 Meeting'}
+                    <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-700">
+                      {mod.media.includes('Video') ? (
+                        <>
+                          <IconVideo className="h-3 w-3" />
+                          <span>Video</span>
+                        </>
+                      ) : (
+                        <>
+                          <IconMeeting className="h-3 w-3" />
+                          <span>Meeting</span>
+                        </>
+                      )}
                     </span>
                     <span className="rounded-full bg-mint-50 px-2 py-0.5 text-[10px] font-semibold text-mint-700">
                       {mod.durationMinutes} min
@@ -184,8 +198,9 @@ export default function GlossaryPage() {
 
                   {/* Section: Objectives */}
                   <div className="mt-3 rounded-xl bg-stone-50/70 p-2.5 border border-stone-100">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-0.5">
-                      🎯 Objectives
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-0.5">
+                      <IconTarget className="h-3 w-3" />
+                      <span>Objectives</span>
                     </span>
                     <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
                       {mod.objectives}
@@ -194,8 +209,9 @@ export default function GlossaryPage() {
 
                   {/* Section: Framework / Materials */}
                   <div className="mt-2 rounded-xl bg-lavender-50/50 p-2.5 border border-lavender-100/60">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-lavender-700 block mb-0.5">
-                      🧩 Framework / Materials
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-lavender-700 block mb-0.5">
+                      <IconLayers className="h-3 w-3" />
+                      <span>Framework / Materials</span>
                     </span>
                     <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
                       {mod.frameworkMaterials.replace(/\n/g, ' · ')}
@@ -214,20 +230,30 @@ export default function GlossaryPage() {
                           onClick={(e) => e.stopPropagation()}
                           className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-sky-800 font-semibold text-[10px] border border-sky-200 hover:bg-sky-100 transition truncate max-w-[220px]"
                         >
-                          <span>{l.type === 'video' ? '🎥' : l.type === 'slides' ? '📑' : '📄'}</span>
+                          <span>
+                            {l.type === 'video' ? (
+                              <IconVideo className="h-3 w-3 text-sky-600" />
+                            ) : l.type === 'slides' ? (
+                              <IconSlide className="h-3 w-3 text-amber-600" />
+                            ) : (
+                              <IconFileText className="h-3 w-3 text-blue-600" />
+                            )}
+                          </span>
                           <span>{l.label}</span>
-                          <span>↗</span>
+                          <IconExternalLink className="h-2.5 w-2.5 ml-0.5 text-sky-600" />
                         </a>
                       ))
                     ) : mod.materialAccess ? (
                       <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-sky-800 font-medium text-[10px] border border-sky-100 truncate max-w-[200px]">
-                        <span>🔗</span> {mod.materialAccess.split('\n')[0].replace(/^- /, '')}
+                        <IconLink className="h-3 w-3 text-sky-600 shrink-0" />
+                        <span>{mod.materialAccess.split('\n')[0].replace(/^- /, '')}</span>
                       </span>
                     ) : null}
 
                     {mod.notes && (
                       <span className="inline-flex items-center gap-1 rounded-md bg-sun-50 px-2 py-0.5 text-sun-800 font-medium text-[10px] border border-sun-100">
-                        <span>📝</span> Has Notes &amp; Q&amp;A
+                        <IconNote className="h-3 w-3 text-sun-700 shrink-0" />
+                        <span>Has Notes &amp; Q&amp;A</span>
                       </span>
                     )}
                   </div>

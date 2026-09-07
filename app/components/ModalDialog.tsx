@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { IconX } from './Icons';
 
 export interface ModalDialogProps {
   isOpen: boolean;
@@ -106,7 +107,7 @@ export function ModalDialog({
             aria-label="Close dialog"
             className="rounded-full p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition active:scale-95"
           >
-            <span aria-hidden="true" className="text-sm font-bold">✕</span>
+            <IconX className="h-4 w-4" />
           </button>
         </div>
 

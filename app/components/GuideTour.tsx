@@ -12,7 +12,7 @@ export type GuideTourStep = {
 
 export const todayTourSteps: readonly GuideTourStep[] = [
   {
-    title: 'Welcome to NOVA 👋',
+    title: 'Welcome to NOVA',
     body: "NOVA is a bright guide for every new employee's journey. We'll track the hours, the notes, and the paperwork — you focus on learning. Let's take a quick look around.",
   },
   {
@@ -37,7 +37,7 @@ export const todayTourSteps: readonly GuideTourStep[] = [
   },
   {
     target: 'quick-note',
-    title: 'Capture thoughts on the fly ✨',
+    title: 'Capture thoughts on the fly',
     body: 'Had an idea? Jot it down in seconds. Drafts wait safely under Learnings.',
   },
   {
@@ -46,7 +46,7 @@ export const todayTourSteps: readonly GuideTourStep[] = [
     body: 'Journey is your 90-day path, Learnings keeps your notes, Settings handles the boring parts.',
   },
   {
-    title: "You're all set 🌱",
+    title: "You're all set",
     body: "Start your first activity whenever you're ready. We'll handle the rest.",
   },
 ];

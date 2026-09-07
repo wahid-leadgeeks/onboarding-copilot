@@ -15,6 +15,7 @@ import {
 } from '@/lib/feedback';
 import { FeedbackModal } from '@/app/components/FeedbackModal';
 import { useToast } from '@/app/components/Toast';
+import { IconCheck, IconClipboard } from '@/app/components/Icons';
 
 export default function FeedbackPage() {
   const { toast } = useToast();
@@ -47,7 +48,7 @@ export default function FeedbackPage() {
     setActiveSession(null);
     const match = FEEDBACK_SESSIONS.find((s) => s.id === entry.sessionId);
     const label = match ? `Row ${match.rowNumber} (${entry.sessionTitle})` : entry.sessionTitle;
-    toast.success(`Feedback for ${label} saved! 🌿`);
+    toast.success(`Feedback for ${label} saved!`);
   }
 
   async function handleCopyRow(entry: FeedbackEntry) {
@@ -68,18 +69,20 @@ export default function FeedbackPage() {
 
   const progress = calculateFeedbackProgress(feedbackEntries);
 
-  const filteredSessions = progress.sessionStatuses.filter(({ session, status }) => {
+  const filteredSessions = FEEDBACK_SESSIONS.map((session) => ({
+    session,
+    status: feedbackEntries.some((e) => e.sessionId === session.id) ? 'evaluated' : 'pending',
+    entry: feedbackEntries.find((e) => e.sessionId === session.id),
+  })).filter(({ session, status }) => {
     if (statusFilter === 'pending' && status !== 'pending') return false;
     if (statusFilter === 'evaluated' && status !== 'evaluated') return false;
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return (
-        session.title.toLowerCase().includes(q) ||
-        session.pic.toLowerCase().includes(q) ||
-        (session.department && session.department.toLowerCase().includes(q)) ||
-        `row ${session.rowNumber}`.includes(q)
-      );
+      const q = searchQuery.toLowerCase().trim();
+      const matchTitle = session.title.toLowerCase().includes(q);
+      const matchPic = session.pic.toLowerCase().includes(q);
+      const matchRow = `row ${session.rowNumber}`.includes(q);
+      if (!matchTitle && !matchPic && !matchRow) return false;
     }
     return true;
   });
@@ -90,21 +93,19 @@ export default function FeedbackPage() {
 
       {/* Header */}
       <header className="animate-fade-up pb-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
-              Worksheet: Feedback Sheet (Columns D–K)
-            </p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
-              Session Feedback
-            </h1>
-            <p className="mt-1 text-sm text-stone-600">
-              13 mandatory onboarding evaluations · Rate 6 dimensions (1–5) and provide session feedback.
-            </p>
-          </div>
-          <span className="rounded-full bg-sun-50 px-3.5 py-1 text-xs font-semibold text-sun-900">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm font-medium text-stone-500">Sheet: Feedback · Session Ratings</p>
+          <span className="rounded-full bg-sun-50 px-3 py-1 text-xs font-semibold text-sun-800">
             {progress.evaluatedCount} / {progress.totalCount} Evaluated
           </span>
+        </div>
+        <div className="mt-2">
+          <h1 className="text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
+            Feedback &amp; Evaluation
+          </h1>
+          <p className="mt-1 text-sm text-stone-600">
+            Rate your onboarding sessions across 6 dimensions (Cols D–I) and capture qualitative follow-ups.
+          </p>
         </div>
       </header>
 
@@ -123,8 +124,8 @@ export default function FeedbackPage() {
               }`}
             >
               {progress.isComplete
-                ? 'All 13 evaluated! 🌿'
-                : `${progress.remainingCount} pending evaluation ✍️`}
+                ? 'All 13 evaluated!'
+                : `${progress.remainingCount} pending evaluation`}
             </span>
           </div>
 
@@ -205,7 +206,7 @@ export default function FeedbackPage() {
                         : 'bg-stone-100 text-stone-400'
                     }`}
                   >
-                    {isEvaluated ? '✓' : '○'}
+                    {isEvaluated ? <IconCheck className="h-3.5 w-3.5" /> : <span className="size-1.5 rounded-full bg-stone-300" />}
                   </span>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -232,9 +233,19 @@ export default function FeedbackPage() {
                     <button
                       type="button"
                       onClick={() => handleCopyRow(entry)}
-                      className="rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
                     >
-                      {isCopied ? '✓ Copied!' : '📋 Copy TSV'}
+                      {isCopied ? (
+                        <>
+                          <IconCheck className="h-3.5 w-3.5 text-mint-600" />
+                          <span>Copied!</span>
+                        </>
+                      ) : (
+                        <>
+                          <IconClipboard className="h-3.5 w-3.5" />
+                          <span>Copy TSV</span>
+                        </>
+                      )}
                     </button>
                   )}
                   <button
