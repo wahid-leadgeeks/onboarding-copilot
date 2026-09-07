@@ -7,7 +7,18 @@ import { DIARY_STORAGE_KEY, mergeImportedDiary, readDiary, type StoredDiary } fr
 import { isActivityList } from '@/lib/sheets/types';
 import type { Activity } from '@/lib/types/activity';
 
-type Health = { mode: string; integrations: { sheets: boolean; sheetsRead?: boolean; sheetsWrite?: boolean; diaryWrite?: boolean; oauth: boolean; ai: boolean } };
+type Health = {
+  mode: string;
+  spreadsheetId?: string | null;
+  integrations: {
+    sheets: boolean;
+    sheetsRead?: boolean;
+    sheetsWrite?: boolean;
+    diaryWrite?: boolean;
+    oauth: boolean;
+    ai: boolean;
+  };
+};
 
 type ImportPreview = { activities: Activity[]; skipped: number; warnings: string[]; diary?: StoredDiary[] };
 
@@ -19,7 +30,8 @@ function isHealth(value: unknown): value is Health {
   const flags = integrations as Record<string, unknown>;
   return typeof record.mode === 'string' && typeof flags.sheets === 'boolean' && typeof flags.oauth === 'boolean' && typeof flags.ai === 'boolean'
     && (flags.sheetsRead === undefined || typeof flags.sheetsRead === 'boolean')
-    && (flags.sheetsWrite === undefined || typeof flags.sheetsWrite === 'boolean');
+    && (flags.sheetsWrite === undefined || typeof flags.sheetsWrite === 'boolean')
+    && (record.spreadsheetId === undefined || record.spreadsheetId === null || typeof record.spreadsheetId === 'string');
 }
 
 function isImportPreview(value: unknown): value is ImportPreview {
@@ -44,6 +56,57 @@ export default function SettingsPage() {
   const [importMessage, setImportMessage] = useState('');
   const [session, setSession] = useState<{ authenticated: boolean; user: { name: string; email: string; picture?: string } | null } | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
+  const [extracting, setExtracting] = useState(false);
+  const [extractResult, setExtractResult] = useState<{
+    spreadsheetId: string;
+    title?: string;
+    sheets: Array<{ title: string; rowCount: number; columnCount: number }>;
+    schedule?: { activities: Activity[]; count: number; skipped: number; warnings: string[] };
+    diary?: { entries: StoredDiary[]; count: number };
+    timeline?: { stages: Array<{ stageNumber: string; stageName: string; objective: string }>; count: number };
+    feedback?: { sessions: Array<{ rowNumber: number; sessionTitle: string; pic: string }>; count: number };
+  } | null>(null);
+  const [extractError, setExtractError] = useState<string | null>(null);
+
+  async function handleExtractSheets(source?: 'local') {
+    setExtracting(true);
+    setExtractError(null);
+    try {
+      const url = `/api/sheets/extract${source ? '?source=' + source : ''}`;
+      const res = await fetch(url, { cache: 'no-store' });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setExtractError(data.message || data.error || 'Failed to extract content from Google Sheets');
+        setExtractResult(null);
+      } else {
+        setExtractResult(data.data);
+        setExtractError(null);
+      }
+    } catch (err: unknown) {
+      setExtractError(err instanceof Error ? err.message : 'Network error during extraction');
+    } finally {
+      setExtracting(false);
+    }
+  }
+
+  function applyExtractedSchedule() {
+    if (!extractResult?.schedule?.activities?.length) return;
+    const activities = extractResult.schedule.activities;
+    writeImportedSchedule({
+      activities,
+      importedAt: new Date().toISOString(),
+    });
+    setImported({
+      activities,
+      importedAt: new Date().toISOString(),
+    });
+    if (extractResult.diary?.entries?.length) {
+      const existingDiary = readDiary(localStorage.getItem(DIARY_STORAGE_KEY));
+      const merged = mergeImportedDiary(existingDiary, extractResult.diary.entries);
+      localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(merged));
+    }
+    setImportMessage(`Applied ${activities.length} activities and ${extractResult.diary?.entries?.length || 0} diary notes to local schedule! ✨`);
+  }
 
   async function refreshSession() {
     try {
@@ -246,6 +309,100 @@ export default function SettingsPage() {
           AI provider
         </p>
       </div>
+
+      {health?.spreadsheetId && (
+        <div className="mt-5 rounded-2xl border border-stone-200/80 bg-stone-50/70 p-4 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <span className="font-semibold text-stone-700">Connected Spreadsheet:</span>
+              <p className="font-mono text-[11px] text-stone-500 truncate max-w-xs">{health.spreadsheetId}</p>
+            </div>
+            <a
+              href={`https://docs.google.com/spreadsheets/d/${health.spreadsheetId}/edit`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-sky-700 shadow-xs transition hover:bg-sky-50"
+            >
+              Open Sheet ↗
+            </a>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={extracting}
+              onClick={() => void handleExtractSheets()}
+              className="min-h-9 rounded-full bg-stone-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-stone-700 disabled:opacity-50"
+            >
+              {extracting ? 'Extracting…' : 'Extract from Google Sheets'}
+            </button>
+            <button
+              type="button"
+              disabled={extracting}
+              onClick={() => void handleExtractSheets('local')}
+              className="min-h-9 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-100 disabled:opacity-50"
+            >
+              Test with local workbook
+            </button>
+          </div>
+
+          {extractError && (
+            <p className="mt-3 rounded-xl bg-peach-50 p-2.5 text-xs text-peach-700" role="alert">
+              {extractError}
+            </p>
+          )}
+
+          {extractResult && (
+            <div className="mt-4 rounded-xl border border-mint-200 bg-mint-50/80 p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold text-mint-950">
+                  ✓ Extracted all content from {extractResult.title || 'United Spreadsheet'}
+                </p>
+                {extractResult.schedule?.activities && (
+                  <button
+                    type="button"
+                    onClick={applyExtractedSchedule}
+                    className="rounded-full bg-mint-700 px-3 py-1 text-xs font-semibold text-white shadow-xs transition hover:bg-mint-800"
+                  >
+                    Apply Schedule to NOVA
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+                <div className="rounded-lg border border-mint-100 bg-white p-2.5">
+                  <span className="block text-lg font-bold text-stone-900">{extractResult.schedule?.count ?? 0}</span>
+                  <span className="text-[11px] font-medium text-stone-500">Activities</span>
+                </div>
+                <div className="rounded-lg border border-mint-100 bg-white p-2.5">
+                  <span className="block text-lg font-bold text-stone-900">{extractResult.diary?.count ?? 0}</span>
+                  <span className="text-[11px] font-medium text-stone-500">Diary Notes</span>
+                </div>
+                <div className="rounded-lg border border-mint-100 bg-white p-2.5">
+                  <span className="block text-lg font-bold text-stone-900">{extractResult.timeline?.count ?? 0}</span>
+                  <span className="text-[11px] font-medium text-stone-500">Timeline Stages</span>
+                </div>
+                <div className="rounded-lg border border-mint-100 bg-white p-2.5">
+                  <span className="block text-lg font-bold text-stone-900">{extractResult.feedback?.count ?? 0}</span>
+                  <span className="text-[11px] font-medium text-stone-500">Feedback Sessions</span>
+                </div>
+              </div>
+
+              {extractResult.sheets && extractResult.sheets.length > 0 && (
+                <div className="border-t border-mint-200/60 pt-2 text-[11px] text-stone-600">
+                  <span className="font-medium text-stone-700">Detected worksheets:</span>{' '}
+                  {extractResult.sheets.map((s: { title: string; rowCount: number; columnCount: number }, idx: number) => (
+                    <span key={s.title}>
+                      {idx > 0 && ' · '}
+                      <span className="font-semibold text-stone-800">{s.title}</span> ({s.rowCount} rows)
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </section>
     <section className="animate-fade-up stagger-2 mt-6 rounded-card bg-white p-6 shadow-soft sm:p-8"><h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900"><span aria-hidden="true" className="inline-block size-2 rounded-full bg-sky-300" />Schedule</h2><p className="mt-3 text-stone-500">Import your onboarding schedule from an Excel or Google Sheets export (.xlsx, .csv, or .tsv). The file is parsed here and kept on this device — nothing is uploaded elsewhere.</p>
       {imported ? <div><p className="mt-4 text-stone-700">Imported schedule · {imported.activities.length} activities · {new Date(imported.importedAt).toLocaleString()}</p><button onClick={removeImported} className="mt-4 min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50">Remove imported schedule</button></div>

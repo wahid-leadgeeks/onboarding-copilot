@@ -16,6 +16,7 @@ const ENV_KEYS = [
 type HealthPayload = {
   status: string;
   mode: string;
+  spreadsheetId?: string | null;
   integrations: {
     sheets: boolean;
     sheetsRead: boolean;
@@ -53,8 +54,15 @@ describe('GET /api/health', () => {
     expect(await getHealth()).toEqual({
       status: 'ok',
       mode: 'local',
+      spreadsheetId: null,
       integrations: { sheets: false, sheetsRead: false, sheetsWrite: false, diaryWrite: false, oauth: false, ai: false },
     });
+  });
+
+  it('reports spreadsheetId when GOOGLE_SHEETS_ID is set', async () => {
+    process.env.GOOGLE_SHEETS_ID = 'sheet-abc-123';
+    const payload = await getHealth();
+    expect(payload.spreadsheetId).toBe('sheet-abc-123');
   });
 
   it('reports ai configured when Groq is fully configured', async () => {
