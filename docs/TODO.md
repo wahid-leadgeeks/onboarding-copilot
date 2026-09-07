@@ -1,6 +1,6 @@
 # TODO
 
-**Product:** Onboarding Copilot
+**Product:** NOVA (Newcomer Onboarding & Virtual Assistant)
 **Last updated:** 2026-09-05
 
 > This file tracks **what to work on right now**.

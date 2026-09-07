@@ -2,7 +2,10 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Assistant } from '@/app/components/Assistant';
 
-export const metadata: Metadata = { title: 'Onboarding Copilot', description: 'Your calm onboarding cockpit' };
+export const metadata: Metadata = {
+  title: 'NOVA — Newcomer Onboarding & Virtual Assistant',
+  description: "NOVA is a bright guide for every new employee's journey.",
+};
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
