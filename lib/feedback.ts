@@ -1,0 +1,524 @@
+/**
+ * Core business logic, storage helpers, and TSV clipboard serializer
+ * for Milestone 2: Feedback Sheet System.
+ *
+ * Aligned with rows 4-16 of the 'Feedback Sheet' worksheet in the official HR workbook.
+ */
+
+import type {
+  CreateFeedbackInput,
+  FeedbackClipboardInput,
+  FeedbackDimensionDefinition,
+  FeedbackDimensionKey,
+  FeedbackEntry,
+  FeedbackProgress,
+  FeedbackRatingDimension,
+  FeedbackRatings,
+  FeedbackSession,
+  FeedbackSessionDefinition,
+  FeedbackSessionStatus,
+  LikertLabel,
+  LikertScore,
+} from '@/lib/types/feedback';
+
+export * from '@/lib/types/feedback';
+
+export const FEEDBACK_STORAGE_KEY = 'onboarding-feedback';
+
+/**
+ * The 13 official evaluation sessions defined in rows 4–16 of the Feedback Sheet worksheet.
+ */
+export const FEEDBACK_SESSIONS: readonly FeedbackSession[] = [
+  {
+    id: 'row-4',
+    title: 'Beyond the Slides: Chat with the MD',
+    topic: 'Beyond the Slides: Chat with the MD',
+    pic: 'Managing Director',
+    rowNumber: 4,
+    row: 4,
+    department: 'Executive Management',
+  },
+  {
+    id: 'row-5',
+    title: 'Intro to HRD Department',
+    topic: 'Intro to HRD Department',
+    pic: 'HRD',
+    rowNumber: 5,
+    row: 5,
+    department: 'Human Resources',
+  },
+  {
+    id: 'row-6',
+    title: 'Company Policy',
+    topic: 'Company Policy',
+    pic: 'HRD',
+    rowNumber: 6,
+    row: 6,
+    department: 'Human Resources',
+  },
+  {
+    id: 'row-7',
+    title: 'Personnel Administration',
+    topic: 'Personnel Administration',
+    pic: 'HRD',
+    rowNumber: 7,
+    row: 7,
+    department: 'Human Resources',
+  },
+  {
+    id: 'row-8',
+    title: 'Introduction to Management Office Department',
+    topic: 'Introduction to Management Office Department',
+    pic: 'Managing Director & Excecutive Assistant',
+    rowNumber: 8,
+    row: 8,
+    department: 'Management Office',
+  },
+  {
+    id: 'row-9',
+    title: 'Introduction to Finance & Accounting Department',
+    topic: 'Introduction to Finance & Accounting Department',
+    pic: 'Excecutive Assistant & Accounting and Tax Staff',
+    rowNumber: 9,
+    row: 9,
+    department: 'Finance & Accounting',
+  },
+  {
+    id: 'row-10',
+    title: 'Experience Department Introduction',
+    topic: 'Experience Department Introduction',
+    pic: 'Experience Manager',
+    rowNumber: 10,
+    row: 10,
+    department: 'Experience',
+  },
+  {
+    id: 'row-11',
+    title: 'Operations Department Introduction',
+    topic: 'Operations Department Introduction',
+    pic: 'Operations Manager',
+    rowNumber: 11,
+    row: 11,
+    department: 'Operations',
+  },
+  {
+    id: 'row-12',
+    title: 'Growth Department Introduction',
+    topic: 'Growth Department Introduction',
+    pic: 'Growth Manager',
+    rowNumber: 12,
+    row: 12,
+    department: 'Growth',
+  },
+  {
+    id: 'row-13',
+    title: 'Individual Call',
+    topic: 'Individual Call',
+    pic: 'Internal Experience Staff',
+    rowNumber: 13,
+    row: 13,
+    department: 'Experience',
+  },
+  {
+    id: 'row-14',
+    title: 'Anonymous Feedback',
+    topic: 'Anonymous Feedback',
+    pic: 'Internal Experience Staff',
+    rowNumber: 14,
+    row: 14,
+    department: 'Experience',
+  },
+  {
+    id: 'row-15',
+    title: 'Meeting Preparation with Clients',
+    topic: 'Meeting Preparation with Clients',
+    pic: 'External Experience Staff',
+    rowNumber: 15,
+    row: 15,
+    department: 'Experience',
+  },
+  {
+    id: 'row-16',
+    title: 'ESMR (Employer & Staff Media Representation)',
+    topic: 'ESMR (Employer & Staff Media Representation)',
+    pic: 'External Experience Staff',
+    rowNumber: 16,
+    row: 16,
+    department: 'Experience',
+  },
+] as const;
+
+/** Canonical aliases */
+export const REQUIRED_FEEDBACK_SESSIONS = FEEDBACK_SESSIONS;
+export const OFFICIAL_FEEDBACK_SESSIONS = FEEDBACK_SESSIONS;
+
+/**
+ * The 6 Likert rating dimensions occupying columns D through I.
+ */
+export const FEEDBACK_DIMENSIONS: readonly FeedbackDimensionDefinition[] = [
+  {
+    key: 'communication',
+    dimensionNumber: 1,
+    columnLetter: 'D',
+    shortLabel: 'Communication effectiveness',
+    statement: 'The key messages of the topic session were communicated effectively.',
+  },
+  {
+    key: 'alignment',
+    dimensionNumber: 2,
+    columnLetter: 'E',
+    shortLabel: 'Alignment with new employee needs',
+    statement: 'The content aligned well with what I need to know as a new employee.',
+  },
+  {
+    key: 'understanding',
+    dimensionNumber: 3,
+    columnLetter: 'F',
+    shortLabel: 'Understanding of main concepts',
+    statement: 'After this session, I have a better understanding of the main concepts related to the topic',
+  },
+  {
+    key: 'readiness',
+    dimensionNumber: 4,
+    columnLetter: 'G',
+    shortLabel: 'Readiness to apply',
+    statement: 'The session helped me feel more prepared to apply what I learned from the topic in my work.',
+  },
+  {
+    key: 'pace',
+    dimensionNumber: 5,
+    columnLetter: 'H',
+    shortLabel: 'Appropriate pace',
+    statement: 'The pace of the session felt appropriate.',
+  },
+  {
+    key: 'overall',
+    dimensionNumber: 6,
+    columnLetter: 'I',
+    shortLabel: 'Overall topic effectiveness',
+    statement: 'Overall, the topic was effective as part of my onboarding experience.',
+  },
+] as const;
+
+export const LIKERT_LABELS: Record<LikertScore, LikertLabel> = {
+  5: '5. Very Good',
+  4: '4. Good',
+  3: '3. Neutral',
+  2: '2. Poor',
+  1: '1. Very Poor',
+} as const;
+
+/**
+ * Formats a Likert rating integer 1–5 to its official label.
+ */
+export function formatLikertLabel(rating: number): string {
+  if (rating in LIKERT_LABELS) {
+    return LIKERT_LABELS[rating as LikertScore];
+  }
+  return '';
+}
+
+/**
+ * Maps a Likert score (number or raw string) into the official spreadsheet label.
+ */
+export function toLikertLabel(rating: unknown): string {
+  if (typeof rating === 'number') {
+    return formatLikertLabel(rating);
+  }
+  if (typeof rating === 'string') {
+    const trimmed = rating.trim();
+    if (trimmed.startsWith('5')) return '5. Very Good';
+    if (trimmed.startsWith('4')) return '4. Good';
+    if (trimmed.startsWith('3')) return '3. Neutral';
+    if (trimmed.startsWith('2')) return '2. Poor';
+    if (trimmed.startsWith('1')) return '1. Very Poor';
+    const num = parseInt(trimmed, 10);
+    if (!Number.isNaN(num)) {
+      return formatLikertLabel(num);
+    }
+  }
+  return '';
+}
+
+/**
+ * Formats a date string or Date object into DD/MM/YYYY matching the HR template.
+ */
+export function formatFeedbackDate(date: string | Date | undefined): string {
+  if (!date) return '';
+  if (typeof date === 'string') {
+    const trimmed = date.trim();
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) return trimmed;
+    const isoMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      return `${day}/${month}/${year}`;
+    }
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      const day = String(parsed.getDate()).padStart(2, '0');
+      const month = String(parsed.getMonth() + 1).padStart(2, '0');
+      const year = parsed.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+    return trimmed;
+  }
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+/**
+ * Finds an official feedback session definition by ID, topic, or row number.
+ */
+export function findFeedbackSession(query: string | number): FeedbackSession | undefined {
+  if (typeof query === 'number') {
+    return FEEDBACK_SESSIONS.find((s) => s.rowNumber === query || s.row === query);
+  }
+  const q = query.trim().toLowerCase();
+  return FEEDBACK_SESSIONS.find(
+    (s) =>
+      s.id.toLowerCase() === q ||
+      s.title.toLowerCase().trim() === q ||
+      (s.topic && s.topic.toLowerCase().trim() === q) ||
+      `row ${s.rowNumber}` === q ||
+      `row-${s.rowNumber}` === q
+  );
+}
+
+/**
+ * Validates whether an unknown value conforms to FeedbackRatings.
+ */
+function areRatingsValid(val: unknown): val is FeedbackRatings {
+  if (!val || typeof val !== 'object' || Array.isArray(val)) return false;
+  const r = val as Record<string, unknown>;
+  const keys: FeedbackRatingDimension[] = [
+    'communication',
+    'alignment',
+    'understanding',
+    'readiness',
+    'pace',
+    'overall',
+  ];
+  return keys.every((k) => {
+    const v = r[k];
+    return typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 5;
+  });
+}
+
+/**
+ * Runtime type guard for FeedbackEntry.
+ * Treats localStorage and external inputs as untrusted boundary data.
+ */
+export function isFeedbackEntry(val: unknown): val is FeedbackEntry {
+  if (!val || typeof val !== 'object' || Array.isArray(val)) return false;
+  const item = val as Record<string, unknown>;
+
+  if (typeof item.sessionId !== 'string' || item.sessionId.trim().length === 0) return false;
+  if (typeof item.sessionTitle !== 'string' || item.sessionTitle.trim().length === 0) return false;
+  if (typeof item.pic !== 'string') return false;
+  if (typeof item.date !== 'string') return false;
+  if (typeof item.hasQuestions !== 'boolean') return false;
+
+  if (!areRatingsValid(item.ratings)) return false;
+
+  if (item.createdAt !== undefined && typeof item.createdAt !== 'string') return false;
+  if (item.updatedAt !== undefined && typeof item.updatedAt !== 'string') return false;
+  if (item.id !== undefined && typeof item.id !== 'string') return false;
+  if (item.questionExplanation !== undefined && typeof item.questionExplanation !== 'string') return false;
+  if (item.questionAddressing !== undefined && typeof item.questionAddressing !== 'string') return false;
+  if (item.suggestions !== undefined && typeof item.suggestions !== 'string') return false;
+
+  return true;
+}
+
+/**
+ * Reads and validates feedback entries from a localStorage JSON string.
+ */
+export function readFeedbackEntries(raw: string | null): FeedbackEntry[] {
+  if (!raw || typeof raw !== 'string') return [];
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed === '{}' || trimmed === '[]') return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return [];
+  }
+  if (Array.isArray(parsed)) {
+    return parsed.filter(isFeedbackEntry);
+  }
+  if (isFeedbackEntry(parsed)) {
+    return [parsed];
+  }
+  return [];
+}
+
+export const readFeedback = readFeedbackEntries;
+
+/**
+ * Serializes feedback entries to JSON string for persistence.
+ */
+export function writeFeedbackEntries(entries: FeedbackEntry[]): string {
+  return JSON.stringify(entries);
+}
+
+export const writeFeedback = writeFeedbackEntries;
+
+/**
+ * Pure function to insert or update an evaluation, preventing duplicates by sessionId.
+ */
+export function upsertFeedbackEntry(
+  existing: FeedbackEntry[],
+  entry: FeedbackEntry
+): FeedbackEntry[] {
+  const index = existing.findIndex(
+    (e) => e.sessionId === entry.sessionId || (entry.id && e.id === entry.id)
+  );
+  if (index === -1) {
+    return [...existing, entry];
+  }
+  const updated = [...existing];
+  updated[index] = {
+    ...entry,
+    createdAt: existing[index].createdAt ?? entry.createdAt ?? new Date().toISOString(),
+    updatedAt: entry.updatedAt ?? new Date().toISOString(),
+  };
+  return updated;
+}
+
+export const upsertFeedback = upsertFeedbackEntry;
+
+/**
+ * Removes an evaluation entry by sessionId or id.
+ */
+export function removeFeedbackEntry(
+  existing: FeedbackEntry[],
+  idOrSessionId: string
+): FeedbackEntry[] {
+  return existing.filter((e) => e.id !== idOrSessionId && e.sessionId !== idOrSessionId);
+}
+
+/**
+ * Calculates completion metrics across the 13 required evaluation sessions.
+ */
+export function calculateFeedbackProgress(entries: FeedbackEntry[]): FeedbackProgress {
+  const sessionStatuses: FeedbackSessionStatus[] = [];
+  let evaluatedCount = 0;
+  const evaluatedSessionIds: string[] = [];
+  const evaluatedIdSet = new Set<string>();
+
+  for (const session of FEEDBACK_SESSIONS) {
+    const entry = entries.find(
+      (e) =>
+        e.sessionId === session.id ||
+        e.sessionId === `row-${session.rowNumber}`
+    );
+
+    if (entry && !evaluatedIdSet.has(session.id)) {
+      evaluatedCount += 1;
+      evaluatedIdSet.add(session.id);
+      evaluatedSessionIds.push(session.id);
+      sessionStatuses.push({
+        session,
+        status: 'evaluated',
+        entry,
+      });
+    } else {
+      sessionStatuses.push({
+        session,
+        status: 'pending',
+      });
+    }
+  }
+
+  const total = FEEDBACK_SESSIONS.length;
+  const pending = Math.max(0, total - evaluatedCount);
+  const percentage = total > 0 ? Math.round((evaluatedCount / total) * 100) : 0;
+  const isComplete = evaluatedCount >= total;
+
+  return {
+    total,
+    evaluated: evaluatedCount,
+    pending,
+    percentage,
+    evaluatedCount,
+    totalCount: total,
+    remainingCount: pending,
+    isComplete,
+    evaluatedSessionIds,
+    sessionStatuses,
+  };
+}
+
+/**
+ * Escapes a cell according to RFC4180 rules for TSV clipboard export.
+ */
+export function escapeTsvCell(value: unknown): string {
+  if (value === undefined || value === null) return '';
+  const str = String(value);
+  if (str.includes('\t') || str.includes('\n') || str.includes('\r') || str.includes('"')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/**
+ * Serializes a feedback evaluation into the exact 13-column TSV row
+ * matching columns A–M of the Feedback Sheet worksheet:
+ *
+ * Col 1: Insert Date
+ * Col 2: PIC
+ * Col 3: Topic
+ * Col 4: Q1 (Communication)
+ * Col 5: Q2 (Alignment)
+ * Col 6: Q3 (Understanding)
+ * Col 7: Q4 (Readiness)
+ * Col 8: Q5 (Pace)
+ * Col 9: Q6 (Overall)
+ * Col 10: Questions? (YES/NO)
+ * Col 11: Please explain your answer
+ * Col 12: How would you like your question to be addressed?
+ * Col 13: Any suggestions to improve the onboarding process in the future?
+ */
+export function clipboardRowForFeedback(entry: FeedbackEntry | FeedbackClipboardInput): string {
+  const date = entry.date ? formatFeedbackDate(entry.date) : '';
+  const pic = entry.pic ?? '';
+  const topic = (entry as FeedbackEntry).sessionTitle ?? (entry as FeedbackClipboardInput).topic ?? '';
+
+  const ratings = (entry.ratings ?? {}) as Record<string, unknown>;
+
+  const q1 = toLikertLabel(ratings.communication ?? ratings.q1);
+  const q2 = toLikertLabel(ratings.alignment ?? ratings.q2);
+  const q3 = toLikertLabel(ratings.understanding ?? ratings.q3);
+  const q4 = toLikertLabel(ratings.readiness ?? ratings.q4);
+  const q5 = toLikertLabel(ratings.pace ?? ratings.q5);
+  const q6 = toLikertLabel(ratings.overall ?? ratings.q6);
+
+  let hasQuestions = '';
+  if (entry.hasQuestions === true) hasQuestions = 'YES';
+  else if (entry.hasQuestions === false) hasQuestions = 'NO';
+
+  const rawEntry = entry as Record<string, unknown>;
+  const explanation = entry.questionExplanation ?? (typeof rawEntry.explanation === 'string' ? rawEntry.explanation : '');
+  const howAddressed = entry.questionAddressing ?? (typeof rawEntry.howAddressed === 'string' ? rawEntry.howAddressed : '');
+  const suggestions = entry.suggestions ?? '';
+
+  const columns = [
+    date,
+    pic,
+    topic,
+    q1,
+    q2,
+    q3,
+    q4,
+    q5,
+    q6,
+    hasQuestions,
+    explanation,
+    howAddressed,
+    suggestions,
+  ];
+
+  return columns.map(escapeTsvCell).join('\t');
+}

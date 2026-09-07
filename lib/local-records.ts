@@ -16,6 +16,14 @@ export type StoredDiary = {
   activityName?: string;
   source?: DiarySource;
   updatedAt?: string;
+  takeaways?: [string, string, string] | string[];
+  topic?: string;
+  day?: string;
+  date?: string;
+  week?: string | number;
+  pic?: string;
+  activityCount?: string | number;
+  notes?: string;
 };
 
 export type StoredQuickNote = {
@@ -90,6 +98,10 @@ function isDiarySource(value: unknown): value is DiarySource {
   return typeof value === 'string' && DIARY_SOURCES.has(value);
 }
 
+function isTakeaways(value: unknown): value is [string, string, string] | string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+}
+
 function isDiary(value: unknown): value is StoredDiary {
   if (!value || typeof value !== "object") return false;
   const item = value as Record<string, unknown>;
@@ -98,7 +110,15 @@ function isDiary(value: unknown): value is StoredDiary {
     && (item.activityId === undefined || typeof item.activityId === "string")
     && (item.activityName === undefined || typeof item.activityName === "string")
     && (item.source === undefined || isDiarySource(item.source))
-    && (item.updatedAt === undefined || typeof item.updatedAt === "string");
+    && (item.updatedAt === undefined || typeof item.updatedAt === "string")
+    && (item.takeaways === undefined || isTakeaways(item.takeaways))
+    && (item.topic === undefined || typeof item.topic === "string")
+    && (item.day === undefined || typeof item.day === "string")
+    && (item.date === undefined || typeof item.date === "string")
+    && (item.week === undefined || typeof item.week === "string" || typeof item.week === "number")
+    && (item.pic === undefined || typeof item.pic === "string")
+    && (item.activityCount === undefined || typeof item.activityCount === "string" || typeof item.activityCount === "number")
+    && (item.notes === undefined || typeof item.notes === "string");
 }
 
 function isQuickNote(value: unknown): value is StoredQuickNote {
@@ -158,6 +178,14 @@ export type DiaryDraft = {
   activityId?: string;
   activityName?: string;
   source?: DiarySource;
+  takeaways?: [string, string, string] | string[];
+  topic?: string;
+  day?: string;
+  date?: string;
+  week?: string | number;
+  pic?: string;
+  activityCount?: string | number;
+  notes?: string;
 };
 
 /** Creates a diary entry with a derived stable ID. `createdAt` is injected so callers control the clock. */
@@ -169,6 +197,14 @@ export function createDiaryEntry(draft: DiaryDraft, createdAt: string): StoredDi
     ...(draft.activityId === undefined ? {} : { activityId: draft.activityId }),
     ...(draft.activityName === undefined ? {} : { activityName: draft.activityName }),
     ...(draft.source === undefined ? {} : { source: draft.source }),
+    ...(draft.takeaways === undefined ? {} : { takeaways: draft.takeaways }),
+    ...(draft.topic === undefined ? {} : { topic: draft.topic }),
+    ...(draft.day === undefined ? {} : { day: draft.day }),
+    ...(draft.date === undefined ? {} : { date: draft.date }),
+    ...(draft.week === undefined ? {} : { week: draft.week }),
+    ...(draft.pic === undefined ? {} : { pic: draft.pic }),
+    ...(draft.activityCount === undefined ? {} : { activityCount: draft.activityCount }),
+    ...(draft.notes === undefined ? {} : { notes: draft.notes }),
   };
 }
 
@@ -181,12 +217,33 @@ export type DiaryEdit = {
   id: string;
   content: string;
   updatedAt: string;
+  takeaways?: [string, string, string] | string[];
+  topic?: string;
+  day?: string;
+  date?: string;
+  week?: string | number;
+  pic?: string;
+  activityCount?: string | number;
+  notes?: string;
 };
 
 /** Replaces the content of every entry matching `id` (explicit or derived), keeping `createdAt` stable. */
 export function editDiary(existing: StoredDiary[], edit: DiaryEdit): StoredDiary[] {
   return existing.map((entry) => resolvedDiaryId(entry) === edit.id
-    ? { ...entry, id: edit.id, content: edit.content, updatedAt: edit.updatedAt }
+    ? {
+        ...entry,
+        id: edit.id,
+        content: edit.content,
+        updatedAt: edit.updatedAt,
+        ...(edit.takeaways !== undefined ? { takeaways: edit.takeaways } : {}),
+        ...(edit.topic !== undefined ? { topic: edit.topic } : {}),
+        ...(edit.day !== undefined ? { day: edit.day } : {}),
+        ...(edit.date !== undefined ? { date: edit.date } : {}),
+        ...(edit.week !== undefined ? { week: edit.week } : {}),
+        ...(edit.pic !== undefined ? { pic: edit.pic } : {}),
+        ...(edit.activityCount !== undefined ? { activityCount: edit.activityCount } : {}),
+        ...(edit.notes !== undefined ? { notes: edit.notes } : {}),
+      }
     : entry);
 }
 
@@ -221,4 +278,97 @@ export function mergeImportedDiary(existing: StoredDiary[], imported: StoredDiar
     additions.push(entry);
   }
   return [...existing, ...additions];
+}
+
+/** Escapes a cell value for TSV clipboard export according to RFC4180. */
+export function escapeTsvCell(value: unknown): string {
+  if (value === undefined || value === null) return '';
+  const str = String(value);
+  if (str.includes('\t') || str.includes('\n') || str.includes('\r') || str.includes('"')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/**
+ * Formats a 3-takeaway array into a numbered multiline block.
+ * Preserves user-supplied numbering if already present.
+ */
+export function formatTakeawaysForDiary(takeaways?: readonly string[] | string[]): string {
+  if (!takeaways || takeaways.length === 0) return '';
+  const filtered = takeaways
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+  if (filtered.length === 0) return '';
+
+  return filtered
+    .map((item, index) => {
+      if (/^\d+[\.\)\-]\s+/.test(item)) {
+        return item;
+      }
+      return `${index + 1}. ${item}`;
+    })
+    .join('\n');
+}
+
+export type DiaryClipboardInput = {
+  day?: string;
+  week?: string | number;
+  date?: string;
+  activityCount?: string | number;
+  pic?: string;
+  topic?: string;
+  takeaways?: [string, string, string] | string[];
+  notes?: string;
+  itmNotes?: string;
+  activityName?: string;
+  content?: string;
+  createdAt?: string;
+};
+
+/**
+ * Serializes a diary entry into an exact 9-column TSV row for the Onboarding Diary sheet.
+ * Ready for 1-click clipboard paste (`Ctrl+V`) into cell A.
+ *
+ * Columns:
+ * 0: Day
+ * 1: Week
+ * 2: Date
+ * 3: Activity Count
+ * 4: PIC
+ * 5: Topic
+ * 6: List 3 things you learned from the topic
+ * 7: Your Notes
+ * 8: ITM Notes
+ */
+export function clipboardRowForDiary(entry: DiaryClipboardInput): string {
+  const day = entry.day ?? '';
+  const week = entry.week !== undefined && entry.week !== null ? String(entry.week) : '';
+  const date = entry.date ?? '';
+  const activityCount = entry.activityCount !== undefined && entry.activityCount !== null ? String(entry.activityCount) : '';
+  const pic = entry.pic ?? '';
+  const topic = entry.topic ?? entry.activityName ?? '';
+
+  let learnings = formatTakeawaysForDiary(entry.takeaways);
+  if (!learnings && entry.content) {
+    learnings = entry.content;
+  }
+
+  const notes = entry.notes ?? '';
+  const itmNotes = entry.itmNotes ?? '';
+
+  const columns = [
+    day,
+    week,
+    date,
+    activityCount,
+    pic,
+    topic,
+    learnings,
+    notes,
+    itmNotes,
+  ];
+
+  return columns.map(escapeTsvCell).join('\t');
 }

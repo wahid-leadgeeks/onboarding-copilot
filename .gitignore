@@ -8,3 +8,6 @@ tsconfig.tsbuildinfo
 coverage/
 *.log
 /screenshots/
+.agents/
+graphify-out/
+personaltracker.jpeg

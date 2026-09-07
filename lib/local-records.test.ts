@@ -1,4 +1,24 @@
-import { appendDiary, appendQuickNote, appendSession, completedActivityIds, convertQuickNote, createDiaryEntry, createQuickNote, diaryId, editDiary, mergeImportedDiary, quickNoteId, readDiary, readQuickNotes, readSessions, removeDiary, removeQuickNote } from "./local-records";
+import {
+  appendDiary,
+  appendQuickNote,
+  appendSession,
+  clipboardRowForDiary,
+  completedActivityIds,
+  convertQuickNote,
+  createDiaryEntry,
+  createQuickNote,
+  diaryId,
+  editDiary,
+  escapeTsvCell,
+  formatTakeawaysForDiary,
+  mergeImportedDiary,
+  quickNoteId,
+  readDiary,
+  readQuickNotes,
+  readSessions,
+  removeDiary,
+  removeQuickNote,
+} from "./local-records";
 
 describe("local records", () => {
   it("migrates a single completed session object", () => {
@@ -242,5 +262,271 @@ describe("local records", () => {
     const expected = [{ content: "only", createdAt: "t1" }];
     expect(mergeImportedDiary([{ content: "only", createdAt: "t1" }], [{ content: "only", createdAt: "t2" }])).toStrictEqual(expected);
     expect(mergeImportedDiary([{ content: "only", createdAt: "t1" }], [])).toStrictEqual(expected);
+  });
+});
+
+describe("diary schema extension & clipboard serialization", () => {
+  function parseTsvRow(row: string): string[] {
+    const cells: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    let i = 0;
+    while (i < row.length) {
+      const char = row[i];
+      if (inQuotes) {
+        if (char === '"') {
+          if (i + 1 < row.length && row[i + 1] === '"') {
+            current += '"';
+            i += 2;
+            continue;
+          } else {
+            inQuotes = false;
+            i += 1;
+            continue;
+          }
+        } else {
+          current += char;
+          i += 1;
+          continue;
+        }
+      } else {
+        if (char === '"') {
+          inQuotes = true;
+          i += 1;
+          continue;
+        } else if (char === '\t') {
+          cells.push(current);
+          current = '';
+          i += 1;
+          continue;
+        } else {
+          current += char;
+          i += 1;
+          continue;
+        }
+      }
+    }
+    cells.push(current);
+    return cells;
+  }
+
+  it("reads modern diary entries with all additive fields", () => {
+    const fullEntry = {
+      content: "Summary note",
+      createdAt: "2026-09-07T09:00:00.000Z",
+      id: "d-123",
+      activityId: "act-1",
+      activityName: "Architecture Overview",
+      source: "manual" as const,
+      takeaways: ["Takeaway 1", "Takeaway 2", "Takeaway 3"],
+      topic: "Architecture Overview",
+      day: "Day 1",
+      date: "2026-09-07",
+      week: 1,
+      pic: "Arief",
+      activityCount: 1,
+      notes: "Follow up tomorrow",
+    };
+    const records = readDiary(JSON.stringify([fullEntry]));
+    expect(records).toHaveLength(1);
+    expect(records[0]).toEqual(fullEntry);
+  });
+
+  it("drops diary entries whose additive fields fail type checks", () => {
+    const raw = JSON.stringify([
+      { content: "c", createdAt: "t", takeaways: "not-an-array" },
+      { content: "c", createdAt: "t", takeaways: [1, 2, 3] },
+      { content: "c", createdAt: "t", topic: 42 },
+      { content: "c", createdAt: "t", day: false },
+      { content: "c", createdAt: "t", date: null },
+      { content: "c", createdAt: "t", week: { w: 1 } },
+      { content: "c", createdAt: "t", pic: true },
+      { content: "c", createdAt: "t", activityCount: ["1"] },
+      { content: "c", createdAt: "t", notes: 123 },
+      { content: "valid", createdAt: "t", takeaways: ["a", "b"], week: "Week 1", activityCount: 2 },
+    ]);
+    const records = readDiary(raw);
+    expect(records).toHaveLength(1);
+    expect(records[0].content).toBe("valid");
+    expect(records[0].week).toBe("Week 1");
+    expect(records[0].activityCount).toBe(2);
+  });
+
+  it("creates diary entries with all additive fields when provided", () => {
+    const entry = createDiaryEntry(
+      {
+        content: "Learning note",
+        takeaways: ["Point 1", "Point 2", "Point 3"],
+        topic: "Security",
+        day: "Day 2",
+        date: "2026-09-08",
+        week: 1,
+        pic: "Jane",
+        activityCount: 1,
+        notes: "Remember 2FA",
+      },
+      "2026-09-08T10:00:00.000Z",
+    );
+    expect(entry.topic).toBe("Security");
+    expect(entry.takeaways).toEqual(["Point 1", "Point 2", "Point 3"]);
+    expect(entry.day).toBe("Day 2");
+    expect(entry.date).toBe("2026-09-08");
+    expect(entry.week).toBe(1);
+    expect(entry.pic).toBe("Jane");
+    expect(entry.activityCount).toBe(1);
+    expect(entry.notes).toBe("Remember 2FA");
+  });
+
+  it("edits diary entries updating additive fields while keeping other fields intact", () => {
+    const original = createDiaryEntry(
+      { content: "Old note", topic: "Old Topic", takeaways: ["Old 1", "Old 2", "Old 3"], pic: "Mentor A" },
+      "2026-09-07T09:00:00.000Z",
+    );
+    const updated = editDiary([original], {
+      id: original.id!,
+      content: "New note",
+      updatedAt: "2026-09-07T11:00:00.000Z",
+      topic: "New Topic",
+      takeaways: ["New 1", "New 2", "New 3"],
+    });
+    expect(updated[0].content).toBe("New note");
+    expect(updated[0].topic).toBe("New Topic");
+    expect(updated[0].takeaways).toEqual(["New 1", "New 2", "New 3"]);
+    expect(updated[0].pic).toBe("Mentor A"); // preserved
+  });
+
+  describe("escapeTsvCell", () => {
+    it("returns empty string for null and undefined", () => {
+      expect(escapeTsvCell(undefined)).toBe('');
+      expect(escapeTsvCell(null)).toBe('');
+    });
+
+    it("returns plain text untouched when no special characters are present", () => {
+      expect(escapeTsvCell("Normal text 123")).toBe("Normal text 123");
+    });
+
+    it("quotes cells containing newlines", () => {
+      expect(escapeTsvCell("Line 1\nLine 2")).toBe('"Line 1\nLine 2"');
+      expect(escapeTsvCell("Line 1\r\nLine 2")).toBe('"Line 1\r\nLine 2"');
+    });
+
+    it("quotes cells containing tabs", () => {
+      expect(escapeTsvCell("Col A\tCol B")).toBe('"Col A\tCol B"');
+    });
+
+    it("escapes internal quotes by doubling them and wrapping in quotes", () => {
+      expect(escapeTsvCell('He said "Hello"')).toBe('"He said ""Hello"""');
+    });
+
+    it("handles combination of quotes, tabs, and newlines", () => {
+      expect(escapeTsvCell('Line 1 with "quotes"\tand tab\nLine 2')).toBe(
+        '"Line 1 with ""quotes""\tand tab\nLine 2"',
+      );
+    });
+  });
+
+  describe("formatTakeawaysForDiary", () => {
+    it("returns empty string for undefined or empty list", () => {
+      expect(formatTakeawaysForDiary(undefined)).toBe('');
+      expect(formatTakeawaysForDiary([])).toBe('');
+      expect(formatTakeawaysForDiary(['  ', ''])).toBe('');
+    });
+
+    it("formats 3 unnumbered items into 1., 2., 3.", () => {
+      const result = formatTakeawaysForDiary([
+        "First concept",
+        "Second process",
+        "Third application",
+      ]);
+      expect(result).toBe("1. First concept\n2. Second process\n3. Third application");
+    });
+
+    it("does not double-number items that are already numbered", () => {
+      const result = formatTakeawaysForDiary([
+        "1. First concept",
+        "2) Second process",
+        "3. Third application",
+      ]);
+      expect(result).toBe("1. First concept\n2) Second process\n3. Third application");
+    });
+  });
+
+  describe("clipboardRowForDiary", () => {
+    it("produces exact 9 columns in correct order for full entry", () => {
+      const row = clipboardRowForDiary({
+        day: "Day 1",
+        week: 1,
+        date: "2026-09-07",
+        activityCount: 1,
+        pic: "Arief",
+        topic: "Architecture Overview",
+        takeaways: [
+          "Cockpit philosophy",
+          "AI assistive rules",
+          "Sheets source of truth",
+        ],
+        notes: "Follow up with mentor",
+        itmNotes: "",
+      });
+
+      const cells = parseTsvRow(row);
+      expect(cells).toHaveLength(9);
+      expect(cells[0]).toBe("Day 1");
+      expect(cells[1]).toBe("1");
+      expect(cells[2]).toBe("2026-09-07");
+      expect(cells[3]).toBe("1");
+      expect(cells[4]).toBe("Arief");
+      expect(cells[5]).toBe("Architecture Overview");
+      expect(cells[6]).toBe(
+        "1. Cockpit philosophy\n2. AI assistive rules\n3. Sheets source of truth",
+      );
+      expect(cells[7]).toBe("Follow up with mentor");
+      expect(cells[8]).toBe("");
+    });
+
+    it("quotes column 7 when takeaways span multiple lines", () => {
+      const row = clipboardRowForDiary({
+        topic: "Security",
+        takeaways: ["Point 1", "Point 2", "Point 3"],
+      });
+      expect(row.includes('"1. Point 1\n2. Point 2\n3. Point 3"')).toBe(true);
+    });
+
+    it("falls back to activityName when topic is missing", () => {
+      const row = clipboardRowForDiary({
+        activityName: "Git Setup",
+      });
+      const cells = parseTsvRow(row);
+      expect(cells[5]).toBe("Git Setup");
+    });
+
+    it("falls back to content when takeaways are missing", () => {
+      const row = clipboardRowForDiary({
+        topic: "Legacy Session",
+        content: "Raw reflection notes from yesterday",
+      });
+      const cells = parseTsvRow(row);
+      expect(cells[6]).toBe("Raw reflection notes from yesterday");
+    });
+
+    it("handles special characters and quotes across multiple cells", () => {
+      const row = clipboardRowForDiary({
+        topic: 'Using "Git" & Bash',
+        notes: 'Quote: "Done"\nNext line',
+        takeaways: ['Learned about "rebase"'],
+      });
+      const cells = parseTsvRow(row);
+      expect(cells[5]).toBe('Using "Git" & Bash');
+      expect(cells[6]).toBe('1. Learned about "rebase"');
+      expect(cells[7]).toBe('Quote: "Done"\nNext line');
+    });
+
+    it("produces exactly 8 tabs for empty input", () => {
+      const row = clipboardRowForDiary({});
+      expect(row).toBe('\t\t\t\t\t\t\t\t');
+      const cells = parseTsvRow(row);
+      expect(cells).toHaveLength(9);
+      expect(cells.every((c) => c === '')).toBe(true);
+    });
   });
 });
