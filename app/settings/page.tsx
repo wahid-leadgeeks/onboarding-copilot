@@ -89,6 +89,58 @@ export default function SettingsPage() {
     }
   }
 
+  const [h15Notes, setH15Notes] = useState(
+    '1. Growth operates both inbound (content, brand, social) and outbound (targeted prospect mapping, multi-touch campaigns) to maintain a steady revenue pipeline.\n2. The team scores prospects against an Ideal Customer Profile (ICP) to maximize conversion rates and outreach ROI.\n3. The 8 WEs mindset fosters team ownership, continuous data-driven experimentation, accountability, and agile iteration across growth initiatives.'
+  );
+  const [updatingH15, setUpdatingH15] = useState(false);
+  const [h15Message, setH15Message] = useState<string | null>(null);
+  const [h15Error, setH15Error] = useState<string | null>(null);
+
+  async function handleUpdateH15() {
+    setUpdatingH15(true);
+    setH15Message(null);
+    setH15Error(null);
+    try {
+      const res = await fetch('/api/sheets/update-cell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          range: "'Onboarding Diary'!H15",
+          value: h15Notes,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setH15Error(data.message || data.error || 'Failed to update cell H15 in Google Sheets');
+      } else {
+        setH15Message(`✓ Successfully updated cell H15 in Google Sheets! (${data.updatedCells} cell updated)`);
+      }
+    } catch (err: unknown) {
+      setH15Error(err instanceof Error ? err.message : 'Network error updating cell H15');
+    } finally {
+      setUpdatingH15(false);
+    }
+  }
+
+  async function handleCheckH15() {
+    setUpdatingH15(true);
+    setH15Message(null);
+    setH15Error(null);
+    try {
+      const res = await fetch("/api/sheets/update-cell?range='Onboarding Diary'!H15");
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setH15Error(data.message || data.error || 'Failed to read cell H15');
+      } else {
+        setH15Message(`Current content on Google Sheets cell H15: "${data.value || '(empty)'}"`);
+      }
+    } catch (err: unknown) {
+      setH15Error(err instanceof Error ? err.message : 'Network error reading cell H15');
+    } finally {
+      setUpdatingH15(false);
+    }
+  }
+
   function applyExtractedSchedule() {
     if (!extractResult?.schedule?.activities?.length) return;
     const activities = extractResult.schedule.activities;
@@ -407,6 +459,67 @@ export default function SettingsPage() {
               )}
             </div>
           )}
+
+          {/* Direct Cell Update: Onboarding Diary H15 */}
+          <div className="mt-4 rounded-xl border border-stone-200 bg-white p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="font-semibold text-stone-900">
+                  Target: <span className="font-mono text-sky-700">Onboarding Diary!H15</span>
+                </p>
+                <p className="text-[11px] text-stone-500">
+                  Topic: <span className="font-medium text-stone-700">Growth Department Introduction</span> (PIC: Growth Manager)
+                </p>
+              </div>
+              <span className="rounded-full bg-sun-100 px-2.5 py-0.5 text-[11px] font-medium text-sun-800">
+                Column H: Your Notes
+              </span>
+            </div>
+
+            <div className="mt-3">
+              <label className="block text-[11px] font-semibold text-stone-600 mb-1">
+                Your Notes (to write into cell H15):
+              </label>
+              <textarea
+                rows={4}
+                value={h15Notes}
+                onChange={(e) => setH15Notes(e.target.value)}
+                className="w-full rounded-xl border border-stone-200 p-2.5 text-xs text-stone-800 focus:border-stone-900 focus:outline-none"
+                placeholder="Enter notes to fill into cell H15..."
+              />
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={updatingH15}
+                onClick={() => void handleUpdateH15()}
+                className="min-h-9 rounded-full bg-stone-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-stone-700 disabled:opacity-50"
+              >
+                {updatingH15 ? 'Writing to Google Sheets…' : 'Fill Cell H15 in Google Sheets'}
+              </button>
+              <button
+                type="button"
+                disabled={updatingH15}
+                onClick={() => void handleCheckH15()}
+                className="min-h-9 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-50"
+              >
+                Read Current Cell H15
+              </button>
+            </div>
+
+            {h15Message && (
+              <p className="mt-3 rounded-lg bg-mint-50 p-2.5 text-xs text-mint-800 font-medium" role="status">
+                {h15Message}
+              </p>
+            )}
+
+            {h15Error && (
+              <p className="mt-3 rounded-lg bg-peach-50 p-2.5 text-xs text-peach-700" role="alert">
+                {h15Error}
+              </p>
+            )}
+          </div>
         </div>
       )}
     </section>

@@ -329,3 +329,112 @@ export async function extractGoogleSpreadsheet(
 
   return extractContentFromMatrices(spreadsheetId, matrices, docTitle, options.includeRawMatrices);
 }
+
+export interface UpdateCellResult {
+  updatedRange: string;
+  updatedRows: number;
+  updatedColumns: number;
+  updatedCells: number;
+}
+
+/**
+ * Updates a specific cell or range in a Google Spreadsheet via Google Sheets API v4.
+ */
+export async function updateSheetCell(
+  spreadsheetId: string,
+  range: string,
+  value: string,
+  auth: GoogleSheetsAuth
+): Promise<UpdateCellResult> {
+  if (!auth.accessToken && !auth.apiKey) {
+    throw new Error('Google authentication is required to update spreadsheet cells');
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  let keyQuery = '';
+
+  if (auth.accessToken) {
+    headers.Authorization = `Bearer ${auth.accessToken}`;
+  } else if (auth.apiKey) {
+    keyQuery = `?key=${encodeURIComponent(auth.apiKey)}&valueInputOption=USER_ENTERED`;
+  }
+
+  const queryPrefix = keyQuery ? `${keyQuery}&` : '?valueInputOption=USER_ENTERED';
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}${queryPrefix}`;
+
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({
+      range,
+      majorDimension: 'ROWS',
+      values: [[value]],
+    }),
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    let detail = errText;
+    try {
+      const parsed = JSON.parse(errText);
+      if (parsed?.error?.message) detail = parsed.error.message;
+    } catch { /* use raw */ }
+    throw new Error(`Google Sheets API update failed (${res.status}): ${detail}`);
+  }
+
+  interface GoogleUpdateResponse {
+    updatedRange?: string;
+    updatedRows?: number;
+    updatedColumns?: number;
+    updatedCells?: number;
+  }
+
+  const data = (await res.json()) as GoogleUpdateResponse;
+  return {
+    updatedRange: data.updatedRange || range,
+    updatedRows: data.updatedRows || 1,
+    updatedColumns: data.updatedColumns || 1,
+    updatedCells: data.updatedCells || 1,
+  };
+}
+
+/**
+ * Reads a specific cell or range from a Google Spreadsheet via Google Sheets API v4.
+ */
+export async function getSheetRange(
+  spreadsheetId: string,
+  range: string,
+  auth: GoogleSheetsAuth
+): Promise<string[][]> {
+  if (!auth.accessToken && !auth.apiKey) {
+    throw new Error('Google authentication is required to read spreadsheet cells');
+  }
+
+  const headers: Record<string, string> = {};
+  let keyQuery = '';
+
+  if (auth.accessToken) {
+    headers.Authorization = `Bearer ${auth.accessToken}`;
+  } else if (auth.apiKey) {
+    keyQuery = `&key=${encodeURIComponent(auth.apiKey)}`;
+  }
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values/${encodeURIComponent(range)}?valueRenderOption=FORMATTED_VALUE${keyQuery}`;
+  const res = await fetch(url, { headers, cache: 'no-store' });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`Failed to read range ${range} (${res.status}): ${errText}`);
+  }
+
+  interface GoogleValuesResponse {
+    values?: string[][];
+  }
+
+  const data = (await res.json()) as GoogleValuesResponse;
+  return data.values || [];
+}
+
