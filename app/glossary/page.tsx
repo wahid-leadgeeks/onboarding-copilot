@@ -205,9 +205,9 @@ export default function GlossaryPage() {
                   {/* Access Links & Badges */}
                   <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
                     {mod.materialLinks && mod.materialLinks.length > 0 ? (
-                      mod.materialLinks.map((l) => (
+                      mod.materialLinks.map((l, idx) => (
                         <a
-                          key={l.url}
+                          key={`${mod.id}-link-${l.type}-${idx}-${l.label}`}
                           href={l.url}
                           target="_blank"
                           rel="noopener noreferrer"

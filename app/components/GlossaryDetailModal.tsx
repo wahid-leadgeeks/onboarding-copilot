@@ -138,9 +138,9 @@ export function GlossaryDetailModal({ module, onClose }: GlossaryDetailModalProp
               {/* If structured clickable links are present */}
               {links.length > 0 && (
                 <div className="space-y-2">
-                  {links.map((link) => (
+                  {links.map((link, idx) => (
                     <a
-                      key={link.url}
+                      key={`modal-link-${link.type}-${idx}-${link.label}`}
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
