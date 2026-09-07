@@ -30,6 +30,20 @@ export interface ExtractedSheetSummary {
   columnCount: number;
 }
 
+export interface ExtractedDiaryTopic {
+  rowNumber: number;
+  day: string;
+  week: string;
+  date: string;
+  activityCount?: string;
+  pic: string;
+  topic: string;
+  learned: string;
+  notes: string;
+  itmNotes?: string;
+  status: 'completed' | 'needs-notes' | 'todo';
+}
+
 export interface ExtractedSpreadsheetContent {
   spreadsheetId: string;
   title?: string;
@@ -44,6 +58,8 @@ export interface ExtractedSpreadsheetContent {
   diary?: {
     entries: StoredDiary[];
     count: number;
+    topics?: ExtractedDiaryTopic[];
+    totalTopics?: number;
   };
   timeline?: {
     stages: ExtractedTimelineItem[];
@@ -137,6 +153,66 @@ export function parseFeedbackMatrix(matrix: string[][]): ExtractedFeedbackItem[]
 }
 
 /**
+ * Parses all topic rows from Onboarding Diary matrix (rows 2-29 in HR workbook).
+ */
+export function parseDiaryMatrix(matrix: string[][]): ExtractedDiaryTopic[] {
+  if (matrix.length < 2) return [];
+
+  // Look for header row containing 'topic' or 'learned'
+  let headerIndex = -1;
+  for (let i = 0; i < Math.min(5, matrix.length); i++) {
+    const rowStr = matrix[i].join(' ').toLowerCase();
+    if (rowStr.includes('topic') || rowStr.includes('learned') || rowStr.includes('notes')) {
+      headerIndex = i;
+      break;
+    }
+  }
+
+  const startRow = headerIndex >= 0 ? headerIndex + 1 : 1;
+  const items: ExtractedDiaryTopic[] = [];
+
+  for (let i = startRow; i < matrix.length; i++) {
+    const row = matrix[i];
+    if (!row.some((c) => c && c.trim())) continue;
+
+    const day = (row[0] || '').trim();
+    const week = (row[1] || '').trim();
+    const date = (row[2] || '').trim();
+    const activityCount = (row[3] || '').trim() || undefined;
+    const pic = (row[4] || '').trim();
+    const topic = (row[5] || '').trim();
+    const learned = (row[6] || '').trim();
+    const notes = (row[7] || '').trim();
+    const itmNotes = (row[8] || '').trim() || undefined;
+
+    if (!topic && !pic) continue;
+
+    let status: 'completed' | 'needs-notes' | 'todo' = 'todo';
+    if (learned && notes) {
+      status = 'completed';
+    } else if (learned && !notes) {
+      status = 'needs-notes';
+    }
+
+    items.push({
+      rowNumber: i + 1,
+      day,
+      week,
+      date,
+      activityCount,
+      pic,
+      topic: topic || `Topic at Row ${i + 1}`,
+      learned,
+      notes,
+      itmNotes,
+      status,
+    });
+  }
+
+  return items;
+}
+
+/**
  * Extracts and unifies all 4 sheets from a collection of raw string matrices.
  */
 export function extractContentFromMatrices(
@@ -184,9 +260,12 @@ export function extractContentFromMatrices(
   let diaryResult: ExtractedSpreadsheetContent['diary'] | undefined;
   if (diaryMatrix) {
     const entries = parseDiarySheet(diaryMatrix);
+    const topics = parseDiaryMatrix(diaryMatrix);
     diaryResult = {
       entries,
       count: entries.length,
+      topics,
+      totalTopics: topics.length,
     };
   }
 
@@ -338,12 +417,12 @@ export interface UpdateCellResult {
 }
 
 /**
- * Updates a specific cell or range in a Google Spreadsheet via Google Sheets API v4.
+ * Updates a range of cells in a Google Spreadsheet via Google Sheets API v4.
  */
-export async function updateSheetCell(
+export async function updateSheetRange(
   spreadsheetId: string,
   range: string,
-  value: string,
+  values: string[][],
   auth: GoogleSheetsAuth
 ): Promise<UpdateCellResult> {
   if (!auth.accessToken && !auth.apiKey) {
@@ -370,7 +449,7 @@ export async function updateSheetCell(
     body: JSON.stringify({
       range,
       majorDimension: 'ROWS',
-      values: [[value]],
+      values,
     }),
     cache: 'no-store',
   });
@@ -395,10 +474,22 @@ export async function updateSheetCell(
   const data = (await res.json()) as GoogleUpdateResponse;
   return {
     updatedRange: data.updatedRange || range,
-    updatedRows: data.updatedRows || 1,
-    updatedColumns: data.updatedColumns || 1,
-    updatedCells: data.updatedCells || 1,
+    updatedRows: data.updatedRows || values.length,
+    updatedColumns: data.updatedColumns || (values[0]?.length ?? 1),
+    updatedCells: data.updatedCells || values.reduce((acc, row) => acc + row.length, 0),
   };
+}
+
+/**
+ * Updates a specific cell in a Google Spreadsheet via Google Sheets API v4.
+ */
+export async function updateSheetCell(
+  spreadsheetId: string,
+  range: string,
+  value: string,
+  auth: GoogleSheetsAuth
+): Promise<UpdateCellResult> {
+  return updateSheetRange(spreadsheetId, range, [[value]], auth);
 }
 
 /**

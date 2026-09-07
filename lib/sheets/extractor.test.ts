@@ -2,10 +2,12 @@ import fs from 'fs';
 import {
   parseTimelineMatrix,
   parseFeedbackMatrix,
+  parseDiaryMatrix,
   extractContentFromMatrices,
   extractContentFromWorkbookBytes,
   extractGoogleSpreadsheet,
   updateSheetCell,
+  updateSheetRange,
   getSheetRange,
 } from './extractor';
 
@@ -70,6 +72,9 @@ describe('Google Sheets Extractor', () => {
       // Verify Diary extraction
       expect(result.diary).toBeDefined();
       expect(result.diary?.count).toBe(10);
+      expect(result.diary?.topics).toBeDefined();
+      expect(result.diary?.topics?.length).toBe(28);
+      expect(result.diary?.totalTopics).toBe(28);
 
       // Verify Timeline extraction
       expect(result.timeline).toBeDefined();
@@ -175,11 +180,59 @@ describe('Google Sheets Extractor', () => {
     });
   });
 
-  describe('updateSheetCell and getSheetRange with mock fetch', () => {
+  describe('parseDiaryMatrix', () => {
+    it('parses diary matrix rows and categorizes statuses', () => {
+      const matrix = [
+        ['Day', 'Week', 'Date', 'Activity Count', 'PIC', 'Topic', 'List 3 things you learned from the topic', 'Your Notes', 'ITM Notes'],
+        ['Tuesday', '1.0', '01/09/2026', '1.0', 'HRD', 'Intro to Framework', 'Learned 1\nLearned 2', 'My notes', ''],
+        ['Tuesday', '1.0', '01/09/2026', '2.0', 'Growth Manager', 'Growth Intro', 'Point 1\nPoint 2', '', ''],
+        ['Wednesday', '1.0', '02/09/2026', '3.0', 'IT Manager', 'IT Overview', '', '', ''],
+      ];
+      const topics = parseDiaryMatrix(matrix);
+      expect(topics).toHaveLength(3);
+      expect(topics[0].status).toBe('completed');
+      expect(topics[0].rowNumber).toBe(2);
+      expect(topics[1].status).toBe('needs-notes');
+      expect(topics[1].rowNumber).toBe(3);
+      expect(topics[2].status).toBe('todo');
+      expect(topics[2].rowNumber).toBe(4);
+    });
+  });
+
+  describe('updateSheetCell, updateSheetRange and getSheetRange with mock fetch', () => {
     const originalFetch = global.fetch;
 
     afterEach(() => {
       global.fetch = originalFetch;
+    });
+
+    it('successfully updates a range of cells', async () => {
+      global.fetch = jest.fn((url: string | URL | Request, init?: RequestInit) => {
+        expect(init?.method).toBe('PUT');
+        expect(url.toString()).toContain("values/'Onboarding%20Diary'!G15%3AH15");
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              updatedRange: "'Onboarding Diary'!G15:H15",
+              updatedRows: 1,
+              updatedColumns: 2,
+              updatedCells: 2,
+            }),
+        } as Response);
+      }) as unknown as typeof fetch;
+
+      const { updateSheetRange } = await import('./extractor');
+      const result = await updateSheetRange(
+        'sheet-123',
+        "'Onboarding Diary'!G15:H15",
+        [['Learned 1, 2, 3', 'Notes content']],
+        { accessToken: 'mock-token' }
+      );
+
+      expect(result.updatedRange).toBe("'Onboarding Diary'!G15:H15");
+      expect(result.updatedCells).toBe(2);
     });
 
     it('successfully updates a specific sheet cell', async () => {
