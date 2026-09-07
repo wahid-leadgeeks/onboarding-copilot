@@ -9,6 +9,10 @@ import { GuideTour, todayTourSteps } from '@/app/components/GuideTour';
 import { LearningModal } from '@/app/components/LearningModal';
 import type { LearningActivityContext, LearningSubmission } from '@/app/components/LearningModal';
 import { ScheduleFillModal } from '@/app/components/ScheduleFillModal';
+import { useToast } from '@/app/components/Toast';
+import { ConfirmDialog } from '@/app/components/ConfirmDialog';
+import { ActivityDetailModal } from '@/app/components/ActivityDetailModal';
+import { CommandPalette } from '@/app/components/CommandPalette';
 import {
   OFFICIAL_SCHEDULE_ACTIVITIES,
   SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY,
@@ -57,6 +61,7 @@ const seedlingStage = (percent: number) =>
 const formatClock = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 export default function TodayPage() {
+  const { toast } = useToast();
   const [activities, setActivities] = useState<Activity[]>(fallback);
   const [scheduleCatalog, setScheduleCatalog] = useState<ScheduleActivity[]>(() => [...OFFICIAL_SCHEDULE_ACTIVITIES]);
   const [selectedWeek, setSelectedWeek] = useState<string>('Week 1');
@@ -64,6 +69,9 @@ export default function TodayPage() {
   const [scheduleSearch, setScheduleSearch] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [editingScheduleItem, setEditingScheduleItem] = useState<ScheduleActivity | null>(null);
+  const [detailActivity, setDetailActivity] = useState<ScheduleActivity | null>(null);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [copiedRowToast, setCopiedRowToast] = useState<{ rowNumber: number; type: 'G-K' | 'Full' } | null>(null);
   const [expandedTopicRows, setExpandedTopicRows] = useState<Record<number, boolean>>({});
 
@@ -94,6 +102,14 @@ export default function TodayPage() {
     }
     const tourState = readGuideTourState(localStorage.getItem(GUIDE_TOUR_STORAGE_KEY));
     if (!tourState?.completed) setTourOpen(true);
+  }, []);
+
+  useEffect(() => {
+    function handleOpenPalette() {
+      setCommandPaletteOpen(true);
+    }
+    window.addEventListener('open-command-palette', handleOpenPalette);
+    return () => window.removeEventListener('open-command-palette', handleOpenPalette);
   }, []);
 
   function handleTourFinish() {
@@ -292,7 +308,9 @@ export default function TodayPage() {
       prev.map((act) => (act.id === updated.id ? scheduleActivityToActivity(updated) : act))
     );
 
-    setSync(`Row ${updated.rowNumber} (${updated.topic.split('\n')[0].slice(0, 24)}...) saved & synchronized! 🌿`);
+    const titleSnippet = updated.topic.split('\n')[0].slice(0, 30);
+    setSync(`Row ${updated.rowNumber} (${titleSnippet}...) saved & synchronized! 🌿`);
+    toast.success(`Row ${updated.rowNumber} (${titleSnippet}...) saved! 🌿`);
     setEditingScheduleItem(null);
   }
 
@@ -302,10 +320,11 @@ export default function TodayPage() {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(tsv);
         setCopiedRowToast({ rowNumber: item.rowNumber, type: 'G-K' });
+        toast.success(`Copied Row ${item.rowNumber} Cols G–K TSV! Click cell G in Sheet to paste.`);
         setTimeout(() => setCopiedRowToast(null), 2500);
       }
     } catch {
-      /* ignore */
+      toast.error('Failed to copy to clipboard.');
     }
   }
 
@@ -315,10 +334,11 @@ export default function TodayPage() {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(tsv);
         setCopiedRowToast({ rowNumber: item.rowNumber, type: 'Full' });
+        toast.success(`Copied Row ${item.rowNumber} Cols A–K TSV!`);
         setTimeout(() => setCopiedRowToast(null), 2500);
       }
     } catch {
-      /* ignore */
+      toast.error('Failed to copy to clipboard.');
     }
   }
 
@@ -329,6 +349,7 @@ export default function TodayPage() {
     setStartedAt(timestamp);
     setFinishedAt(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    toast.info(`Started timer: ${item.topic.split('\n')[0].slice(0, 35)}...`);
     void fetch('/api/session/start', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -522,7 +543,7 @@ export default function TodayPage() {
                   {copiedRowToast?.type === 'G-K' ? '✓ Copied Cols G–K! 🌿' : '📋 Copy Cols G–K TSV'}
                 </button>
                 <button
-                  onClick={resetSession}
+                  onClick={() => setResetConfirmOpen(true)}
                   className="min-h-12 rounded-full px-6 py-3 font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-700"
                 >
                   Continue
@@ -837,7 +858,13 @@ export default function TodayPage() {
 
                   {/* Title */}
                   <div className="mt-1">
-                    <h3 className={`text-base font-semibold leading-snug ${done ? 'text-stone-700' : 'text-stone-900'}`}>
+                    <h3
+                      onClick={() => setDetailActivity(item)}
+                      className={`text-base font-semibold leading-snug cursor-pointer transition hover:text-mint-700 hover:underline ${
+                        done ? 'text-stone-700' : 'text-stone-900'
+                      }`}
+                      title="Click to view details & outline"
+                    >
                       {title}
                     </h3>
                     {hasSubtopics && (
@@ -929,6 +956,15 @@ export default function TodayPage() {
 
                       <button
                         type="button"
+                        onClick={() => setDetailActivity(item)}
+                        className="inline-flex min-h-9 items-center gap-1 rounded-full bg-stone-50 px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900 transition active:scale-95"
+                        title="View full topic objectives & details"
+                      >
+                        🔍 Details
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => void handleCopyGtoK(item)}
                         className="inline-flex min-h-9 items-center gap-1 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
                         title="Copies tab-separated: Duration, Start, End, Progress, Notes to paste into cell G"
@@ -1004,6 +1040,38 @@ export default function TodayPage() {
         />
       )}
       <GuideTour steps={todayTourSteps} open={tourOpen} onFinish={handleTourFinish} />
+
+      <ActivityDetailModal
+        activity={detailActivity}
+        isOpen={Boolean(detailActivity)}
+        onClose={() => setDetailActivity(null)}
+        onEdit={(act) => setEditingScheduleItem(act)}
+        onCopyGtoK={(act) => void handleCopyGtoK(act)}
+        onStartTimer={(act) => handleStartTimerForScheduleRow(act)}
+        onWriteReflection={(act) => {
+          const matchAct = activities.find((a) => a.id === act.id) || scheduleActivityToActivity(act);
+          setSelectedActivityForLearning(matchAct);
+          setShowLearningCapture(true);
+        }}
+      />
+
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onSelectActivity={(act) => setDetailActivity(act)}
+      />
+
+      <ConfirmDialog
+        isOpen={resetConfirmOpen}
+        onClose={() => setResetConfirmOpen(false)}
+        onConfirm={() => {
+          resetSession();
+          toast.info('Session reset. Ready for next activity.');
+        }}
+        title="Continue to Next Activity?"
+        message="This will clear the current completed focus card and queue up your next activity. Your completed records and learnings are safely preserved."
+        confirmLabel="Continue"
+      />
     </main>
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Assistant } from '@/app/components/Assistant';
+import { ToastProvider } from '@/app/components/Toast';
 
 export const metadata: Metadata = {
   title: 'NOVA — Newcomer Onboarding & Virtual Assistant',
@@ -11,9 +12,12 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body>
-        {children}
-        <Assistant />
+        <ToastProvider>
+          {children}
+          <Assistant />
+        </ToastProvider>
       </body>
     </html>
   );
 }
+

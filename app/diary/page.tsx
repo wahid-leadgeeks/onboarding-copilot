@@ -13,8 +13,10 @@ import {
   type DiaryTopicItem,
 } from '@/lib/diary-cockpit';
 import { DiaryModal } from '@/app/components/DiaryModal';
+import { useToast } from '@/app/components/Toast';
 
 export default function DiaryPage() {
+  const { toast } = useToast();
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntryRecord[]>([]);
   const [activeTopic, setActiveTopic] = useState<DiaryTopicItem | null>(null);
   const [copiedRowNumber, setCopiedRowNumber] = useState<number | null>(null);
@@ -41,6 +43,7 @@ export default function DiaryPage() {
   function handleSaveTopic(entry: DiaryEntryRecord) {
     const next = upsertDiaryCockpitEntry(diaryEntries, entry);
     persist(next);
+    toast.success(`Saved notes for Row ${entry.rowNumber}! 🌿`);
   }
 
   async function handleCopyRow(topic: DiaryTopicItem, entry?: DiaryEntryRecord) {
@@ -51,10 +54,11 @@ export default function DiaryPage() {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(row);
         setCopiedRowNumber(topic.rowNumber);
+        toast.success(`Copied Row ${topic.rowNumber} TSV! Paste into Google Sheets.`);
         setTimeout(() => setCopiedRowNumber(null), 2500);
       }
     } catch {
-      /* ignore */
+      toast.error('Failed to copy to clipboard.');
     }
   }
 

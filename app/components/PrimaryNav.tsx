@@ -69,6 +69,19 @@ export function PrimaryNav({ active }: { active: NavTab }) {
             </a>
           );
         })}
+
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-stone-200/80 bg-stone-50/80 px-2.5 py-1 text-xs text-stone-500 hover:bg-stone-100 hover:text-stone-800 transition active:scale-95"
+          title="Search & Quick Commands (⌘K or ?)"
+          aria-label="Open command palette"
+        >
+          <span className="text-[11px]">🔍</span>
+          <kbd className="hidden sm:inline-block rounded bg-stone-200/70 px-1.5 py-0.2 text-[10px] font-mono font-semibold text-stone-600">
+            ⌘K
+          </kbd>
+        </button>
       </div>
     </nav>
   );
