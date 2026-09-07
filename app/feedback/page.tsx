@@ -14,8 +14,10 @@ import {
   type FeedbackSession,
 } from '@/lib/feedback';
 import { FeedbackModal } from '@/app/components/FeedbackModal';
+import { useToast } from '@/app/components/Toast';
 
 export default function FeedbackPage() {
+  const { toast } = useToast();
   const [feedbackEntries, setFeedbackEntries] = useState<FeedbackEntry[]>([]);
   const [activeSession, setActiveSession] = useState<FeedbackSession | null>(null);
   const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
@@ -43,6 +45,9 @@ export default function FeedbackPage() {
     const next = upsertFeedbackEntry(feedbackEntries, entry);
     persist(next);
     setActiveSession(null);
+    const match = FEEDBACK_SESSIONS.find((s) => s.id === entry.sessionId);
+    const label = match ? `Row ${match.rowNumber} (${entry.sessionTitle})` : entry.sessionTitle;
+    toast.success(`Feedback for ${label} saved! 🌿`);
   }
 
   async function handleCopyRow(entry: FeedbackEntry) {
@@ -51,10 +56,13 @@ export default function FeedbackPage() {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(row);
         setCopiedSessionId(entry.sessionId);
+        const match = FEEDBACK_SESSIONS.find((s) => s.id === entry.sessionId);
+        const label = match ? `Row ${match.rowNumber}` : entry.sessionTitle;
+        toast.success(`Copied ${label} feedback TSV! Paste into Google Sheets.`);
         setTimeout(() => setCopiedSessionId(null), 2500);
       }
     } catch {
-      /* ignore */
+      toast.error('Failed to copy to clipboard.');
     }
   }
 

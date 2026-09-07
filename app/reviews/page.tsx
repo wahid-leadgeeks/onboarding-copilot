@@ -13,8 +13,10 @@ import {
   type MonthlyReviewMilestone,
   type ReviewSelfAssessment,
 } from '@/lib/reviews';
+import { useToast } from '@/app/components/Toast';
 
 export default function ReviewsPage() {
+  const { toast } = useToast();
   const [selectedMonth, setSelectedMonth] = useState<1 | 2 | 3>(1);
   const [assessments, setAssessments] = useState<ReviewSelfAssessment[]>([]);
   const [scores, setScores] = useState<Record<string, number>>({});
@@ -71,9 +73,10 @@ export default function ReviewsPage() {
     try {
       localStorage.setItem(REVIEWS_STORAGE_KEY, writeReviewAssessments(nextList));
       setSavedSuccess(true);
+      toast.success(`Month ${selectedMonth} review assessment saved! 🌿`);
       setTimeout(() => setSavedSuccess(false), 2500);
     } catch {
-      /* ignore storage quota error */
+      toast.error('Failed to save assessment to local storage.');
     }
   }
 
@@ -90,10 +93,11 @@ export default function ReviewsPage() {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(row);
         setCopiedMonth(milestone.month);
+        toast.success(`Copied Month ${milestone.month} review TSV! Paste into Google Sheets.`);
         setTimeout(() => setCopiedMonth(null), 2500);
       }
     } catch {
-      /* ignore */
+      toast.error('Failed to copy to clipboard.');
     }
   }
 
