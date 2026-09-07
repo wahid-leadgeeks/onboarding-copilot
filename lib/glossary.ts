@@ -3,6 +3,12 @@
  * aligned with the 'Glossaries' and 'Guide' worksheets in the official HR workbook.
  */
 
+export interface MaterialLink {
+  readonly label: string;
+  readonly url: string;
+  readonly type: 'video' | 'slides' | 'doc' | 'sheet' | 'link';
+}
+
 export interface TrainingModule {
   readonly id: string;
   readonly topic: string;
@@ -13,6 +19,7 @@ export interface TrainingModule {
   readonly media: 'Video' | 'Online Meeting' | 'Document' | 'Interactive' | string;
   readonly durationMinutes: number;
   readonly materialAccess?: string;
+  readonly materialLinks?: readonly MaterialLink[];
   readonly notes?: string;
 }
 
@@ -34,6 +41,13 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Video',
     durationMinutes: 3,
     materialAccess: 'Video Link: CEO Welcoming Video',
+    materialLinks: [
+      {
+        label: 'Watch CEO Welcoming Video',
+        url: 'https://drive.google.com/file/d/1sLtqpR4Maf9aNRBQs6q12Lf4UPxBiPQy/view?usp=sharing',
+        type: 'video',
+      },
+    ],
     notes: 'Watch during morning onboarding orientation on Day 1.',
   },
   {
@@ -47,6 +61,13 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Video',
     durationMinutes: 3,
     materialAccess: 'Video Link: MD Welcoming Video',
+    materialLinks: [
+      {
+        label: 'Watch MD Welcoming Video',
+        url: 'https://drive.google.com/file/d/1t1wYX2qDbLS54HZ-gL77E-fN7_9hJcyS/view?usp=drive_link',
+        type: 'video',
+      },
+    ],
     notes: 'Aligns with HARPS values introduction.',
   },
   {
@@ -62,6 +83,18 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Video',
     durationMinutes: 30,
     materialAccess: '- Video Link : Company Introduction\n- PPT : Company Introduction',
+    materialLinks: [
+      {
+        label: 'Watch Company Introduction Video',
+        url: 'https://drive.google.com/file/d/1MD_cZ7y2fsuyq56OOG2LOO5DnnRSLEAJ/view?usp=drive_link',
+        type: 'video',
+      },
+      {
+        label: 'View Company Introduction Deck (Drive)',
+        url: 'https://drive.google.com/file/d/1MD_cZ7y2fsuyq56OOG2LOO5DnnRSLEAJ/view?usp=drive_link',
+        type: 'slides',
+      },
+    ],
     notes:
       'Session Notes:\n"Beyond the Slides: Chat with the MD" will be held in W3 or W4 before the 1st Monthly Review.\n\nEvaluation & Feedback:\n- After watching the videos, New Hires must fill out the General Onboarding Kit Feedback Sheet.\n\nQ&A Session:\n- The Q&A session regarding the Company Introduction will be held during the 30 minutes online meeting "Beyond the Slides: Chat with the MD" session with the Managing Director.\n- All the questions asked about Introduction to Company should still be included in the Daily Evaluation.',
   },
@@ -77,7 +110,8 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
       'Session Activity:\n- MD gives personal welcome\n- Ice Breaker: Who Are You?\n- MD shares a personal story behind building the company\n- Unfiltered Q&A: Ask Me Anything\n- Wrap-Up & Message from the MD',
     media: 'Online Meeting',
     durationMinutes: 30,
-    materialAccess: 'Live Session on Google Meet',
+    materialAccess: 'Live Session on Google Meet (calendar invite provided by HR)',
+    materialLinks: [],
     notes: 'Interactive session; prepare questions in advance.',
   },
   {
@@ -93,6 +127,13 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Video',
     durationMinutes: 20,
     materialAccess: '- Video Link: HRD Department Introduction\n- PPT: HRD Dept Introduction',
+    materialLinks: [
+      {
+        label: 'Watch HRD Department Introduction Video',
+        url: 'https://drive.google.com/file/d/1ZPc5yvDWanbl4fB8YUI31OYkMJo24Ttt/view?usp=drive_link',
+        type: 'video',
+      },
+    ],
     notes:
       'Evaluation & Feedback:\n- After watching the videos, New Hires must fill out the General Onboarding Kit Feedback Sheet.\n\nQ&A Session:\n- If the Department PIC is present at the in-person onboarding event, questions can be addressed directly.\n- If the Q&A session is to be held as part of a meeting, meeting duration will be 15 to 30 minutes.\n- All the questions asked should still be included in the Daily Evaluation.',
   },
@@ -109,6 +150,13 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Video',
     durationMinutes: 60,
     materialAccess: 'Video Link: Company Policies\nMaterial:\n- Peraturan Perusahaan\n- Kode Etik Perusahaan',
+    materialLinks: [
+      {
+        label: 'Watch Company Policies Video',
+        url: 'https://drive.google.com/file/d/1LyxoLJDwm612C6j_uACoUezyidDvYfIp/view?usp=drive_link',
+        type: 'video',
+      },
+    ],
     notes: 'Reference company handbook for detailed leave policy and code of conduct provisions.',
   },
   {
@@ -124,6 +172,13 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Video',
     durationMinutes: 40,
     materialAccess: 'Video Link: Personnel Administration',
+    materialLinks: [
+      {
+        label: 'Watch Personnel Administration Video',
+        url: 'https://drive.google.com/file/d/13SBEwTiXZ0OEYC5GeSqj6dDo3DKB-YDN/view?usp=drive_link',
+        type: 'video',
+      },
+    ],
     notes: 'Ensure your daily attendance and time tracking sheet bookmark is configured.',
   },
   {
@@ -138,7 +193,19 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
       'Dept Intro Material:\n- Dept Functions\n- Dept Values\n- Dept Goals relevant to all employees\n- Structure & Personnel Roles\n\nIT Guidelines Material:\n- User Account Management\n- Hardware Devices Management\n- Software Management\n- Network Management\n- Data Management',
     media: 'Video',
     durationMinutes: 45,
-    materialAccess: '- Video Link: IT Department Introduction dan IT Guidelines\n- PPT: IT Guidelines Deck',
+    materialAccess: '- Video: IT Department Introduction dan IT Guidelines\n- PPT / SOP: Official IT Guidelines & Standards Handbook',
+    materialLinks: [
+      {
+        label: 'Watch IT Department & Guidelines Video',
+        url: 'https://drive.google.com/file/d/1wQy2goXpfRhkK670c6koDNm7LWsjP8dp/view?usp=drive_link',
+        type: 'video',
+      },
+      {
+        label: 'Open Official IT Guidelines & SOP Document',
+        url: 'https://docs.google.com/document/d/15uOutkB7UppAcMsbHNhyirmTtXPZy_zkmvyI-G8DC-8/edit?usp=drive_link',
+        type: 'doc',
+      },
+    ],
     notes:
       'Evaluation & Feedback:\n- After watching the videos, New Hires must fill out the General Onboarding Kit Feedback Sheet.\n\nQ&A Session:\n- For the IT Department the QnA mostly will be conducted via Telegram chat.\n- However, if the questions need further explanation the Q&A session is to be held as part of a meeting (15 to 30 minutes).\n- All questions should be included on the Daily Evaluation form.',
   },
@@ -155,6 +222,13 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Video',
     durationMinutes: 40,
     materialAccess: '- Video Link: Management Office Department Introduction\n- PPT : Management Office Department Introduction',
+    materialLinks: [
+      {
+        label: 'Watch Management Office Introduction Video',
+        url: 'https://drive.google.com/file/d/1AH5ZSBvXT6NULXGq_W6k-f95q9AZW7lI/view?usp=drive_link',
+        type: 'video',
+      },
+    ],
     notes:
       'Evaluation & Feedback:\n- After watching the videos, New Hires must fill out the General Onboarding Kit Feedback Sheet.\n\nQ&A Session:\n- Management Office Q&A will be conducted via Telegram chat; no separate meeting will be held.\n- Include any questions in the Daily Evaluation form.',
   },
@@ -171,6 +245,13 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Video',
     durationMinutes: 30,
     materialAccess: '- Video Link: Finance & Accounting Department Introduction\n- PPT : Finance & Accounting Department Introduction',
+    materialLinks: [
+      {
+        label: 'Watch Finance & Accounting Introduction Video',
+        url: 'https://drive.google.com/file/d/1BMzeIEo2FDAgAHxrvB27nKSkesPRwAzL/view?usp=drive_link',
+        type: 'video',
+      },
+    ],
     notes: 'Q&A conducted via Telegram chat or through the Daily Evaluation form.',
   },
   {
@@ -186,6 +267,13 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Online Meeting',
     durationMinutes: 90,
     materialAccess: '- PPT : PPT Materials, Experience Dept Intro',
+    materialLinks: [
+      {
+        label: 'Open Experience Department Slide Deck (Canva)',
+        url: 'https://www.canva.com/design/DAFrCf13a9I/M0_O_Oh0p6ExNo1hfKvwRA/edit',
+        type: 'slides',
+      },
+    ],
     notes:
       'Evaluation & Feedback:\n- Fill out the General Onboarding Kit Feedback Sheet.\n\nQ&A Session:\n- Q&A will be held directly during the Online Live Session.\n- All questions asked should be included in the Daily Evaluation.',
   },
@@ -202,6 +290,13 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Video',
     durationMinutes: 30,
     materialAccess: '- Video Link: Operations Dept Introduction\n- PPT: Materials, Operations Dept Intro',
+    materialLinks: [
+      {
+        label: 'Watch Operations Department Introduction Video',
+        url: 'https://drive.google.com/file/d/1EiMhNT8fc7XM0k9p_qXwQ1X4k-Bj7GPZ/view?usp=drive_link',
+        type: 'video',
+      },
+    ],
     notes:
       'Evaluation & Feedback:\n- Fill out the General Onboarding Kit Feedback Sheet.\n\nQ&A Session (Optional):\n- Meeting duration 15 to 30 minutes if needed, or via Telegram chat.',
   },
@@ -218,6 +313,13 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Video',
     durationMinutes: 25,
     materialAccess: '- Video Link: Growth Department Introduction\n- PPT: Growth Department Introduction',
+    materialLinks: [
+      {
+        label: 'Watch Growth Department Introduction Video',
+        url: 'https://drive.google.com/file/d/1MAkUUTASAjeoVql4T00nblvZWadJzIb3/view?usp=drive_link',
+        type: 'video',
+      },
+    ],
     notes: 'Understand the 8 WEs growth framework and sales-marketing alignment.',
   },
   {
@@ -232,7 +334,8 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
       'Session Materials :\n- Purpose of Individual Call\n- Informal & Safe Conversation Setting\n- Personal & Professional Check-in\n- Career Development & Growth Awareness\n- Engagement & Participation Reflection\n- Culture & Values Alignment\n- Confidentiality & Consent Agreement\n- Escalation & Reporting Mechanism\n- Follow-Up & Action from Management\n- Program Schedule (Half 1 & Half 2)',
     media: 'Online Meeting',
     durationMinutes: 60,
-    materialAccess: 'Live 1-on-1 Session on Google Meet',
+    materialAccess: 'Live 1-on-1 Session on Google Meet (invitation sent via Google Calendar)',
+    materialLinks: [],
     notes:
       'Evaluation & Feedback:\n- Fill out General Onboarding Kit Feedback Sheet.\n\nQ&A Session:\n- Questions can be addressed directly during the 1-on-1 session.',
   },
@@ -249,6 +352,7 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Document / Portal',
     durationMinutes: 15,
     materialAccess: 'LeadGeeks Anonymous Feedback Submission Portal',
+    materialLinks: [],
     notes: 'Submissions are strictly confidential and reviewed directly by Management.',
   },
   {
@@ -264,6 +368,13 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Online Meeting',
     durationMinutes: 60,
     materialAccess: 'PPT : Tips and Tricks for Meeting Culture, Behaviours, Expectations, and Engagement',
+    materialLinks: [
+      {
+        label: 'Open Meeting Preparation Deck (Canva)',
+        url: 'https://www.canva.com/design/DAFhkBFHJto/NRCB9cavSC3m3vLqC9Nw5A/view?utm_content=DAFhkBFHJto&utm_campaign=designshare&utm_medium=link2&utm_source=uniquelinks&utlId=h3f685c2c11',
+        type: 'slides',
+      },
+    ],
     notes:
       'Evaluation & Feedback:\n- Fill out General Onboarding Kit Feedback Sheet.\n\nQ&A Session:\n- Addressed directly during meeting or via Telegram.',
   },
@@ -280,6 +391,7 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Document & Policy',
     durationMinutes: 25,
     materialAccess: 'ESMR Guidelines & LinkedIn Standards Deck',
+    materialLinks: [],
     notes: 'Guides employees on representing LeadGeeks professionally on LinkedIn and professional media.',
   },
   {
@@ -295,6 +407,13 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Video & Online Live Session QnA',
     durationMinutes: 60,
     materialAccess: '- Video Link: Basic Digital Marketing Training\n- PPT: Basic Digital Marketing Training Deck',
+    materialLinks: [
+      {
+        label: 'Watch Basic Digital Marketing Training Video',
+        url: 'https://drive.google.com/file/d/1JgsQvenZ2nFGUxFKXtFR25Wg82MwmsPJ/view?usp=drive_link',
+        type: 'video',
+      },
+    ],
     notes:
       'Session Notes:\nTraining will be held Quarterly or Bi-annually.\n\nEvaluation & Feedback:\n- After watching the videos, New Hires must fill out the General Onboarding Kit Feedback Sheet.\n\nQ&A Session (Optional):\n- Meeting duration 15 to 30 minutes if needed.',
   },
@@ -311,6 +430,13 @@ export const OFFICIAL_TRAINING_MODULES: readonly TrainingModule[] = [
     media: 'Online Meeting',
     durationMinutes: 90,
     materialAccess: '- Framework Link: Business English Training Materials',
+    materialLinks: [
+      {
+        label: 'Open Business English Training Framework (Sheet)',
+        url: 'https://docs.google.com/spreadsheets/d/1ZYwfZRN9psk6Weut5UiChL-yr97pMGEEisHnueEEjDs/edit?gid=717281088',
+        type: 'sheet',
+      },
+    ],
     notes:
       'Session Notes:\nTraining will be held Quarterly or Bi-annually.\n\nQ&A Session (Optional):\n- Meeting duration 15 to 30 minutes if needed.\n- Include questions in the Daily Evaluation.',
   },
