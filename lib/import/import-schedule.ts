@@ -48,6 +48,12 @@ type HeaderRow = {
 /** Parses an uploaded schedule file into validated activities. Untrusted input. */
 export function importScheduleFromFile(bytes: Uint8Array, filename: string): ImportScheduleResult {
   const { matrix, diary } = loadMatrix(bytes, filename);
+  const schedule = parseScheduleFromMatrix(matrix);
+  return { ...schedule, diary };
+}
+
+/** Parses a 2D matrix of strings into validated activities. */
+export function parseScheduleFromMatrix(matrix: string[][]): ImportScheduleResult {
   enforceCaps(matrix);
   const header = findHeader(matrix);
   const activities: Activity[] = [];
@@ -65,7 +71,7 @@ export function importScheduleFromFile(bytes: Uint8Array, filename: string): Imp
     if (activity !== null) activities.push(activity);
   });
   if (activities.length === 0) throw new ImportError('No valid activities were found in this file.');
-  return { activities, skipped, warnings, diary };
+  return { activities, skipped, warnings };
 }
 
 function loadMatrix(bytes: Uint8Array, filename: string): { matrix: string[][]; diary?: StoredDiary[] } {
@@ -303,7 +309,7 @@ function normalizeType(raw: string): string {
   return raw.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || DEFAULT_TYPE;
 }
 
-function parseDiarySheet(matrix: string[][]): StoredDiary[] {
+export function parseDiarySheet(matrix: string[][]): StoredDiary[] {
   if (matrix.length < 2) return [];
   const headerRow = matrix[0];
   const topicCol = indexOfColumn(headerRow, ['topic', 'activity', 'name', 'title']);
