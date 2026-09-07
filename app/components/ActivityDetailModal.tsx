@@ -84,7 +84,7 @@ export function ActivityDetailModal({
                 }}
                 className="rounded-full bg-mint-700 px-4 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition"
               >
-                ▶️ Start Timer
+                ⏱️ Start Stopwatch
               </button>
             )}
             {isDone && onWriteReflection && (
