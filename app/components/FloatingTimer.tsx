@@ -3,10 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import type { Activity } from '@/lib/types/activity';
 import { calculateElapsedSeconds, formatStopwatch } from '@/lib/session/stopwatch';
+import { IconPlay, IconPause, IconStop } from './Icons';
 
 export interface FloatingTimerProps {
   activity: Activity | null;
   startedAt: number | null;
+  finishedAt: number | null;
   pausedAt: number | null;
   accumulatedMs: number;
   onPause: () => void;
@@ -18,6 +20,7 @@ export interface FloatingTimerProps {
 export function FloatingTimer({
   activity,
   startedAt,
+  finishedAt,
   pausedAt,
   accumulatedMs,
   onPause,
@@ -32,7 +35,10 @@ export function FloatingTimer({
 
   // Update live clock every second while running
   useEffect(() => {
-    if (!startedAt) return;
+    if (!startedAt || finishedAt) {
+      if (!startedAt) setElapsed(0);
+      return;
+    }
 
     // Immediately compute current elapsed
     setElapsed(calculateElapsedSeconds(startedAt, Date.now(), pausedAt, accumulatedMs));
@@ -44,12 +50,12 @@ export function FloatingTimer({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [startedAt, pausedAt, accumulatedMs]);
+  }, [startedAt, finishedAt, pausedAt, accumulatedMs]);
 
   // Show floating pill only when user scrolls down past the main timer card
   useEffect(() => {
     function handleScroll() {
-      if (!startedAt) {
+      if (!startedAt || finishedAt) {
         setIsVisible(false);
         return;
       }
@@ -61,9 +67,9 @@ export function FloatingTimer({
     handleScroll();
 
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [startedAt]);
+  }, [startedAt, finishedAt]);
 
-  if (!startedAt || !isVisible || !activity) return null;
+  if (!startedAt || finishedAt || !isVisible || !activity) return null;
 
   const isPaused = Boolean(pausedAt);
   const formatted = formatStopwatch(elapsed);
@@ -107,29 +113,32 @@ export function FloatingTimer({
           <button
             type="button"
             onClick={onResume}
-            className="rounded-full bg-mint-500/20 px-2.5 py-1 text-xs font-semibold text-mint-300 hover:bg-mint-500/30 transition active:scale-95"
+            className="inline-flex items-center gap-1 rounded-full bg-mint-500/20 px-2.5 py-1 text-xs font-semibold text-mint-300 hover:bg-mint-500/30 transition active:scale-95"
             title="Resume stopwatch"
           >
-            ▶️ Resume
+            <IconPlay className="h-3 w-3 fill-current" />
+            <span>Resume</span>
           </button>
         ) : (
           <button
             type="button"
             onClick={onPause}
-            className="rounded-full bg-stone-800 px-2.5 py-1 text-xs font-semibold text-stone-300 hover:bg-stone-700 hover:text-white transition active:scale-95"
+            className="inline-flex items-center gap-1 rounded-full bg-stone-800 px-2.5 py-1 text-xs font-semibold text-stone-300 hover:bg-stone-700 hover:text-white transition active:scale-95"
             title="Pause stopwatch"
           >
-            ⏸️ Pause
+            <IconPause className="h-3 w-3 fill-current" />
+            <span>Pause</span>
           </button>
         )}
 
         <button
           type="button"
           onClick={onFinish}
-          className="rounded-full bg-mint-600 px-3 py-1 text-xs font-semibold text-white hover:bg-mint-500 transition active:scale-95 shadow-xs"
+          className="inline-flex items-center gap-1 rounded-full bg-mint-600 px-3 py-1 text-xs font-semibold text-white hover:bg-mint-500 transition active:scale-95 shadow-xs"
           title="Finish and log activity"
         >
-          ⏹️ Finish
+          <IconStop className="h-3 w-3 fill-current" />
+          <span>Finish</span>
         </button>
       </div>
     </div>

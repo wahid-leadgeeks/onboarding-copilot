@@ -19,6 +19,13 @@ import {
   writeTimelineState,
 } from '@/lib/timeline';
 import type { StageDates, TimelineState } from '@/lib/types/timeline';
+import {
+  IconCheck,
+  IconClipboard,
+  IconSprout,
+  IconTree,
+  IconTrophy,
+} from '@/app/components/Icons';
 
 const totalDays = 90;
 const journeyStart = Date.UTC(2026, 8, 1); // September 1, 2026
@@ -102,12 +109,12 @@ export default function TimelinePage() {
   const activeStageProgress = calculateStageProgress(activeStage, timelineState);
   const activeDates = getStageDates(timelineState, activeStage.id);
 
-  const growthEmoji =
+  const growthIcon =
     overallProgress.percentage <= 25
-      ? '🌱'
+      ? 'sprout'
       : overallProgress.percentage <= 75
-        ? '🌿'
-        : '🌳';
+        ? 'tree'
+        : 'trophy';
 
   return (
     <main
@@ -127,7 +134,7 @@ export default function TimelinePage() {
         <div className="mt-2 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
-              Timeline & Evidence 🗺️
+              Timeline &amp; Evidence
             </h1>
             <p className="mt-1 text-sm text-stone-600">
               Track your 3 onboarding stages, verify output deliverables, and copy rows directly into your Timeline sheet.
@@ -139,7 +146,17 @@ export default function TimelinePage() {
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white shadow-soft transition hover:bg-stone-800 active:scale-95 shrink-0"
             aria-label="Copy entire timeline sheet summary with all 3 stages"
           >
-            {copiedAll ? '✓ All 3 Stages Copied! 🌿' : '📋 Copy Entire Timeline Sheet'}
+            {copiedAll ? (
+              <>
+                <IconCheck className="h-3.5 w-3.5 text-mint-300" />
+                <span>All 3 Stages Copied!</span>
+              </>
+            ) : (
+              <>
+                <IconClipboard className="h-3.5 w-3.5" />
+                <span>Copy Entire Timeline Sheet</span>
+              </>
+            )}
           </button>
         </div>
       </header>
@@ -160,8 +177,14 @@ export default function TimelinePage() {
               </span>
             </div>
           </div>
-          <span className="text-3xl sm:text-4xl" aria-hidden="true">
-            {growthEmoji}
+          <span className="flex size-10 items-center justify-center rounded-2xl bg-mint-50 text-mint-700" aria-hidden="true">
+            {growthIcon === 'trophy' ? (
+              <IconTrophy className="h-6 w-6 text-sun-500" />
+            ) : growthIcon === 'tree' ? (
+              <IconTree className="h-6 w-6 text-emerald-600" />
+            ) : (
+              <IconSprout className="h-6 w-6 text-mint-600" />
+            )}
           </span>
         </div>
 
@@ -202,7 +225,7 @@ export default function TimelinePage() {
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold">Stage {st.stageNumber}</span>
                   {sp.isComplete && (
-                    <span className="text-[10px] text-mint-600 font-bold">✓</span>
+                    <IconCheck className="h-3 w-3 text-mint-600" />
                   )}
                 </div>
                 <span className="mt-0.5 text-[11px] text-stone-400 truncate max-w-full">
@@ -241,7 +264,7 @@ export default function TimelinePage() {
                 }`}
               >
                 {activeStageProgress.isComplete
-                  ? 'Done ✓'
+                  ? 'Done'
                   : activeStageProgress.completed > 0
                     ? 'In Progress'
                     : 'Upcoming'}
@@ -353,7 +376,7 @@ export default function TimelinePage() {
                       }`}
                       aria-hidden="true"
                     >
-                      ✓
+                      <IconCheck className="h-3 w-3 text-white" />
                     </span>
                     <span
                       className={`text-xs font-medium transition ${
@@ -363,8 +386,9 @@ export default function TimelinePage() {
                       {item.text}
                     </span>
                     {isCompleted ? (
-                      <span className="ml-auto inline-flex items-center rounded-full bg-mint-100 px-2 py-0.5 text-[10px] font-semibold text-mint-700">
-                        ✓ Done
+                      <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-mint-100 px-2 py-0.5 text-[10px] font-semibold text-mint-700">
+                        <IconCheck className="h-2.5 w-2.5" />
+                        <span>Done</span>
                       </span>
                     ) : (
                       <span className="ml-auto text-[11px] text-stone-400 group-hover:text-stone-500">
@@ -393,7 +417,17 @@ export default function TimelinePage() {
             }`}
             aria-label={`Copy Timeline row for Stage ${activeStage.stageNumber}`}
           >
-            {copiedStageId === activeStage.id ? '✓ Copied Stage TSV!' : '📋 Copy Stage TSV'}
+            {copiedStageId === activeStage.id ? (
+              <>
+                <IconCheck className="h-3.5 w-3.5" />
+                <span>Copied Stage TSV!</span>
+              </>
+            ) : (
+              <>
+                <IconClipboard className="h-3.5 w-3.5" />
+                <span>Copy Stage TSV</span>
+              </>
+            )}
           </button>
         </div>
       </section>

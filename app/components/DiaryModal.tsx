@@ -8,6 +8,14 @@ import {
   type DiaryEntryRecord,
   type DiaryTopicItem,
 } from '@/lib/diary-cockpit';
+import {
+  IconCheck,
+  IconEdit,
+  IconX,
+  IconSparkles,
+  IconClipboard,
+  IconRocket,
+} from './Icons';
 
 export interface DiaryModalProps {
   readonly topic: DiaryTopicItem;
@@ -97,7 +105,7 @@ export function DiaryModal({
           'Failed to update cells in Google Sheets. Make sure Google sign-in is active.';
         setSyncError(errorMsg);
       } else {
-        setSyncMessage(`✓ Synced to Onboarding Diary row ${topic.rowNumber} in Google Sheets!`);
+        setSyncMessage(`Synced to Onboarding Diary row ${topic.rowNumber} in Google Sheets!`);
         const updatedEntry: DiaryEntryRecord = {
           rowNumber: topic.rowNumber,
           learned,
@@ -191,7 +199,19 @@ export function DiaryModal({
                       : 'bg-stone-100 text-stone-600'
                 }`}
               >
-                {isCompleted ? '✓ Completed' : isNeedsNotes ? '✍️ Needs Notes' : '○ To Do'}
+                {isCompleted ? (
+                  <span className="inline-flex items-center gap-1">
+                    <IconCheck className="h-3 w-3" /> Completed
+                  </span>
+                ) : isNeedsNotes ? (
+                  <span className="inline-flex items-center gap-1">
+                    <IconEdit className="h-3 w-3" /> Needs Notes
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1">
+                    <span className="inline-block h-2 w-2 rounded-full border border-stone-400" /> To Do
+                  </span>
+                )}
               </span>
             </div>
 
@@ -214,7 +234,7 @@ export function DiaryModal({
             className="rounded-full p-2 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-stone-400"
             aria-label="Close dialog"
           >
-            ✕
+            <IconX className="h-4 w-4" />
           </button>
         </div>
 
@@ -250,7 +270,8 @@ export function DiaryModal({
               onClick={handleGenerateAiLearnings}
               className="inline-flex items-center gap-1.5 rounded-full bg-lavender-50 px-3 py-1 text-xs font-medium text-lavender-700 transition hover:bg-lavender-100"
             >
-              ✨ Draft learnings with AI
+              <IconSparkles className="h-3.5 w-3.5" />
+              <span>Draft learnings with AI</span>
             </button>
           </div>
 
@@ -258,7 +279,9 @@ export function DiaryModal({
           {aiLearningsDraft && (
             <div className="mt-3 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-lavender-900">✨ AI Assistive Suggestion:</span>
+                <span className="inline-flex items-center gap-1.5 font-semibold text-lavender-900">
+                  <IconSparkles className="h-3.5 w-3.5" /> AI Assistive Suggestion:
+                </span>
                 <span className="text-[11px] text-lavender-600">Review before accepting</span>
               </div>
               <pre className="mt-2 whitespace-pre-wrap font-sans text-stone-800 leading-relaxed">
@@ -313,7 +336,8 @@ export function DiaryModal({
               onClick={handleGenerateAiNotes}
               className="inline-flex items-center gap-1.5 rounded-full bg-lavender-50 px-3 py-1 text-xs font-medium text-lavender-700 transition hover:bg-lavender-100"
             >
-              ✨ Draft notes with AI
+              <IconSparkles className="h-3.5 w-3.5" />
+              <span>Draft notes with AI</span>
             </button>
           </div>
 
@@ -321,7 +345,9 @@ export function DiaryModal({
           {aiNotesDraft && (
             <div className="mt-3 rounded-2xl border border-lavender-200 bg-lavender-50/70 p-4 text-xs">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-lavender-900">✨ AI Assistive Suggestion:</span>
+                <span className="inline-flex items-center gap-1.5 font-semibold text-lavender-900">
+                  <IconSparkles className="h-3.5 w-3.5" /> AI Assistive Suggestion:
+                </span>
                 <span className="text-[11px] text-lavender-600">Review before accepting</span>
               </div>
               <pre className="mt-2 whitespace-pre-wrap font-sans text-stone-800 leading-relaxed">
@@ -362,9 +388,19 @@ export function DiaryModal({
             <button
               type="button"
               onClick={handleCopyTsv}
-              className="rounded-full border border-stone-200 bg-white px-3.5 py-2 text-xs font-medium text-stone-700 transition hover:bg-stone-50 active:scale-95"
+              className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3.5 py-2 text-xs font-medium text-stone-700 transition hover:bg-stone-50 active:scale-95"
             >
-              {copied ? '✓ Copied TSV! 🌿' : '📋 Copy Row for Sheet'}
+              {copied ? (
+                <>
+                  <IconCheck className="h-3.5 w-3.5 text-mint-600" />
+                  <span>Copied TSV!</span>
+                </>
+              ) : (
+                <>
+                  <IconClipboard className="h-3.5 w-3.5 text-stone-400" />
+                  <span>Copy Row for Sheet</span>
+                </>
+              )}
             </button>
           </div>
 
@@ -383,7 +419,14 @@ export function DiaryModal({
               onClick={handleSyncToSheets}
               className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-stone-900 px-5 py-2 text-xs font-semibold text-white transition hover:bg-stone-700 active:scale-95 disabled:opacity-50"
             >
-              {syncing ? 'Writing to Google Sheets…' : 'Sync to Google Sheets 🚀'}
+              {syncing ? (
+                'Writing to Google Sheets…'
+              ) : (
+                <>
+                  <IconRocket className="h-3.5 w-3.5" />
+                  <span>Sync to Google Sheets</span>
+                </>
+              )}
             </button>
           </div>
         </div>

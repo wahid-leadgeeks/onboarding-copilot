@@ -14,6 +14,7 @@ import {
   type ReviewSelfAssessment,
 } from '@/lib/reviews';
 import { useToast } from '@/app/components/Toast';
+import { IconCheck, IconClipboard } from '@/app/components/Icons';
 
 export default function ReviewsPage() {
   const { toast } = useToast();
@@ -73,7 +74,7 @@ export default function ReviewsPage() {
     try {
       localStorage.setItem(REVIEWS_STORAGE_KEY, writeReviewAssessments(nextList));
       setSavedSuccess(true);
-      toast.success(`Month ${selectedMonth} review assessment saved! 🌿`);
+      toast.success(`Month ${selectedMonth} review assessment saved!`);
       setTimeout(() => setSavedSuccess(false), 2500);
     } catch {
       toast.error('Failed to save assessment to local storage.');
@@ -113,7 +114,7 @@ export default function ReviewsPage() {
         <div className="mt-2 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
-              Monthly Reviews & Values 🎯
+              Monthly Reviews & Values
             </h1>
             <p className="mt-1 text-sm text-stone-600">
               Evaluations across Month 1, Month 2, and Month 3 probation milestones, plus HARPS Core Values alignment.
@@ -128,7 +129,17 @@ export default function ReviewsPage() {
                 : 'bg-stone-900 text-white hover:bg-stone-800'
             }`}
           >
-            {copiedMonth === milestone.month ? '✓ Copied Review TSV!' : '📋 Copy Month TSV'}
+            {copiedMonth === milestone.month ? (
+              <>
+                <IconCheck className="h-3.5 w-3.5" />
+                <span>Copied Review TSV!</span>
+              </>
+            ) : (
+              <>
+                <IconClipboard className="h-3.5 w-3.5" />
+                <span>Copy Month TSV</span>
+              </>
+            )}
           </button>
         </div>
       </header>
@@ -154,7 +165,7 @@ export default function ReviewsPage() {
               >
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold">Month {m.month}</span>
-                  {hasAssessment && <span className="text-[10px] text-mint-600 font-bold">✓</span>}
+                  {hasAssessment && <IconCheck className="h-3 w-3 text-mint-600" />}
                 </div>
                 <span className="mt-0.5 text-[11px] text-stone-400">Day {m.targetDays}</span>
               </button>
@@ -320,9 +331,16 @@ export default function ReviewsPage() {
             <button
               type="button"
               onClick={handleSave}
-              className="inline-flex min-h-9 items-center justify-center rounded-full bg-stone-900 px-5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800 active:scale-95"
+              className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-stone-900 px-5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800 active:scale-95"
             >
-              {savedSuccess ? '✓ Saved Locally!' : 'Save Reflection'}
+              {savedSuccess ? (
+                <>
+                  <IconCheck className="h-3.5 w-3.5 text-mint-400" />
+                  <span>Saved Locally!</span>
+                </>
+              ) : (
+                'Save Reflection'
+              )}
             </button>
             {savedSuccess && (
               <span className="text-xs text-mint-700 font-medium">Ready to sync or paste</span>
@@ -333,7 +351,17 @@ export default function ReviewsPage() {
             onClick={() => handleCopyTsv(milestone)}
             className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-stone-100 px-4 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
           >
-            {copiedMonth === milestone.month ? '✓ Copied TSV!' : '📋 Copy Row TSV'}
+            {copiedMonth === milestone.month ? (
+              <>
+                <IconCheck className="h-3.5 w-3.5 text-mint-600" />
+                <span>Copied TSV!</span>
+              </>
+            ) : (
+              <>
+                <IconClipboard className="h-3.5 w-3.5 text-stone-500" />
+                <span>Copy Row TSV</span>
+              </>
+            )}
           </button>
         </div>
       </section>

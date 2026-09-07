@@ -60,7 +60,7 @@ export function ExportNotes({ notes, selectedIds, onToggleSelectAll, onClearSele
           <input ref={selectAllRef} type="checkbox" checked={allSelected} onChange={onToggleSelectAll} aria-label="Select all notes" className="size-5 accent-stone-900" />
           Select all notes
         </label>
-        <p className="text-sm text-stone-500">{selectedCount} of {total} notes selected{selectedCount > 0 ? ' ✨' : ''}</p>
+        <p className="text-sm text-stone-500">{selectedCount} of {total} notes selected</p>
         <div className="ml-auto flex flex-wrap items-center gap-3">
           <label className="flex min-h-11 items-center gap-2 text-sm text-stone-500">
             Format

@@ -16,6 +16,17 @@ import type {
   LearningSubmissionSource,
 } from '@/lib/learning-draft';
 import { clipboardRowForDiary } from '@/lib/local-records';
+import {
+  IconCheck,
+  IconUser,
+  IconCalendar,
+  IconClock,
+  IconMic,
+  IconMicOff,
+  IconSparkles,
+  IconClipboard,
+  IconChevronDown,
+} from './Icons';
 
 export {
   canRequestSummary,
@@ -402,7 +413,9 @@ export function LearningModal({ open, activity, onSave, onSkip }: LearningModalP
         {/* Pre-filled Metadata Header */}
         <div>
           <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-mint-700">
-            <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-full bg-mint-100 text-sm font-semibold">✓</span>
+            <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-full bg-mint-100">
+              <IconCheck className="h-3.5 w-3.5 text-mint-700" />
+            </span>
             Activity complete · Onboarding Diary
           </p>
           <h2 id={TITLE_ID} className="mt-3 text-2xl font-semibold tracking-tight text-stone-900">{topicName}</h2>
@@ -410,18 +423,21 @@ export function LearningModal({ open, activity, onSave, onSkip }: LearningModalP
           {/* Activity Metadata Badges */}
           <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-600">
             {activity?.pic && (
-              <span className="rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">
-                👤 {activity.pic}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">
+                <IconUser className="h-3 w-3 text-stone-500" />
+                {activity.pic}
               </span>
             )}
             {activity?.date && (
-              <span className="rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">
-                📅 {activity.date}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">
+                <IconCalendar className="h-3 w-3 text-stone-500" />
+                {activity.date}
               </span>
             )}
             {activity?.day && (
-              <span className="rounded-full bg-sun-50 px-3 py-1 font-medium text-sun-800">
-                ☀️ {activity.day}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-sun-50 px-3 py-1 font-medium text-sun-800">
+                <IconClock className="h-3 w-3 text-sun-600" />
+                {activity.day}
               </span>
             )}
             {activity?.week !== undefined && activity.week !== '' && (
@@ -498,10 +514,23 @@ export function LearningModal({ open, activity, onSave, onSkip }: LearningModalP
                       : 'border border-stone-200 bg-white text-stone-700 hover:bg-stone-100'
                   }`}
                 >
-                  {state.isListening ? '🛑 Stop Listening' : '🎙️ Voice Dictate'}
+                  {state.isListening ? (
+                    <>
+                      <IconMicOff className="h-3.5 w-3.5" />
+                      <span>Stop Listening</span>
+                    </>
+                  ) : (
+                    <>
+                      <IconMic className="h-3.5 w-3.5" />
+                      <span>Voice Dictate</span>
+                    </>
+                  )}
                 </button>
               ) : (
-                <span className="text-xs text-stone-400">🎙️ Voice dictation unavailable in this browser</span>
+                <span className="inline-flex items-center gap-1 text-xs text-stone-400">
+                  <IconMicOff className="h-3.5 w-3.5" />
+                  Voice dictation unavailable in this browser
+                </span>
               )}
             </div>
 
@@ -509,9 +538,16 @@ export function LearningModal({ open, activity, onSave, onSkip }: LearningModalP
               type="button"
               onClick={() => void requestSummary()}
               disabled={!canRequestSummary(state)}
-              className="min-h-11 rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 transition hover:bg-stone-100 disabled:opacity-40"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 transition hover:bg-stone-100 disabled:opacity-40"
             >
-              {state.status === 'summarizing' || state.isStructuring ? 'Structuring…' : '✨ Structure with AI'}
+              {state.status === 'summarizing' || state.isStructuring ? (
+                'Structuring…'
+              ) : (
+                <>
+                  <IconSparkles className="h-3.5 w-3.5 text-lavender-500" />
+                  <span>Structure with AI</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -519,8 +555,9 @@ export function LearningModal({ open, activity, onSave, onSkip }: LearningModalP
         {/* ADR-0003 Review and Confirmation Banner */}
         {state.aiGenerated && (
           <div className="mt-4 rounded-2xl bg-lavender-50 p-4">
-            <p className="text-xs font-medium text-lavender-700">
-              ✨ AI structured these takeaways from your notes. Review, edit, and confirm below:
+            <p className="inline-flex items-center gap-1.5 text-xs font-medium text-lavender-700">
+              <IconSparkles className="h-3.5 w-3.5 text-lavender-600 shrink-0" />
+              AI structured these takeaways from your notes. Review, edit, and confirm below:
             </p>
             <label className="mt-2.5 flex items-center gap-2 text-sm font-medium text-stone-800">
               <input
@@ -606,7 +643,9 @@ export function LearningModal({ open, activity, onSave, onSkip }: LearningModalP
             aria-expanded={notesOpen}
             className="flex items-center gap-2 text-xs font-medium text-stone-500 hover:text-stone-700"
           >
-            <span>{notesOpen || state.notes.trim() ? '▾' : '▸'}</span>
+            <IconChevronDown
+              className={`h-3.5 w-3.5 transition-transform ${notesOpen || state.notes.trim() ? 'rotate-0' : '-rotate-90'}`}
+            />
             Personal Notes & Follow-ups (Optional)
           </button>
 
@@ -629,7 +668,7 @@ export function LearningModal({ open, activity, onSave, onSkip }: LearningModalP
             onClick={() => void handleCopyTsv()}
             disabled={copyDisabled}
             title={isUnconfirmedAi ? 'Please review and confirm takeaways above before copying' : undefined}
-            className={`min-h-11 rounded-full px-4 py-2 text-xs font-semibold transition ${
+            className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition ${
               copyDisabled
                 ? 'cursor-not-allowed border border-stone-200 bg-stone-100 text-stone-400 opacity-60'
                 : copied
@@ -637,11 +676,22 @@ export function LearningModal({ open, activity, onSave, onSkip }: LearningModalP
                   : 'border border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
             }`}
           >
-            {copied
-              ? '✓ Copied for Diary Sheet!'
-              : isUnconfirmedAi
-                ? '📋 Confirm to Copy'
-                : '📋 Copy for Diary Sheet'}
+            {copied ? (
+              <>
+                <IconCheck className="h-3.5 w-3.5 text-mint-600" />
+                <span>Copied for Diary Sheet!</span>
+              </>
+            ) : isUnconfirmedAi ? (
+              <>
+                <IconClipboard className="h-3.5 w-3.5" />
+                <span>Confirm to Copy</span>
+              </>
+            ) : (
+              <>
+                <IconClipboard className="h-3.5 w-3.5" />
+                <span>Copy for Diary Sheet</span>
+              </>
+            )}
           </button>
 
           <div className="flex flex-wrap items-center gap-2">

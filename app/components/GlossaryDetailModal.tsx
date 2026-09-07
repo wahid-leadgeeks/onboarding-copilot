@@ -2,24 +2,37 @@
 
 import { useEffect, useState } from 'react';
 import { clipboardRowForModule, type TrainingModule, type MaterialLink } from '@/lib/glossary';
+import {
+  IconVideo,
+  IconSlide,
+  IconFileText,
+  IconLayers,
+  IconLink,
+  IconExternalLink,
+  IconX,
+  IconTarget,
+  IconNote,
+  IconCheck,
+  IconClipboard,
+} from './Icons';
 
 interface GlossaryDetailModalProps {
   module: TrainingModule | null;
   onClose: () => void;
 }
 
-function getLinkIcon(type: MaterialLink['type']) {
+function renderLinkIcon(type: MaterialLink['type']) {
   switch (type) {
     case 'video':
-      return '🎥';
+      return <IconVideo className="h-4 w-4 text-sky-600" />;
     case 'slides':
-      return '📑';
+      return <IconSlide className="h-4 w-4 text-amber-600" />;
     case 'doc':
-      return '📄';
+      return <IconFileText className="h-4 w-4 text-blue-600" />;
     case 'sheet':
-      return '📊';
+      return <IconLayers className="h-4 w-4 text-mint-600" />;
     default:
-      return '🔗';
+      return <IconLink className="h-4 w-4 text-stone-500" />;
   }
 }
 
@@ -87,7 +100,7 @@ export function GlossaryDetailModal({ module, onClose }: GlossaryDetailModalProp
             aria-label="Close modal"
             className="flex size-9 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-500 transition hover:bg-stone-200 hover:text-stone-800"
           >
-            ✕
+            <IconX className="h-4 w-4" />
           </button>
         </div>
 
@@ -97,7 +110,7 @@ export function GlossaryDetailModal({ module, onClose }: GlossaryDetailModalProp
           <section aria-labelledby="section-objectives">
             <div className="flex items-center gap-2 mb-2">
               <span className="flex size-6 items-center justify-center rounded-md bg-mint-100 text-xs text-mint-800">
-                🎯
+                <IconTarget className="h-3.5 w-3.5" />
               </span>
               <h3 id="section-objectives" className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
                 Objectives
@@ -112,7 +125,7 @@ export function GlossaryDetailModal({ module, onClose }: GlossaryDetailModalProp
           <section aria-labelledby="section-materials">
             <div className="flex items-center gap-2 mb-2">
               <span className="flex size-6 items-center justify-center rounded-md bg-lavender-100 text-xs text-lavender-800">
-                🧩
+                <IconLayers className="h-3.5 w-3.5" />
               </span>
               <h3 id="section-materials" className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
                 Framework &amp; Materials
@@ -127,7 +140,7 @@ export function GlossaryDetailModal({ module, onClose }: GlossaryDetailModalProp
           <section aria-labelledby="section-access">
             <div className="flex items-center gap-2 mb-2">
               <span className="flex size-6 items-center justify-center rounded-md bg-sky-100 text-xs text-sky-800">
-                🔗
+                <IconLink className="h-3.5 w-3.5" />
               </span>
               <h3 id="section-access" className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
                 Material Access &amp; Links
@@ -147,13 +160,16 @@ export function GlossaryDetailModal({ module, onClose }: GlossaryDetailModalProp
                       className="group flex items-center justify-between rounded-xl bg-white p-3 shadow-xs border border-sky-200 transition hover:border-sky-400 hover:shadow-sm"
                     >
                       <div className="flex items-center gap-2.5">
-                        <span className="text-base">{getLinkIcon(link.type)}</span>
+                        <span className="flex size-6 items-center justify-center rounded bg-stone-50">
+                          {renderLinkIcon(link.type)}
+                        </span>
                         <span className="text-xs sm:text-sm font-semibold text-sky-900 group-hover:text-sky-700">
                           {link.label}
                         </span>
                       </div>
                       <span className="inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-0.5 text-[11px] font-bold text-sky-800 group-hover:bg-sky-200 transition">
-                        Open Link ↗
+                        <span>Open Link</span>
+                        <IconExternalLink className="h-3 w-3" />
                       </span>
                     </a>
                   ))}
@@ -172,7 +188,7 @@ export function GlossaryDetailModal({ module, onClose }: GlossaryDetailModalProp
             <section aria-labelledby="section-notes">
               <div className="flex items-center gap-2 mb-2">
                 <span className="flex size-6 items-center justify-center rounded-md bg-sun-100 text-xs text-sun-800">
-                  📝
+                  <IconNote className="h-3.5 w-3.5" />
                 </span>
                 <h3 id="section-notes" className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
                   Session Notes &amp; Guidelines
@@ -199,7 +215,17 @@ export function GlossaryDetailModal({ module, onClose }: GlossaryDetailModalProp
               onClick={handleCopy}
               className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-stone-100 px-4 py-2 text-xs font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
             >
-              {copied ? '✓ Copied TSV!' : '📋 Copy Module TSV'}
+              {copied ? (
+                <>
+                  <IconCheck className="h-3.5 w-3.5 text-mint-600" />
+                  <span>Copied TSV!</span>
+                </>
+              ) : (
+                <>
+                  <IconClipboard className="h-3.5 w-3.5" />
+                  <span>Copy Module TSV</span>
+                </>
+              )}
             </button>
             <button
               type="button"

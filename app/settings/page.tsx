@@ -6,6 +6,12 @@ import { IMPORTED_SCHEDULE_STORAGE_KEY, readImportedSchedule, writeImportedSched
 import { DIARY_STORAGE_KEY, mergeImportedDiary, readDiary, type StoredDiary } from '@/lib/local-records';
 import { isActivityList } from '@/lib/sheets/types';
 import type { Activity } from '@/lib/types/activity';
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconClock,
+  IconExternalLink,
+} from '@/app/components/Icons';
 
 type Health = {
   mode: string;
@@ -105,7 +111,7 @@ export default function SettingsPage() {
       const merged = mergeImportedDiary(existingDiary, extractResult.diary.entries);
       localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(merged));
     }
-    setImportMessage(`Applied ${activities.length} activities and ${extractResult.diary?.entries?.length || 0} diary notes to local schedule! ✨`);
+    setImportMessage(`Applied ${activities.length} activities and ${extractResult.diary?.entries?.length || 0} diary notes to local schedule!`);
   }
 
   async function refreshSession() {
@@ -192,7 +198,7 @@ export default function SettingsPage() {
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('auth') === 'success') {
-      setAuthNotice('Connected to Google successfully! 🌿');
+      setAuthNotice('Connected to Google successfully!');
       window.history.replaceState(null, '', '/settings');
     } else if (params.get('error')) {
       const err = params.get('error');
@@ -283,36 +289,33 @@ export default function SettingsPage() {
         {healthError && <span className="text-peach-700">Health check unavailable · </span>}
         Mode: <span className="font-medium text-stone-700">{health?.mode ?? 'Checking…'}</span>
       </p>
-      <div className="mt-4 space-y-2 text-sm">
-        <p>
+      <div className="mt-4 space-y-2.5 text-sm">
+        <p className="flex items-center gap-2.5">
           <span
-            className={`inline-block w-4 text-center ${session?.authenticated ? 'text-mint-600' : health?.integrations.oauth ? 'text-amber-500' : 'text-stone-300'}`}
+            className={`inline-block h-2.5 w-2.5 rounded-full shrink-0 ${session?.authenticated ? 'bg-mint-600' : health?.integrations.oauth ? 'bg-amber-500' : 'border border-stone-300 bg-stone-100'}`}
             aria-hidden="true"
-          >
-            {session?.authenticated ? '●' : '○'}
-          </span>{' '}
-          Google sign-in {session?.authenticated ? '(Connected)' : health?.integrations.oauth ? '(Configured)' : '(Not configured)'}
+          />
+          <span>Google sign-in {session?.authenticated ? '(Connected)' : health?.integrations.oauth ? '(Configured)' : '(Not configured)'}</span>
         </p>
-        <p>
+        <p className="flex items-center gap-2.5">
           <span
-            className={`inline-block w-4 text-center ${health?.integrations.sheets ? 'text-mint-600' : 'text-stone-300'}`}
+            className={`inline-block h-2.5 w-2.5 rounded-full shrink-0 ${health?.integrations.sheets ? 'bg-mint-600' : 'border border-stone-300 bg-stone-100'}`}
             aria-hidden="true"
-          >
-            {health?.integrations.sheets ? '●' : '○'}
-          </span>{' '}
-          Google Sheets sync
+          />
+          <span>Google Sheets sync</span>
         </p>
         {health && !health.integrations.sheets && (health.integrations.sheetsRead || health.integrations.sheetsWrite) && (
-          <p className="text-peach-700">⚠️ Sheets is partially configured</p>
+          <p className="inline-flex items-center gap-1.5 text-peach-700">
+            <IconAlertTriangle className="h-4 w-4 shrink-0" />
+            <span>Sheets is partially configured</span>
+          </p>
         )}
-        <p>
+        <p className="flex items-center gap-2.5">
           <span
-            className={`inline-block w-4 text-center ${health?.integrations.ai ? 'text-mint-600' : 'text-stone-300'}`}
+            className={`inline-block h-2.5 w-2.5 rounded-full shrink-0 ${health?.integrations.ai ? 'bg-mint-600' : 'border border-stone-300 bg-stone-100'}`}
             aria-hidden="true"
-          >
-            {health?.integrations.ai ? '●' : '○'}
-          </span>{' '}
-          AI provider
+          />
+          <span>AI provider</span>
         </p>
       </div>
 
@@ -327,9 +330,10 @@ export default function SettingsPage() {
               href={`https://docs.google.com/spreadsheets/d/${health.spreadsheetId}/edit`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-sky-700 shadow-xs transition hover:bg-sky-50"
+              className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-sky-700 shadow-xs transition hover:bg-sky-50"
             >
-              Open Sheet ↗
+              <span>Open Sheet</span>
+              <IconExternalLink className="h-3 w-3" />
             </a>
           </div>
 
@@ -361,8 +365,9 @@ export default function SettingsPage() {
           {extractResult && (
             <div className="mt-4 rounded-xl border border-mint-200 bg-mint-50/80 p-4 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-semibold text-mint-950">
-                  ✓ Extracted all content from {extractResult.title || 'United Spreadsheet'}
+                <p className="inline-flex items-center gap-1.5 font-semibold text-mint-950">
+                  <IconCheck className="h-4 w-4 text-mint-700 shrink-0" />
+                  <span>Extracted all content from {extractResult.title || 'United Spreadsheet'}</span>
                 </p>
                 {extractResult.schedule?.activities && (
                   <button
@@ -412,11 +417,11 @@ export default function SettingsPage() {
     </section>
     <section className="animate-fade-up stagger-2 mt-6 rounded-card bg-white p-6 shadow-soft sm:p-8"><h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900"><span aria-hidden="true" className="inline-block size-2 rounded-full bg-sky-300" />Schedule</h2><p className="mt-3 text-stone-500">Import your onboarding schedule from an Excel or Google Sheets export (.xlsx, .csv, or .tsv). The file is parsed here and kept on this device — nothing is uploaded elsewhere.</p>
       {imported ? <div><p className="mt-4 text-stone-700">Imported schedule · {imported.activities.length} activities · {new Date(imported.importedAt).toLocaleString()}</p><button onClick={removeImported} className="mt-4 min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50">Remove imported schedule</button></div>
-        : preview ? <div className="animate-pop-in mt-4 rounded-2xl bg-sun-50 p-5"><p className="font-medium text-sun-700">Ready to import ✨</p><p className="mt-1 text-sm text-stone-700">{preview.activities.length} activities{preview.skipped > 0 ? `, ${preview.skipped} skipped` : ''}{preview.diary && preview.diary.length > 0 ? ` · ${preview.diary.length} diary notes` : ''}</p>{preview.skipped > 0 && preview.warnings.length > 0 && <ul className="mt-2 space-y-1 text-xs text-peach-700">{preview.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}<ul className="mt-3 space-y-1">{preview.activities.slice(0, 5).map((activity, index) => <li key={`${activity.id}-${index}`} className="text-sm text-stone-700">{activity.name} — {activity.plannedStart === 'TBD' ? 'Flexible / TBD' : `${activity.plannedStart}–${activity.plannedEnd}`}</li>)}</ul><div className="mt-4 flex flex-wrap gap-3"><button onClick={confirmImport} className="min-h-11 rounded-full bg-stone-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-stone-700">Use this schedule</button><button onClick={discardImport} className="min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-white">Discard</button></div></div>
+        : preview ? <div className="animate-pop-in mt-4 rounded-2xl bg-sun-50 p-5"><p className="font-medium text-sun-800">Ready to import</p><p className="mt-1 text-sm text-stone-700">{preview.activities.length} activities{preview.skipped > 0 ? `, ${preview.skipped} skipped` : ''}{preview.diary && preview.diary.length > 0 ? ` · ${preview.diary.length} diary notes` : ''}</p>{preview.skipped > 0 && preview.warnings.length > 0 && <ul className="mt-2 space-y-1 text-xs text-peach-700">{preview.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}<ul className="mt-3 space-y-1">{preview.activities.slice(0, 5).map((activity, index) => <li key={`${activity.id}-${index}`} className="text-sm text-stone-700">{activity.name} — {activity.plannedStart === 'TBD' ? 'Flexible / TBD' : `${activity.plannedStart}–${activity.plannedEnd}`}</li>)}</ul><div className="mt-4 flex flex-wrap gap-3"><button onClick={confirmImport} className="min-h-11 rounded-full bg-stone-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-stone-700">Use this schedule</button><button onClick={discardImport} className="min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-white">Discard</button></div></div>
         : <label className="mt-4 inline-flex min-h-11 cursor-pointer items-center rounded-full bg-stone-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-stone-700">{parsing ? 'Reading file…' : 'Choose file'}<input type="file" accept=".xlsx,.csv,.tsv" disabled={parsing} onChange={event => void importSchedule(event)} style={{ display: 'none' }} /></label>}
       {importError && <p className="animate-pop-in mt-3 text-sm text-peach-700" role="alert">{importError}</p>}
       {importMessage && <p className="mt-3 text-sm text-stone-600" role="status">{importMessage}</p>}
     </section>
-    <section className="animate-fade-up stagger-3 mt-6 rounded-card bg-white p-6 shadow-soft sm:p-8"><h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900"><span aria-hidden="true" className="inline-block size-2 rounded-full bg-mint-300" />Sync</h2><p className="mt-3 text-stone-500">Completed sessions and learning notes sync after confirmation. Local records remain available if a service is unavailable.</p><button onClick={() => void retryPending()} disabled={!pendingCount} className="mt-4 min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-40 disabled:hover:transform-none">Retry pending sync</button><p className="mt-3 text-sm text-stone-600" role="status">{pendingCount ? <span className="text-peach-700">⏳ {pendingCount} session{pendingCount === 1 ? '' : 's'} waiting to sync</span> : <span className="text-mint-700">✅ No sessions waiting to sync</span>}</p></section>
+    <section className="animate-fade-up stagger-3 mt-6 rounded-card bg-white p-6 shadow-soft sm:p-8"><h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900"><span aria-hidden="true" className="inline-block size-2 rounded-full bg-mint-300" />Sync</h2><p className="mt-3 text-stone-500">Completed sessions and learning notes sync after confirmation. Local records remain available if a service is unavailable.</p><button onClick={() => void retryPending()} disabled={!pendingCount} className="mt-4 min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-40 disabled:hover:transform-none">Retry pending sync</button><p className="mt-3 text-sm text-stone-600" role="status">{pendingCount ? <span className="inline-flex items-center gap-1.5 text-peach-700"><IconClock className="h-4 w-4 shrink-0" /> {pendingCount} session{pendingCount === 1 ? '' : 's'} waiting to sync</span> : <span className="inline-flex items-center gap-1.5 text-mint-700"><IconCheck className="h-4 w-4 shrink-0" /> No sessions waiting to sync</span>}</p></section>
     <section className="animate-fade-up stagger-4 mt-6 rounded-card bg-white p-6 shadow-soft sm:p-8"><h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900"><span aria-hidden="true" className="inline-block size-2 rounded-full bg-lavender-300" />Guide tour</h2><p className="mt-3 text-stone-500">New to the cockpit? Take a short walkthrough of Today, the timeline, quick notes, and more.</p><a href="/?tour=start" className="mt-4 inline-flex min-h-11 items-center rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50">Take the tour again</a></section></main>;
 }

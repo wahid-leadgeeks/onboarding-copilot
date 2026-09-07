@@ -14,6 +14,12 @@ import {
 } from '@/lib/diary-cockpit';
 import { DiaryModal } from '@/app/components/DiaryModal';
 import { useToast } from '@/app/components/Toast';
+import {
+  IconEdit,
+  IconRocket,
+  IconCheck,
+  IconClipboard,
+} from '@/app/components/Icons';
 
 export default function DiaryPage() {
   const { toast } = useToast();
@@ -43,7 +49,7 @@ export default function DiaryPage() {
   function handleSaveTopic(entry: DiaryEntryRecord) {
     const next = upsertDiaryCockpitEntry(diaryEntries, entry);
     persist(next);
-    toast.success(`Saved notes for Row ${entry.rowNumber}! 🌿`);
+    toast.success(`Saved notes for Row ${entry.rowNumber}!`);
   }
 
   async function handleCopyRow(topic: DiaryTopicItem, entry?: DiaryEntryRecord) {
@@ -114,8 +120,8 @@ export default function DiaryPage() {
         <section className="animate-fade-up stagger-1 mb-6 rounded-2xl border-l-4 border-peach-400 bg-peach-50/70 p-4 shadow-xs sm:p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-peach-200 text-base">
-                ✍️
+              <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-peach-200 text-peach-800">
+                <IconEdit className="h-4 w-4" />
               </span>
               <div>
                 <div className="flex items-center gap-2">
@@ -137,9 +143,10 @@ export default function DiaryPage() {
             <button
               type="button"
               onClick={() => setActiveTopic(nextPendingTopic)}
-              className="inline-flex min-h-9 items-center justify-center rounded-full bg-stone-900 px-4 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800 active:scale-95 sm:self-center shrink-0"
+              className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-stone-900 px-4 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800 active:scale-95 sm:self-center shrink-0"
             >
-              Fill Notes &amp; Sync 🚀
+              <IconRocket className="h-3.5 w-3.5" />
+              <span>Fill Notes &amp; Sync</span>
             </button>
           </div>
         </section>
@@ -162,10 +169,10 @@ export default function DiaryPage() {
               }`}
             >
               {progress.isComplete
-                ? 'All complete! 🌿'
+                ? 'All complete!'
                 : progress.needsNotesCount > 0
-                  ? `${progress.needsNotesCount} needs notes ✍️`
-                  : `${progress.todoCount} to do 🌱`}
+                  ? `${progress.needsNotesCount} needs notes`
+                  : `${progress.todoCount} to do`}
             </span>
           </div>
 
@@ -263,7 +270,13 @@ export default function DiaryPage() {
                           : 'bg-stone-100 text-stone-400'
                     }`}
                   >
-                    {isCompleted ? '✓' : isNeedsNotes ? '✍️' : '○'}
+                    {isCompleted ? (
+                      <IconCheck className="h-3.5 w-3.5" />
+                    ) : isNeedsNotes ? (
+                      <IconEdit className="h-3 w-3" />
+                    ) : (
+                      <span className="size-1.5 rounded-full bg-stone-300" />
+                    )}
                   </span>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -303,9 +316,19 @@ export default function DiaryPage() {
                   <button
                     type="button"
                     onClick={() => handleCopyRow(topic, entry)}
-                    className="rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95 focus-visible:outline focus-visible:outline-2"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95 focus-visible:outline focus-visible:outline-2"
                   >
-                    {isCopied ? '✓ Copied!' : '📋 Copy TSV'}
+                    {isCopied ? (
+                      <>
+                        <IconCheck className="h-3.5 w-3.5 text-mint-600" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <IconClipboard className="h-3.5 w-3.5" />
+                        <span>Copy TSV</span>
+                      </>
+                    )}
                   </button>
                   <button
                     type="button"

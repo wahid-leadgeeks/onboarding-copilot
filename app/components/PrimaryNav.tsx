@@ -22,6 +22,8 @@ export type NavTab =
   | 'Journey'
   | 'Learnings';
 
+import { IconSearch } from './Icons';
+
 export function PrimaryNav({ active }: { active: NavTab }) {
   const isTabActive = (label: string) => {
     if (label === 'Schedule') return active === 'Schedule' || active === 'Today';
@@ -77,7 +79,7 @@ export function PrimaryNav({ active }: { active: NavTab }) {
           title="Search & Quick Commands (⌘K or ?)"
           aria-label="Open command palette"
         >
-          <span className="text-[11px]">🔍</span>
+          <IconSearch className="h-3.5 w-3.5" />
           <kbd className="hidden sm:inline-block rounded bg-stone-200/70 px-1.5 py-0.2 text-[10px] font-mono font-semibold text-stone-600">
             ⌘K
           </kbd>
