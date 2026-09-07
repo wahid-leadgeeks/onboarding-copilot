@@ -17,7 +17,7 @@
 - [x] Configure Tailwind CSS
 - [x] Configure ESLint
 - [x] Create application shell (layout, root page)
-- [ ] Set up Google OAuth (NextAuth.js or equivalent)
+- [x] Set up Google OAuth (OAuth 2.0 flow with encrypted HTTP-only session cookie and callback at http://localhost:4000/api/auth/callback/google)
 - [x] Create `lib/sheets/` Google Sheets API client boundary
 - [x] Read Schedule sheet — validated fallback rows until credentials are configured
 - [x] Define `Activity` TypeScript type
