@@ -2,7 +2,7 @@
 
 ## Project
 
-**Onboarding Copilot**
+**NOVA (Newcomer Onboarding & Virtual Assistant)**
 
 ## Mission
 

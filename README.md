@@ -1,8 +1,10 @@
-# Onboarding Copilot
+# NOVA — Newcomer Onboarding & Virtual Assistant
 
-> **Don't rebuild the onboarding spreadsheet. Build a cockpit for it.**
+> **NOVA is a bright guide for every new employee's journey.**
+>
+> *Don't rebuild the onboarding spreadsheet. Build a cockpit for it.*
 
-A lightweight assistant that makes employee onboarding administration almost effortless.
+A lightweight assistant that makes employee onboarding administration almost effortless and makes onboarding feel less boring and overwhelming.
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # Product Requirements Document
 
-**Product:** Onboarding Copilot
+**Product:** NOVA (Newcomer Onboarding & Virtual Assistant)
 **Status:** Active — MVP
 **Last updated:** 2026-09-02
 

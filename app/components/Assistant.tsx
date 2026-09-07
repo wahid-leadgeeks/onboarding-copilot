@@ -82,7 +82,7 @@ export function Assistant() {
       {!open && (
         <button
           type="button"
-          aria-label="Ask the onboarding copilot"
+          aria-label="Ask NOVA"
           onClick={() => setOpen(true)}
           className="hero-gradient animate-float fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white shadow-xl transition hover:shadow-2xl"
         >
@@ -92,13 +92,13 @@ export function Assistant() {
       {open && (
         <section
           role="dialog"
-          aria-label="AI assistant"
+          aria-label="NOVA assistant"
           className="animate-pop-in fixed bottom-5 right-5 z-50 flex h-[28rem] w-[min(24rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-card bg-white shadow-lift"
         >
           <header className="hero-gradient flex items-center justify-between px-4 py-3 text-white">
             <div>
-              <p className="text-sm font-semibold tracking-tight">Copilot Assistant</p>
-              <p className="text-xs text-stone-300">Answers only · nothing is recorded</p>
+              <p className="text-sm font-semibold tracking-tight">NOVA</p>
+              <p className="text-xs text-stone-300">Newcomer Onboarding &amp; Virtual Assistant</p>
             </div>
             <button
               type="button"
@@ -112,7 +112,7 @@ export function Assistant() {
           <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
             {messages.length === 0 && (
               <div className="rounded-xl bg-cream p-3 text-sm leading-6 text-stone-600 ring-1 ring-stone-200">
-                Ask anything — how to phrase a learning note, what an activity means, or how the app works. ✨
+                Hi! I&apos;m NOVA, your guide for your onboarding journey. Ask me anything — how to phrase a learning note, what an activity means, or how to navigate the app. ✨
                 {unavailable && <p className="mt-2 font-medium text-peach-700">AI is not configured yet. Add <code className="rounded bg-stone-100 px-1">GROQ_API_KEY</code> and <code className="rounded bg-stone-100 px-1">GROQ_MODEL</code> to <code className="rounded bg-stone-100 px-1">.env.local</code> and restart.</p>}
               </div>
             )}

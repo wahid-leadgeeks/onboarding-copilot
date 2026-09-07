@@ -12,8 +12,8 @@ export type GuideTourStep = {
 
 export const todayTourSteps: readonly GuideTourStep[] = [
   {
-    title: 'Welcome to your cockpit 👋',
-    body: "One thing at a time. We'll track the hours, the notes, and the paperwork — you focus on learning. Let's take a quick look around.",
+    title: 'Welcome to NOVA 👋',
+    body: "NOVA is a bright guide for every new employee's journey. We'll track the hours, the notes, and the paperwork — you focus on learning. Let's take a quick look around.",
   },
   {
     target: 'status-bar',

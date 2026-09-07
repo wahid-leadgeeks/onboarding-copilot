@@ -1,6 +1,6 @@
 # Roadmap
 
-**Product:** Onboarding Copilot
+**Product:** NOVA (Newcomer Onboarding & Virtual Assistant)
 **Last updated:** 2026-09-03
 
 > The roadmap defines **where the product is going**.

@@ -1,6 +1,6 @@
-# Design System — Onboarding Copilot
+# Design System — NOVA
 
-**Product:** Onboarding Copilot
+**Product:** NOVA (Newcomer Onboarding & Virtual Assistant)
 **Status:** Active — v3 (warm, human-first)
 **Last updated:** 2026-09-04
 
