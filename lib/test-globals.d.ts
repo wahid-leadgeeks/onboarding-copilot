@@ -13,6 +13,7 @@ declare function expect<T>(actual: T): {
   toBeLessThanOrEqual(expected: number): void;
   toBeUndefined(): void;
   toBeDefined(): void;
+  toBeNull(): void;
   toBeTruthy(): void;
   toBeFalsy(): void;
   toThrow(expected?: unknown): void;
@@ -23,6 +24,7 @@ declare function expect<T>(actual: T): {
     toHaveLength(expected: number): void;
     toContain(expected: unknown): void;
     toMatch(expected: RegExp | string): void;
+    toBeNull(): void;
     toThrow(expected?: unknown): void;
   };
 };
