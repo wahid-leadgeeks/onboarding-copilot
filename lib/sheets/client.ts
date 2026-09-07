@@ -1,12 +1,10 @@
 import type { Activity } from '@/lib/types/activity';
 import { isActivity } from './types';
 import { extractGoogleSpreadsheet } from './extractor';
+import { OFFICIAL_SCHEDULE_ACTIVITIES, scheduleActivityToActivity } from '@/lib/schedule-catalog';
 
-const fallback: Activity[] = [
-  { id: 'intro-it', name: 'Introduction to IT Systems', type: 'learning', plannedStart: '09:00', plannedEnd: '11:00', status: 'not-started' },
-  { id: 'security', name: 'Security & Access Setup', type: 'setup', plannedStart: '11:30', plannedEnd: '12:30', status: 'not-started' },
-  { id: 'welcome', name: 'Team Welcome', type: 'welcome', plannedStart: '14:00', plannedEnd: '15:00', status: 'not-started' },
-];
+const fallback: Activity[] = OFFICIAL_SCHEDULE_ACTIVITIES.map(scheduleActivityToActivity);
+
 
 export async function readSchedule(accessToken?: string): Promise<Activity[]> {
   const spreadsheetId = process.env.GOOGLE_SHEETS_ID;

@@ -8,6 +8,18 @@ import { QuickNote } from '@/app/components/QuickNote';
 import { GuideTour, todayTourSteps } from '@/app/components/GuideTour';
 import { LearningModal } from '@/app/components/LearningModal';
 import type { LearningActivityContext, LearningSubmission } from '@/app/components/LearningModal';
+import { ScheduleFillModal } from '@/app/components/ScheduleFillModal';
+import {
+  OFFICIAL_SCHEDULE_ACTIVITIES,
+  SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY,
+  readScheduleCustomizations,
+  writeScheduleCustomizations,
+  clipboardRowForScheduleGtoK,
+  clipboardRowForScheduleFull,
+  scheduleActivityToActivity,
+  getMergedScheduleActivities,
+  type ScheduleActivity,
+} from '@/lib/schedule-catalog';
 import { GUIDE_TOUR_STORAGE_KEY, readGuideTourState, writeGuideTourState } from '@/lib/guide-tour';
 import { IMPORTED_SCHEDULE_STORAGE_KEY, clipboardRowForSchedule, readImportedSchedule } from '@/lib/imported-schedule';
 import { ACTIVE_SESSION_STORAGE_KEY, DIARY_STORAGE_KEY, QUICK_NOTES_STORAGE_KEY, SESSION_HISTORY_STORAGE_KEY, appendDiary, appendQuickNote, appendSession, completedActivityIds, readDiary, readQuickNotes, readSessions, type StoredSession } from '@/lib/local-records';
@@ -16,10 +28,28 @@ import { selectCurrentActivity } from '@/lib/session/activity-selection';
 import { enqueueSync, pendingSyncStorageKey, readPendingSyncs, writePendingSyncs } from '@/lib/sync-queue';
 import { formatStartedAt, getProgressLabel, mergeCompletedCount } from '@/lib/session/presentation';
 
-const fallback: Activity[] = [{ id: 'intro-it', name: 'Introduction to IT Systems', type: 'learning', plannedStart: '09:00', plannedEnd: '11:00', status: 'not-started' }, { id: 'security', name: 'Security & Access Setup', type: 'setup', plannedStart: '11:30', plannedEnd: '12:30', status: 'not-started' }, { id: 'welcome', name: 'Team Welcome', type: 'welcome', plannedStart: '14:00', plannedEnd: '15:00', status: 'not-started' }];
+const fallback: Activity[] = OFFICIAL_SCHEDULE_ACTIVITIES.map(scheduleActivityToActivity);
 
 const activityDot = (type: string) =>
   type === 'learning' ? 'bg-lavender-300' : type === 'setup' ? 'bg-sky-300' : 'bg-peach-300';
+
+const getProgressBadge = (progress: string) => {
+  const p = progress?.toLowerCase();
+  if (p === 'done') return 'bg-mint-50 text-mint-700 border-mint-200';
+  if (p === 'in progress') return 'bg-peach-50 text-peach-700 border-peach-200';
+  if (p === 'reschedule') return 'bg-sun-50 text-sun-700 border-sun-200';
+  return 'bg-stone-50 text-stone-600 border-stone-200';
+};
+
+const getPicBadge = (pic: string) => {
+  const p = pic?.toLowerCase();
+  if (p.includes('it manager')) return 'bg-sky-50 text-sky-700 border-sky-200';
+  if (p.includes('hrd')) return 'bg-purple-50 text-purple-700 border-purple-200';
+  if (p.includes('ceo')) return 'bg-peach-50 text-peach-700 border-peach-200';
+  if (p.includes('experience')) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (p.includes('md')) return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+  return 'bg-stone-50 text-stone-700 border-stone-200';
+};
 
 const seedlingStage = (percent: number) =>
   percent <= 0 ? '🌱 Just planted' : percent < 50 ? '🌱 Growing' : percent < 100 ? '🌿 Almost there' : '🌳 Day complete';
@@ -28,6 +58,15 @@ const formatClock = (timestamp: number) => new Date(timestamp).toLocaleTimeStrin
 
 export default function TodayPage() {
   const [activities, setActivities] = useState<Activity[]>(fallback);
+  const [scheduleCatalog, setScheduleCatalog] = useState<ScheduleActivity[]>(() => [...OFFICIAL_SCHEDULE_ACTIVITIES]);
+  const [selectedWeek, setSelectedWeek] = useState<string>('Week 1');
+  const [selectedDay, setSelectedDay] = useState<string>('All');
+  const [scheduleSearch, setScheduleSearch] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [editingScheduleItem, setEditingScheduleItem] = useState<ScheduleActivity | null>(null);
+  const [copiedRowToast, setCopiedRowToast] = useState<{ rowNumber: number; type: 'G-K' | 'Full' } | null>(null);
+  const [expandedTopicRows, setExpandedTopicRows] = useState<Record<number, boolean>>({});
+
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [activeActivityId, setActiveActivityId] = useState<string | null>(null);
@@ -63,6 +102,15 @@ export default function TodayPage() {
   }
 
   useEffect(() => {
+    const custom = readScheduleCustomizations(localStorage.getItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY));
+    if (Object.keys(custom).length > 0) {
+      const merged = getMergedScheduleActivities(custom);
+      setScheduleCatalog(merged);
+      const imported = readImportedSchedule(localStorage.getItem(IMPORTED_SCHEDULE_STORAGE_KEY));
+      if (!imported) {
+        setActivities(merged.map(scheduleActivityToActivity));
+      }
+    }
     const imported = readImportedSchedule(localStorage.getItem(IMPORTED_SCHEDULE_STORAGE_KEY));
     if (imported) {
       setActivities(imported.activities);
@@ -224,6 +272,70 @@ export default function TodayPage() {
     }
   }
 
+  function handleSaveScheduleItem(updated: ScheduleActivity) {
+    setScheduleCatalog((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+
+    const existing = readScheduleCustomizations(localStorage.getItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY));
+    const nextCustom = {
+      ...existing,
+      [updated.id]: {
+        durationMinutes: updated.durationMinutes,
+        startTime: updated.startTime,
+        endTime: updated.endTime,
+        progress: updated.progress,
+        notes: updated.notes,
+      },
+    };
+    localStorage.setItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY, writeScheduleCustomizations(nextCustom));
+
+    setActivities((prev) =>
+      prev.map((act) => (act.id === updated.id ? scheduleActivityToActivity(updated) : act))
+    );
+
+    setSync(`Row ${updated.rowNumber} (${updated.topic.split('\n')[0].slice(0, 24)}...) saved & synchronized! 🌿`);
+    setEditingScheduleItem(null);
+  }
+
+  async function handleCopyGtoK(item: ScheduleActivity) {
+    const tsv = clipboardRowForScheduleGtoK(item);
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(tsv);
+        setCopiedRowToast({ rowNumber: item.rowNumber, type: 'G-K' });
+        setTimeout(() => setCopiedRowToast(null), 2500);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function handleCopyFullRow(item: ScheduleActivity) {
+    const tsv = clipboardRowForScheduleFull(item);
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(tsv);
+        setCopiedRowToast({ rowNumber: item.rowNumber, type: 'Full' });
+        setTimeout(() => setCopiedRowToast(null), 2500);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function handleStartTimerForScheduleRow(item: ScheduleActivity) {
+    const act = activities.find((a) => a.id === item.id) || scheduleActivityToActivity(item);
+    setActiveActivityId(act.id);
+    const timestamp = Date.now();
+    setStartedAt(timestamp);
+    setFinishedAt(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    void fetch('/api/session/start', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ activityId: act.id, startedAt: new Date(timestamp).toISOString(), plannedStart: act.plannedStart })
+    }).catch(() => setSync('Session started locally'));
+  }
+
   function resetSession() {
     setStartedAt(null);
     setFinishedAt(null);
@@ -245,6 +357,49 @@ export default function TodayPage() {
   const durationMinutes = duration % 60;
 
   const headline = allDone ? 'That’s everything for today. ✨' : completedCount === 0 ? 'Your day is still unwritten.' : progressPercent >= 50 ? 'Almost there! 🌱' : 'You’ve had a pretty productive day.';
+
+  const weekCounts: Record<string, number> = {
+    'Week 1': scheduleCatalog.filter((a) => a.week === 'Week 1').length,
+    'Week 2': scheduleCatalog.filter((a) => a.week === 'Week 2').length,
+    'Week 3': scheduleCatalog.filter((a) => a.week === 'Week 3').length,
+    'Week 4': scheduleCatalog.filter((a) => a.week === 'Week 4').length,
+    'Month 2 & 3': scheduleCatalog.filter((a) => a.week === 'Month 2' || a.week === 'Month 3').length,
+    'All': scheduleCatalog.length,
+  };
+
+  const currentWeekActivities = scheduleCatalog.filter((a) => {
+    if (selectedWeek === 'All') return true;
+    if (selectedWeek === 'Month 2 & 3') return a.week === 'Month 2' || a.week === 'Month 3';
+    return a.week === selectedWeek;
+  });
+
+  const dayCounts: Record<string, number> = {};
+  currentWeekActivities.forEach((a) => {
+    dayCounts[a.day] = (dayCounts[a.day] || 0) + 1;
+  });
+  const availableDays = Object.keys(dayCounts);
+
+  const filteredScheduleActivities = currentWeekActivities.filter((item) => {
+    if (selectedDay !== 'All' && item.day !== selectedDay) return false;
+
+    if (statusFilter !== 'All') {
+      if (statusFilter === 'Done' && item.progress !== 'Done') return false;
+      if (statusFilter === 'In Progress' && item.progress !== 'In Progress') return false;
+      if (statusFilter === 'Not Started' && item.progress !== 'Not Started' && item.progress !== '') return false;
+      if (statusFilter === 'Reschedule' && item.progress !== 'Reschedule') return false;
+    }
+
+    if (scheduleSearch.trim()) {
+      const q = scheduleSearch.toLowerCase().trim();
+      const matchTopic = item.topic.toLowerCase().includes(q);
+      const matchPic = item.pic.toLowerCase().includes(q);
+      const matchMedia = item.mainMedia.toLowerCase().includes(q);
+      const matchRow = `row ${item.rowNumber}`.includes(q) || String(item.rowNumber) === q;
+      if (!matchTopic && !matchPic && !matchMedia && !matchRow) return false;
+    }
+
+    return true;
+  });
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
@@ -320,13 +475,41 @@ export default function TodayPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    const target = currentActivity ?? (activeActivityId ? activities.find(a => a.id === activeActivityId) ?? null : null);
-                    if (target) void handleCopyScheduleRow(target);
+                    const target = currentActivity ?? (activeActivityId ? activities.find((a) => a.id === activeActivityId) ?? null : null);
+                    if (target) {
+                      const schedItem = scheduleCatalog.find((s) => s.id === target.id);
+                      if (schedItem) {
+                        setEditingScheduleItem({
+                          ...schedItem,
+                          durationMinutes: (durationHours * 60 + durationMinutes) || schedItem.durationMinutes,
+                          startTime: startedAt ? formatClock(startedAt) : schedItem.startTime,
+                          endTime: finishedAt ? formatClock(finishedAt) : schedItem.endTime,
+                          progress: 'Done',
+                        });
+                      }
+                    }
+                  }}
+                  className="min-h-12 rounded-full bg-mint-700 px-6 py-3 font-semibold text-white transition hover:bg-mint-800 shadow-xs active:scale-95"
+                >
+                  ✏️ Fill Row in Schedule Sheet (Cols G–K)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = currentActivity ?? (activeActivityId ? activities.find((a) => a.id === activeActivityId) ?? null : null);
+                    if (target) {
+                      const schedItem = scheduleCatalog.find((s) => s.id === target.id);
+                      if (schedItem) {
+                        void handleCopyGtoK(schedItem);
+                      } else {
+                        void handleCopyScheduleRow(target);
+                      }
+                    }
                   }}
                   className="min-h-12 rounded-full bg-stone-100 px-5 py-3 font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
                   aria-label="Copy Schedule TSV row for completed activity"
                 >
-                  {copiedScheduleId ? '✓ Copied TSV! 🌿' : '📋 Copy Schedule TSV'}
+                  {copiedRowToast?.type === 'G-K' ? '✓ Copied Cols G–K! 🌿' : '📋 Copy Cols G–K TSV'}
                 </button>
                 <button
                   onClick={resetSession}
@@ -423,66 +606,347 @@ export default function TodayPage() {
         </>
       )}
 
-      {/* Day journey */}
+      {/* Onboarding Master Schedule Cockpit */}
       <section data-tour="day-timeline" className="animate-fade-up stagger-2 mt-12">
-        <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-stone-500">Your day</h2>
-          <span className="text-sm text-stone-500">{activities.length} activities</span>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">
+              Onboarding Master Schedule
+            </h2>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Worksheet <code className="rounded bg-stone-100 px-1.5 py-0.5 font-mono font-semibold text-stone-800">Schedule</code> · Columns A to K (59 Official Master Activities)
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700">
+              {filteredScheduleActivities.length} of {scheduleCatalog.length} activities
+            </span>
+          </div>
         </div>
-        <div className="mt-2">
-          {sessionToday && sessionToday.finishedAt > sessionToday.startedAt && (
-            <div className="grid grid-cols-[2rem_1fr] items-center gap-3 border-l-2 border-stone-100 py-3 pl-4">
-              <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-sun-50 text-lg">☀️</span>
-              <p className="text-sm text-stone-500">Started {formatClock(sessionToday.startedAt)}</p>
+
+        {/* How to fill instruction banner */}
+        <div className="mb-5 rounded-2xl bg-sky-50/80 border border-sky-100 p-4 text-xs text-sky-900 shadow-2xs">
+          <div className="flex items-start gap-2.5">
+            <span className="text-base leading-none">💡</span>
+            <div className="space-y-1">
+              <p className="font-bold">How to fill Duration, Start Time, End Time, Progress & Notes:</p>
+              <p className="text-sky-800 leading-relaxed">
+                Click <span className="font-semibold text-stone-900">“✏️ Fill Row”</span> on any topic to update <span className="font-medium">Duration (Col G), Start Time (Col H), End Time (Col I), Progress (Col J), and Notes (Col K)</span>.
+                You can sync directly to Google Sheets with 1 click, or click <span className="font-semibold text-stone-900">“📋 Copy G–K”</span> and paste straight into cell <code className="rounded bg-sky-100 px-1 py-0.2 font-mono font-bold">G&#123;row&#125;</code> in Google Sheets!
+              </p>
             </div>
-          )}
-          {activities.map(activity => {
-            const done = isActivityDone(activity);
-            const current = activity.id === currentActivity?.id;
+          </div>
+        </div>
+
+        {/* Week Filter Tabs */}
+        <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-stone-100 pb-3">
+          {(['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Month 2 & 3', 'All'] as const).map((w) => {
+            const active = selectedWeek === w;
+            const count = weekCounts[w] || 0;
             return (
-              <div key={activity.id} className="grid grid-cols-[2rem_1fr_auto] items-center gap-3 border-l-2 border-stone-100 py-3 pl-4">
-                <span
-                  aria-label={done ? 'Completed' : current ? 'In progress' : 'Upcoming'}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${done ? 'bg-mint-100 text-mint-700' : current ? (startedAt && !finishedAt ? 'bg-peach-100 text-peach-600' : 'bg-peach-100 text-peach-700') : 'bg-stone-100 text-stone-400'}`}
-                >
-                  {done ? '✓' : current ? '●' : '○'}
+              <button
+                key={w}
+                type="button"
+                onClick={() => {
+                  setSelectedWeek(w);
+                  setSelectedDay('All');
+                }}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition ${
+                  active
+                    ? 'bg-stone-900 text-white shadow-xs'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900'
+                }`}
+              >
+                <span>{w}</span>
+                <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${active ? 'bg-stone-800 text-stone-200' : 'bg-stone-200 text-stone-700'}`}>
+                  {count}
                 </span>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className={`font-medium ${done ? 'text-stone-500' : current ? 'text-stone-900' : 'text-stone-700'}`}>{activity.name}</p>
-                  {done && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedActivityForLearning(activity);
-                          setShowLearningCapture(true);
-                        }}
-                        className="min-h-8 text-xs font-medium text-mint-700 underline underline-offset-4 transition hover:text-mint-600"
-                      >
-                        Write Reflection
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleCopyScheduleRow(activity)}
-                        className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-600 transition hover:bg-stone-200 active:scale-95"
-                        aria-label={`Copy Schedule TSV row for ${activity.name}`}
-                      >
-                        {copiedScheduleId === activity.id ? '✓ Copied!' : '📋 Copy TSV'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <span className="text-sm text-stone-400">{activity.plannedStart === 'TBD' ? (activity.durationMinutes ? `${activity.durationMinutes}m` : 'TBD') : activity.plannedStart}</span>
-              </div>
+              </button>
             );
           })}
-          {sessionToday && sessionToday.finishedAt > sessionToday.startedAt && (
-            <div className="grid grid-cols-[2rem_1fr] items-center gap-3 border-l-2 border-stone-100 py-3 pl-4">
-              <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center rounded-full bg-mint-50 text-lg">🌿</span>
-              <p className="text-sm text-stone-500">Finished {formatClock(sessionToday.finishedAt)}</p>
+        </div>
+
+        {/* Filter Toolbar: Day pills, Status, and Search */}
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          {/* Day filter pills */}
+          {selectedWeek !== 'All' && availableDays.length > 1 && (
+            <div className="flex flex-wrap items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setSelectedDay('All')}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                  selectedDay === 'All'
+                    ? 'bg-mint-700 text-white shadow-2xs'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+              >
+                All Days ({currentWeekActivities.length})
+              </button>
+              {availableDays.map((day) => {
+                const active = selectedDay === day;
+                const count = dayCounts[day];
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => setSelectedDay(day)}
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
+                      active
+                        ? 'bg-mint-700 text-white shadow-2xs'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    }`}
+                  >
+                    {day} ({count})
+                  </button>
+                );
+              })}
             </div>
           )}
+
+          {/* Search input & status filter */}
+          <div className="flex flex-wrap items-center gap-2 grow justify-end">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs text-stone-700 focus:outline-hidden"
+              aria-label="Filter by status"
+            >
+              <option value="All">All Statuses</option>
+              <option value="Done">Done</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Not Started">Not Started</option>
+              <option value="Reschedule">Reschedule</option>
+            </select>
+
+            <div className="relative min-w-44 max-w-xs grow">
+              <input
+                type="text"
+                value={scheduleSearch}
+                onChange={(e) => setScheduleSearch(e.target.value)}
+                placeholder="Search topic, PIC, row..."
+                className="w-full rounded-full border border-stone-200 bg-stone-50 px-3.5 py-1.5 text-xs text-stone-800 placeholder-stone-400 focus:border-mint-500 focus:bg-white focus:outline-hidden"
+              />
+              {scheduleSearch && (
+                <button
+                  type="button"
+                  onClick={() => setScheduleSearch('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
         </div>
+
+        {/* Schedule Cards */}
+        {filteredScheduleActivities.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-stone-200 p-8 text-center text-stone-500">
+            <p className="text-sm font-medium">No schedule topics match your filters.</p>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedWeek('All');
+                setSelectedDay('All');
+                setScheduleSearch('');
+                setStatusFilter('All');
+              }}
+              className="mt-2 text-xs font-semibold text-mint-700 underline underline-offset-4"
+            >
+              Reset filters
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredScheduleActivities.map((item) => {
+              const done = item.progress === 'Done';
+              const isCurrentTimer = activeActivityId === item.id;
+              const hasSubtopics = item.topic.includes('\n');
+              const lines = item.topic.split('\n');
+              const title = lines[0];
+              const subtopics = lines.slice(1);
+              const isExpanded = expandedTopicRows[item.rowNumber] ?? false;
+
+              return (
+                <div
+                  key={item.id}
+                  className={`rounded-2xl border bg-white p-4 sm:p-5 shadow-2xs transition hover:shadow-md ${
+                    isCurrentTimer
+                      ? 'border-peach-400 ring-2 ring-peach-200'
+                      : done
+                      ? 'border-stone-200/80 bg-stone-50/20'
+                      : 'border-stone-200'
+                  }`}
+                >
+                  {/* Top row: Row badge, Day, PIC, Media, Progress */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-md bg-stone-900 px-2 py-0.5 text-[11px] font-bold text-white tracking-wide">
+                        Row {item.rowNumber}
+                      </span>
+                      <span className="text-xs font-medium text-stone-500">
+                        #{item.activityCount} · {item.day}, {item.date}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getPicBadge(item.pic)}`}>
+                        {item.pic}
+                      </span>
+                      <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[11px] font-medium text-stone-600">
+                        {item.mainMedia}
+                      </span>
+                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${getProgressBadge(item.progress)}`}>
+                        {item.progress || 'Not Started'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Title */}
+                  <div className="mt-1">
+                    <h3 className={`text-base font-semibold leading-snug ${done ? 'text-stone-700' : 'text-stone-900'}`}>
+                      {title}
+                    </h3>
+                    {hasSubtopics && (
+                      <div className="mt-1">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedTopicRows((prev) => ({ ...prev, [item.rowNumber]: !isExpanded }))
+                          }
+                          className="text-[11px] font-medium text-stone-500 hover:text-stone-800 underline underline-offset-2"
+                        >
+                          {isExpanded ? 'Hide details ▴' : `View ${subtopics.length} details ▾`}
+                        </button>
+                        {isExpanded && (
+                          <ul className="mt-2 space-y-1 rounded-xl bg-stone-50 p-3 text-xs text-stone-600 border border-stone-100 animate-fade-in">
+                            {subtopics.map((sub, i) => (
+                              <li key={i} className="flex items-start gap-1.5">
+                                <span className="text-stone-400">•</span>
+                                <span>{sub.replace(/^[-*•]\s*/, '')}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tracking Columns Grid (Cols G–K) */}
+                  <div className="mt-3.5 grid grid-cols-2 gap-2 rounded-xl bg-stone-50/80 p-2.5 sm:grid-cols-4 sm:gap-3 text-xs border border-stone-100">
+                    <div>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 block">
+                        Col G · Duration
+                      </span>
+                      <span className="font-semibold text-stone-800">
+                        {item.durationMinutes !== undefined ? `${item.durationMinutes} min` : '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 block">
+                        Col H & I · Time
+                      </span>
+                      <span className="font-semibold text-stone-800">
+                        {item.startTime ? `${item.startTime} → ${item.endTime || '?'}` : '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 block">
+                        Col J · Progress
+                      </span>
+                      <span className="font-semibold text-stone-800">
+                        {item.progress || 'Not Started'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 block">
+                        Col K · Notes
+                      </span>
+                      {item.notes ? (
+                        item.notes.startsWith('http') ? (
+                          <a
+                            href={item.notes}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-mint-700 underline truncate block max-w-full"
+                          >
+                            Open Link ↗
+                          </a>
+                        ) : (
+                          <span className="font-medium text-stone-700 truncate block max-w-full" title={item.notes}>
+                            {item.notes}
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-stone-400 font-normal">None</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action Bar */}
+                  <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 pt-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingScheduleItem(item)}
+                        className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-stone-700 active:scale-95 shadow-2xs"
+                      >
+                        ✏️ Fill Row (Cols G–K)
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyGtoK(item)}
+                        className="inline-flex min-h-9 items-center gap-1 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
+                        title="Copies tab-separated: Duration, Start, End, Progress, Notes to paste into cell G"
+                      >
+                        {copiedRowToast?.rowNumber === item.rowNumber && copiedRowToast.type === 'G-K'
+                          ? '✓ Copied G–K TSV! 🌿'
+                          : '📋 Copy G–K'}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyFullRow(item)}
+                        className="inline-flex min-h-9 items-center gap-1 rounded-full bg-stone-50 px-2.5 py-1.5 text-xs font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-700 active:scale-95"
+                        title="Copies full 11 columns A–K for this row"
+                      >
+                        {copiedRowToast?.rowNumber === item.rowNumber && copiedRowToast.type === 'Full'
+                          ? '✓ Copied Row A–K!'
+                          : 'Row A–K'}
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {!done && (
+                        <button
+                          type="button"
+                          onClick={() => handleStartTimerForScheduleRow(item)}
+                          className="inline-flex min-h-9 items-center gap-1 rounded-full bg-mint-50 px-3 py-1 text-xs font-semibold text-mint-700 transition hover:bg-mint-100 active:scale-95"
+                        >
+                          ▶️ Start Timer
+                        </button>
+                      )}
+                      {done && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const matchAct = activities.find((a) => a.id === item.id) || scheduleActivityToActivity(item);
+                            setSelectedActivityForLearning(matchAct);
+                            setShowLearningCapture(true);
+                          }}
+                          className="inline-flex min-h-9 items-center gap-1 text-xs font-medium text-mint-700 underline underline-offset-4 hover:text-mint-800"
+                        >
+                          Write Reflection
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* Quick Note */}
@@ -499,6 +963,13 @@ export default function TodayPage() {
         onSave={submission => void handleLearningSave(submission)}
         onSkip={handleLearningSkip}
       />
+      {editingScheduleItem && (
+        <ScheduleFillModal
+          activity={editingScheduleItem}
+          onSave={handleSaveScheduleItem}
+          onClose={() => setEditingScheduleItem(null)}
+        />
+      )}
       <GuideTour steps={todayTourSteps} open={tourOpen} onFinish={handleTourFinish} />
     </main>
   );
