@@ -7,9 +7,9 @@ import { PrimaryNav } from '@/app/components/PrimaryNav';
 import { QuickNote } from '@/app/components/QuickNote';
 import { GuideTour, todayTourSteps } from '@/app/components/GuideTour';
 import { LearningModal } from '@/app/components/LearningModal';
-import type { LearningSubmission } from '@/app/components/LearningModal';
+import type { LearningActivityContext, LearningSubmission } from '@/app/components/LearningModal';
 import { GUIDE_TOUR_STORAGE_KEY, readGuideTourState, writeGuideTourState } from '@/lib/guide-tour';
-import { IMPORTED_SCHEDULE_STORAGE_KEY, readImportedSchedule } from '@/lib/imported-schedule';
+import { IMPORTED_SCHEDULE_STORAGE_KEY, clipboardRowForSchedule, readImportedSchedule } from '@/lib/imported-schedule';
 import { ACTIVE_SESSION_STORAGE_KEY, DIARY_STORAGE_KEY, QUICK_NOTES_STORAGE_KEY, SESSION_HISTORY_STORAGE_KEY, appendDiary, appendQuickNote, appendSession, completedActivityIds, readDiary, readQuickNotes, readSessions, type StoredSession } from '@/lib/local-records';
 import { diarySyncPayload, learningDiaryEntry } from '@/lib/learning-capture';
 import { selectCurrentActivity } from '@/lib/session/activity-selection';
@@ -40,6 +40,8 @@ export default function TodayPage() {
   const [deviation, setDeviation] = useState<string | null>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [showLearningCapture, setShowLearningCapture] = useState(false);
+  const [selectedActivityForLearning, setSelectedActivityForLearning] = useState<Activity | null>(null);
+  const [copiedScheduleId, setCopiedScheduleId] = useState<string | null>(null);
   const [tourOpen, setTourOpen] = useState(false);
 
   useEffect(() => {
@@ -134,10 +136,25 @@ export default function TodayPage() {
 
   const duration = startedAt && finishedAt ? Math.floor((finishedAt - startedAt) / 60000) : 0;
 
+  const targetLearningActivity = selectedActivityForLearning ?? (activeActivityId ? activities.find(a => a.id === activeActivityId) ?? null : currentActivity);
+  const targetActivityIndex = targetLearningActivity ? activities.findIndex(a => a.id === targetLearningActivity.id) : -1;
+  const activityOrderNumber = targetActivityIndex >= 0 ? targetActivityIndex + 1 : (completedCount || 1);
+
+  const learningActivityContext: LearningActivityContext | null = targetLearningActivity || finishedAt ? {
+    id: targetLearningActivity?.id ?? activeActivityId ?? undefined,
+    topic: targetLearningActivity?.name ?? finishedActivityName ?? 'Activity Reflection',
+    pic: (targetLearningActivity as { pic?: string })?.pic ?? (targetLearningActivity?.type === 'welcome' ? 'Experience Manager' : 'IT Manager'),
+    day: `Day ${dayNumber}`,
+    date: (targetLearningActivity as { date?: string })?.date ?? new Date(now).toLocaleDateString('en-CA'),
+    week: `Week ${Math.max(1, Math.ceil(dayNumber / 7))}`,
+    activityCount: activityOrderNumber,
+  } : null;
+
   async function finish() {
     if (!startedAt || !currentActivity) return;
     const end = Date.now();
     setFinishedAt(end);
+    setSelectedActivityForLearning(currentActivity);
     setShowLearningCapture(true);
     setProgress(current => current ? { ...current, completed: Math.min(current.total, current.completed + 1), remaining: Math.max(0, current.remaining - 1) } : { completed: 1, total: activities.length, remaining: Math.max(0, activities.length - 1) });
     const record: StoredSession = { activityId: currentActivity.id, name: currentActivity.name, startedAt, finishedAt: end };
@@ -152,17 +169,59 @@ export default function TodayPage() {
   }
 
   async function handleLearningSave(submission: LearningSubmission) {
-    const entry = learningDiaryEntry(submission, { activityId: activeActivityId, activityName: finishedActivityName }, new Date().toISOString());
+    const activityCtx = {
+      activityId: selectedActivityForLearning?.id ?? activeActivityId,
+      activityName: selectedActivityForLearning?.name ?? finishedActivityName,
+    };
+    const baseEntry = learningDiaryEntry(submission, activityCtx, new Date().toISOString());
+    const entry = {
+      ...baseEntry,
+      ...(submission.takeaways ? { takeaways: submission.takeaways } : {}),
+      ...(submission.topic ? { topic: submission.topic } : {}),
+      ...(submission.day ? { day: submission.day } : {}),
+      ...(submission.date ? { date: submission.date } : {}),
+      ...(submission.week !== undefined ? { week: submission.week } : {}),
+      ...(submission.pic ? { pic: submission.pic } : {}),
+      ...(submission.activityCount !== undefined ? { activityCount: submission.activityCount } : {}),
+      ...(submission.notes ? { notes: submission.notes } : {}),
+    };
     const existing = readDiary(localStorage.getItem(DIARY_STORAGE_KEY));
     localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(appendDiary(existing, entry)));
     const response = await fetch('/api/diary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(diarySyncPayload(entry)) }).catch(() => null);
     setSync(response?.ok ? 'Learning saved · pending sync' : 'Not synced');
     setShowLearningCapture(false);
+    setSelectedActivityForLearning(null);
   }
 
   function handleLearningSkip() {
     setSync('Learning capture skipped · you can add it later from Learnings');
     setShowLearningCapture(false);
+    setSelectedActivityForLearning(null);
+  }
+
+  async function handleCopyScheduleRow(activity: Activity) {
+    const session = historySessions.find((s) => s.activityId === activity.id);
+    let resolvedActivity = activity;
+    if (session) {
+      const formatTime = (ts: number) =>
+        new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      resolvedActivity = {
+        ...activity,
+        status: 'done',
+        actualStart: activity.actualStart || formatTime(session.startedAt),
+        actualEnd: activity.actualEnd || formatTime(session.finishedAt),
+      };
+    }
+    const row = clipboardRowForSchedule(resolvedActivity);
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(row);
+        setCopiedScheduleId(activity.id);
+        setTimeout(() => setCopiedScheduleId(null), 2500);
+      }
+    } catch {
+      /* ignore clipboard write errors */
+    }
   }
 
   function resetSession() {
@@ -170,6 +229,7 @@ export default function TodayPage() {
     setFinishedAt(null);
     setActiveActivityId(null);
     setFinishedActivityName(null);
+    setSelectedActivityForLearning(null);
     setSync('');
     setShowLearningCapture(false);
     localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
@@ -249,10 +309,24 @@ export default function TodayPage() {
               <p className="mt-3 text-stone-500">Nice. That’s one less thing to carry around. ✨</p>
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <button
-                  onClick={() => setShowLearningCapture(true)}
+                  onClick={() => {
+                    setSelectedActivityForLearning(currentActivity ?? (activeActivityId ? activities.find(a => a.id === activeActivityId) ?? null : null));
+                    setShowLearningCapture(true);
+                  }}
                   className="min-h-12 rounded-full bg-stone-900 px-6 py-3 font-semibold text-white transition hover:bg-stone-700"
                 >
                   Record what I learned
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = currentActivity ?? (activeActivityId ? activities.find(a => a.id === activeActivityId) ?? null : null);
+                    if (target) void handleCopyScheduleRow(target);
+                  }}
+                  className="min-h-12 rounded-full bg-stone-100 px-5 py-3 font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
+                  aria-label="Copy Schedule TSV row for completed activity"
+                >
+                  {copiedScheduleId ? '✓ Copied TSV! 🌿' : '📋 Copy Schedule TSV'}
                 </button>
                 <button
                   onClick={resetSession}
@@ -373,7 +447,31 @@ export default function TodayPage() {
                 >
                   {done ? '✓' : current ? '●' : '○'}
                 </span>
-                <p className={`font-medium ${done ? 'text-stone-500' : current ? 'text-stone-900' : 'text-stone-700'}`}>{activity.name}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className={`font-medium ${done ? 'text-stone-500' : current ? 'text-stone-900' : 'text-stone-700'}`}>{activity.name}</p>
+                  {done && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedActivityForLearning(activity);
+                          setShowLearningCapture(true);
+                        }}
+                        className="min-h-8 text-xs font-medium text-mint-700 underline underline-offset-4 transition hover:text-mint-600"
+                      >
+                        Write Reflection
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleCopyScheduleRow(activity)}
+                        className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-600 transition hover:bg-stone-200 active:scale-95"
+                        aria-label={`Copy Schedule TSV row for ${activity.name}`}
+                      >
+                        {copiedScheduleId === activity.id ? '✓ Copied!' : '📋 Copy TSV'}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <span className="text-sm text-stone-400">{activity.plannedStart === 'TBD' ? (activity.durationMinutes ? `${activity.durationMinutes}m` : 'TBD') : activity.plannedStart}</span>
               </div>
             );
@@ -396,7 +494,8 @@ export default function TodayPage() {
         }}
       />
       <LearningModal
-        open={finishedAt !== null && showLearningCapture}
+        open={showLearningCapture}
+        activity={learningActivityContext}
         onSave={submission => void handleLearningSave(submission)}
         onSkip={handleLearningSkip}
       />

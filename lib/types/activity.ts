@@ -11,4 +11,8 @@ export interface Activity {
   actualEnd?: string;
   durationMinutes?: number;
   date?: string;
+  day?: string;
+  activityCount?: number;
+  pic?: string;
+  notes?: string;
 }

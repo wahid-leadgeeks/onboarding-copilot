@@ -118,6 +118,14 @@
 - [x] Run the full quality gates for this slice (`pnpm typecheck` / `lint` / `test` / `build`) — 23 suites / 246 tests passing
 - [x] Browser QA for the capture modal, Learnings filters, edit/delete/convert, filtered selection/export, and Settings import flows; responsive captures verified at 375px, 768px, and 1280px with no horizontal overflow
 
+### Spreadsheet Cockpit & Elevated Diary Experience (Schedule, Onboarding Diary, Feedback Sheet, Timeline)
+
+- [x] **Milestone 1: Elevated Onboarding Diary Experience** — Guided 3-takeaway diary creation workflow aligned with the HR workbook (`Onboarding Diary` worksheet): pre-population of Topic, PIC, Day, Date, Week, Activity Count from active activities; assistive AI structuring and speech-to-text voice input; 1-click 9-column TSV clipboard copy (`clipboardRowForDiary`) formatted for cell A of Excel/Sheets.
+- [x] **Milestone 2: Feedback Sheet System** — Interactive evaluation dashboard covering all 13 official onboarding sessions from the HR workbook (`Feedback Sheet` worksheet): progress indicator ("X of 13 evaluated"), 6-dimension Likert rating form (1–5 scale), qualitative follow-up questions, and 1-click 13-column TSV clipboard copy (`clipboardRowForFeedback`).
+- [x] **Milestone 3: Interactive Timeline & Evidence Tracker** — Upgraded `/journey` reflecting the 3 HR stages (Stage 1.0: Training – Month 1, Stage 2.0: Trial – Month 2, Stage 3.0: Transition – Month 3): editable start and end dates with date-picker inputs, interactive checklist for all 12 HR evidence/deliverable items, visual stage progress metrics, and 1-click 9-column TSV clipboard copy (`clipboardRowForTimelineStage`).
+- [x] **Milestone 4: Schedule Completion & Clipboard Copy** — Manual time tracking and schedule row export for the `Schedule` worksheet: 1-click completion with custom actual times, duration calculation, and 1-click 4-column (`clipboardRowForSchedule`, columns H–K) and 11-column (`clipboardRowForScheduleFull`, columns A–K) TSV clipboard copy on Today and Learnings.
+- [x] **Zero-defect Verification** — strict TypeScript (`pnpm typecheck`), zero ESLint errors (`pnpm lint`), 28 test suites / 481 tests passing (`pnpm test`), and Next.js production build (`pnpm build`).
+
 ---
 
 ## Bugs

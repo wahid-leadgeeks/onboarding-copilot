@@ -13,7 +13,11 @@ export function isActivity(value: unknown): value is Activity {
     (item.actualStart === undefined || typeof item.actualStart === 'string') &&
     (item.actualEnd === undefined || typeof item.actualEnd === 'string') &&
     (item.durationMinutes === undefined || typeof item.durationMinutes === 'number') &&
-    (item.date === undefined || typeof item.date === 'string')
+    (item.date === undefined || typeof item.date === 'string') &&
+    (item.day === undefined || typeof item.day === 'string') &&
+    (item.activityCount === undefined || typeof item.activityCount === 'number') &&
+    (item.pic === undefined || typeof item.pic === 'string') &&
+    (item.notes === undefined || typeof item.notes === 'string')
   );
 }
 
