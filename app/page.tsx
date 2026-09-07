@@ -13,6 +13,13 @@ import { useToast } from '@/app/components/Toast';
 import { ConfirmDialog } from '@/app/components/ConfirmDialog';
 import { ActivityDetailModal } from '@/app/components/ActivityDetailModal';
 import { CommandPalette } from '@/app/components/CommandPalette';
+import { StopwatchCard } from '@/app/components/StopwatchCard';
+import { FloatingTimer } from '@/app/components/FloatingTimer';
+import {
+  calculateElapsedSeconds,
+  calculateStopwatchDurationMinutes,
+  formatTimeHHMM,
+} from '@/lib/session/stopwatch';
 import {
   OFFICIAL_SCHEDULE_ACTIVITIES,
   SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY,
@@ -77,6 +84,8 @@ export default function TodayPage() {
 
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
+  const [pausedAt, setPausedAt] = useState<number | null>(null);
+  const [accumulatedMs, setAccumulatedMs] = useState<number>(0);
   const [activeActivityId, setActiveActivityId] = useState<string | null>(null);
   const [finishedActivityName, setFinishedActivityName] = useState<string | null>(null);
   const [historySessions, setHistorySessions] = useState<StoredSession[]>([]);
@@ -153,9 +162,18 @@ export default function TodayPage() {
     const value = localStorage.getItem(ACTIVE_SESSION_STORAGE_KEY);
     if (value) {
       try {
-        const data = JSON.parse(value) as { activityId?: string; name?: string; startedAt?: number; finishedAt?: number };
+        const data = JSON.parse(value) as {
+          activityId?: string;
+          name?: string;
+          startedAt?: number;
+          finishedAt?: number;
+          pausedAt?: number;
+          accumulatedMs?: number;
+        };
         if (data.startedAt) setStartedAt(data.startedAt);
         if (data.finishedAt) setFinishedAt(data.finishedAt);
+        if (data.pausedAt) setPausedAt(data.pausedAt);
+        if (typeof data.accumulatedMs === 'number') setAccumulatedMs(data.accumulatedMs);
         if (data.activityId) setActiveActivityId(data.activityId);
         const finishedName = data.name ?? readSessions(localStorage.getItem(SESSION_HISTORY_STORAGE_KEY)).find((session) => session.activityId === data.activityId)?.name;
         if (finishedName) setFinishedActivityName(finishedName);
@@ -164,8 +182,20 @@ export default function TodayPage() {
   }, []);
 
   useEffect(() => {
-    if (startedAt) localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, JSON.stringify({ activityId: activeActivityId, name: finishedActivityName, startedAt, finishedAt }));
-  }, [startedAt, finishedAt, activeActivityId, finishedActivityName]);
+    if (startedAt) {
+      localStorage.setItem(
+        ACTIVE_SESSION_STORAGE_KEY,
+        JSON.stringify({
+          activityId: activeActivityId,
+          name: finishedActivityName,
+          startedAt,
+          finishedAt,
+          pausedAt,
+          accumulatedMs,
+        })
+      );
+    }
+  }, [startedAt, finishedAt, pausedAt, accumulatedMs, activeActivityId, finishedActivityName]);
 
   useEffect(() => {
     fetch('/api/progress')
@@ -178,8 +208,22 @@ export default function TodayPage() {
   }, [finishedAt]);
 
   const completedIds = completedActivityIds(historySessions);
+  const currentActivity: Activity | null = (() => {
+    if (activeActivityId) {
+      const match =
+        activities.find((item) => item.id === activeActivityId) ??
+        (() => {
+          const s = scheduleCatalog.find((cat) => cat.id === activeActivityId) ?? OFFICIAL_SCHEDULE_ACTIVITIES.find((cat) => cat.id === activeActivityId);
+          return s ? scheduleActivityToActivity(s) : null;
+        })();
+      if (match) return match;
+    }
+    const auto = selectCurrentActivity(activities, completedIds);
+    if (auto) return auto;
+    const fallbackSched = scheduleCatalog.find((s) => s.progress !== 'Done') || scheduleCatalog[0];
+    return fallbackSched ? scheduleActivityToActivity(fallbackSched) : null;
+  })();
   const isActivityDone = (activity: Activity) => completedIds.has(activity.id) || activity.status === 'done';
-  const currentActivity = activeActivityId && !finishedAt ? activities.find((item) => item.id === activeActivityId) ?? null : selectCurrentActivity(activities, completedIds);
   const doneActivitiesCount = activities.filter(isActivityDone).length;
   const completedCount = Math.max(doneActivitiesCount, mergeCompletedCount(progress?.completed ?? null, completedIds.size));
   const totalCount = progress?.total ?? activities.length;
@@ -217,18 +261,77 @@ export default function TodayPage() {
   async function finish() {
     if (!startedAt || !currentActivity) return;
     const end = Date.now();
+    const totalElapsedSecs = calculateElapsedSeconds(startedAt, end, pausedAt, accumulatedMs);
+    const finalElapsedMins = calculateStopwatchDurationMinutes(totalElapsedSecs);
+    const startStr = formatTimeHHMM(startedAt);
+    const endStr = formatTimeHHMM(end);
+
     setFinishedAt(end);
+    setPausedAt(null);
     setSelectedActivityForLearning(currentActivity);
     setShowLearningCapture(true);
-    setProgress(current => current ? { ...current, completed: Math.min(current.total, current.completed + 1), remaining: Math.max(0, current.remaining - 1) } : { completed: 1, total: activities.length, remaining: Math.max(0, activities.length - 1) });
-    const record: StoredSession = { activityId: currentActivity.id, name: currentActivity.name, startedAt, finishedAt: end };
+    setProgress((current) =>
+      current
+        ? {
+            ...current,
+            completed: Math.min(current.total, current.completed + 1),
+            remaining: Math.max(0, current.remaining - 1),
+          }
+        : { completed: 1, total: activities.length, remaining: Math.max(0, activities.length - 1) }
+    );
+    const record: StoredSession = {
+      activityId: currentActivity.id,
+      name: currentActivity.name,
+      startedAt,
+      finishedAt: end,
+    };
     setFinishedActivityName(currentActivity.name);
-    setHistorySessions(current => appendSession(current, record));
-    localStorage.setItem(SESSION_HISTORY_STORAGE_KEY, JSON.stringify(appendSession(readSessions(localStorage.getItem(SESSION_HISTORY_STORAGE_KEY)), record)));
-    localStorage.setItem(ACTIVE_SESSION_STORAGE_KEY, JSON.stringify(record));
-    const response = await fetch('/api/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ activityId: currentActivity.id, start: new Date(startedAt).toISOString(), end: new Date(end).toISOString() }) }).catch(() => null);
-    const payload = await response?.json().catch(() => null) as { pendingSync?: { activityId: string; actualStart: string; actualEnd: string; durationMinutes: number } } | null;
-    if (payload?.pendingSync) writePendingSyncs(localStorage, enqueueSync(readPendingSyncs(localStorage.getItem(pendingSyncStorageKey())), payload.pendingSync));
+    setHistorySessions((current) => appendSession(current, record));
+    localStorage.setItem(
+      SESSION_HISTORY_STORAGE_KEY,
+      JSON.stringify(appendSession(readSessions(localStorage.getItem(SESSION_HISTORY_STORAGE_KEY)), record))
+    );
+    localStorage.setItem(
+      ACTIVE_SESSION_STORAGE_KEY,
+      JSON.stringify({
+        ...record,
+        durationMinutes: finalElapsedMins,
+        accumulatedMs,
+      })
+    );
+
+    // Auto-update schedule catalog item to Done with duration and timestamps
+    setScheduleCatalog((prev) =>
+      prev.map((s) =>
+        s.id === currentActivity.id
+          ? {
+              ...s,
+              progress: 'Done',
+              durationMinutes: finalElapsedMins || s.durationMinutes,
+              startTime: s.startTime || startStr,
+              endTime: s.endTime || endStr,
+            }
+          : s
+      )
+    );
+
+    const titleSnippet = currentActivity.name.split('\n')[0].slice(0, 30);
+    toast.success(`Stopwatch finished: ${finalElapsedMins}m logged for ${titleSnippet}! ⏱️🌿`);
+
+    const response = await fetch('/api/session', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        activityId: currentActivity.id,
+        start: new Date(startedAt).toISOString(),
+        end: new Date(end).toISOString(),
+      }),
+    }).catch(() => null);
+    const payload = (await response?.json().catch(() => null)) as {
+      pendingSync?: { activityId: string; actualStart: string; actualEnd: string; durationMinutes: number };
+    } | null;
+    if (payload?.pendingSync)
+      writePendingSyncs(localStorage, enqueueSync(readPendingSyncs(localStorage.getItem(pendingSyncStorageKey())), payload.pendingSync));
     setSync(response?.ok ? 'Pending Google Sheets sync' : 'Not synced');
   }
 
@@ -344,22 +447,29 @@ export default function TodayPage() {
 
   function handleStartTimerForScheduleRow(item: ScheduleActivity) {
     const act = activities.find((a) => a.id === item.id) || scheduleActivityToActivity(item);
+    if (!activities.some((a) => a.id === act.id)) {
+      setActivities((prev) => [...prev, act]);
+    }
     setActiveActivityId(act.id);
     const timestamp = Date.now();
     setStartedAt(timestamp);
+    setPausedAt(null);
+    setAccumulatedMs(0);
     setFinishedAt(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    toast.info(`Started timer: ${item.topic.split('\n')[0].slice(0, 35)}...`);
+    toast.info(`⏱️ Stopwatch started: ${item.topic.split('\n')[0].slice(0, 32)}...`);
     void fetch('/api/session/start', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ activityId: act.id, startedAt: new Date(timestamp).toISOString(), plannedStart: act.plannedStart })
-    }).catch(() => setSync('Session started locally'));
+    }).catch(() => setSync('Stopwatch started locally'));
   }
 
   function resetSession() {
     setStartedAt(null);
     setFinishedAt(null);
+    setPausedAt(null);
+    setAccumulatedMs(0);
     setActiveActivityId(null);
     setFinishedActivityName(null);
     setSelectedActivityForLearning(null);
@@ -478,159 +588,97 @@ export default function TodayPage() {
         </section>
       ) : (
         <>
-          {finishedAt ? (
-            // Completion moment
-            <section data-tour="current-activity" className="animate-pop-in mt-10 rounded-card bg-white p-8 shadow-soft">
-              <div className="flex items-center gap-4">
-                <span className="animate-spring-in flex h-14 w-14 items-center justify-center rounded-full bg-mint-100 text-3xl font-semibold text-mint-700">✓</span>
-                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-mint-700">Done</p>
-              </div>
-              <h2 className="mt-5 text-3xl font-semibold tracking-tight text-stone-900">{finishedActivityName ?? currentActivity?.name ?? 'Activity completed'}</h2>
-              {startedAt && finishedAt && (
-                <div className="mt-4 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                  <p className="text-4xl font-semibold tracking-tight text-stone-900">{durationHours > 0 ? `${durationHours}h ${String(durationMinutes).padStart(2, '0')}m` : `${durationMinutes}m`}</p>
-                  <p className="text-stone-500">{formatClock(startedAt)} → {formatClock(finishedAt)}</p>
-                </div>
-              )}
-              <p className="mt-3 text-stone-500">Nice. That’s one less thing to carry around. ✨</p>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <button
-                  onClick={() => {
-                    setSelectedActivityForLearning(currentActivity ?? (activeActivityId ? activities.find(a => a.id === activeActivityId) ?? null : null));
-                    setShowLearningCapture(true);
-                  }}
-                  className="min-h-12 rounded-full bg-stone-900 px-6 py-3 font-semibold text-white transition hover:bg-stone-700"
-                >
-                  Record what I learned
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const target = currentActivity ?? (activeActivityId ? activities.find((a) => a.id === activeActivityId) ?? null : null);
-                    if (target) {
-                      const schedItem = scheduleCatalog.find((s) => s.id === target.id);
-                      if (schedItem) {
-                        setEditingScheduleItem({
-                          ...schedItem,
-                          durationMinutes: (durationHours * 60 + durationMinutes) || schedItem.durationMinutes,
-                          startTime: startedAt ? formatClock(startedAt) : schedItem.startTime,
-                          endTime: finishedAt ? formatClock(finishedAt) : schedItem.endTime,
-                          progress: 'Done',
-                        });
-                      }
-                    }
-                  }}
-                  className="min-h-12 rounded-full bg-mint-700 px-6 py-3 font-semibold text-white transition hover:bg-mint-800 shadow-xs active:scale-95"
-                >
-                  ✏️ Fill Row in Schedule Sheet (Cols G–K)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const target = currentActivity ?? (activeActivityId ? activities.find((a) => a.id === activeActivityId) ?? null : null);
-                    if (target) {
-                      const schedItem = scheduleCatalog.find((s) => s.id === target.id);
-                      if (schedItem) {
-                        void handleCopyGtoK(schedItem);
-                      } else {
-                        void handleCopyScheduleRow(target);
-                      }
-                    }
-                  }}
-                  className="min-h-12 rounded-full bg-stone-100 px-5 py-3 font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
-                  aria-label="Copy Schedule TSV row for completed activity"
-                >
-                  {copiedRowToast?.type === 'G-K' ? '✓ Copied Cols G–K! 🌿' : '📋 Copy Cols G–K TSV'}
-                </button>
-                <button
-                  onClick={() => setResetConfirmOpen(true)}
-                  className="min-h-12 rounded-full px-6 py-3 font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-700"
-                >
-                  Continue
-                </button>
-              </div>
-            </section>
-          ) : (
-            // Focus card
-            <section data-tour="current-activity" className="animate-fade-up stagger-1 mt-10 rounded-card bg-white p-8 shadow-soft transition hover:shadow-lift">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
-                {startedAt ? (
-                  <>
-                    <span aria-hidden="true" className="animate-pulse-soft text-peach-600">●</span>
-                    <span className="text-peach-600">In progress</span>
-                    <span className="text-stone-500">· {formatStartedAt(startedAt)}</span>
-                  </>
-                ) : (
-                  <span>Right now</span>
-                )}
-              </div>
-              <div className="mt-4 flex items-center gap-3">
-                <h2 className="text-3xl font-semibold tracking-tight text-stone-900">{currentActivity?.name ?? 'No activities scheduled'}</h2>
-                {currentActivity && <span aria-hidden="true" className={`h-2.5 w-2.5 shrink-0 rounded-full ${activityDot(currentActivity.type)}`} />}
-              </div>
-              <p className="mt-3 text-stone-500">
-                {currentActivity ? `${currentActivity.type === 'welcome' ? 'Experience Manager' : 'IT Manager'} · ${currentActivity.type === 'learning' ? 'Knowledge Sharing' : currentActivity.type === 'setup' ? 'Access & setup' : 'Team welcome'}` : 'Enjoy the rest of your day'}
-              </p>
-              {currentActivity && (
-                <p className="mt-1 text-sm text-stone-500">
-                  {currentActivity.plannedStart === 'TBD'
-                    ? (currentActivity.durationMinutes ? `${currentActivity.durationMinutes} min · Schedule: Flexible / TBD` : 'Schedule: Flexible / TBD')
-                    : `Scheduled ${currentActivity.plannedStart}–${currentActivity.plannedEnd}`}
-                </p>
-              )}
-              {!finishedAt && currentActivity && (
-                <button
-                  onClick={() => {
-                    if (startedAt) {
-                      void finish();
-                    } else {
-                      const timestamp = Date.now();
-                      setActiveActivityId(currentActivity.id);
-                      setStartedAt(timestamp);
-                      void fetch('/api/session/start', {
-                        method: 'POST',
-                        headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify({ activityId: currentActivity.id, startedAt: new Date(timestamp).toISOString(), plannedStart: currentActivity.plannedStart })
-                      }).catch(() => setSync('Session started locally · server acknowledgement unavailable'));
-                    }
-                  }}
-                  className="mt-8 min-h-12 w-full rounded-full bg-stone-900 px-5 py-3 text-lg font-semibold text-white transition hover:bg-stone-700 active:scale-[.99] sm:w-auto sm:min-w-64"
-                >
-                  {startedAt ? 'Finish activity' : 'Start activity'}
-                </button>
-              )}
-              {startedAt && !finishedAt && (
-                <div className="mt-4">
-                  <button
-                    onClick={() => setOptionsOpen(open => !open)}
-                    aria-expanded={optionsOpen}
-                    className="min-h-11 text-sm text-stone-500 underline underline-offset-4 transition hover:text-stone-700"
-                  >
-                    Something changed?
-                  </button>
-                  {optionsOpen && (
-                    <div className="mt-4 border-t border-stone-100 pt-4">
-                      <p className="text-sm text-stone-500">What happened?</p>
-                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                        {['Started late', 'Finished early', 'Rescheduled', 'Cancelled', 'Forgot to start'].map(item => (
-                          <button
-                            key={item}
-                            onClick={() => { setDeviation(item); setSync(`${item} noted locally`); setOptionsOpen(false); }}
-                            className="min-h-11 rounded-2xl bg-stone-50 px-3 py-2 text-left text-sm text-stone-700 transition hover:bg-stone-100"
-                          >
-                            {item}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* Deviation message */}
-          {deviation && <p className="mt-3 text-center text-sm text-stone-600">Noted: {deviation}. You can continue when ready.</p>}
+          <StopwatchCard
+            activity={currentActivity}
+            scheduleCatalog={scheduleCatalog}
+            startedAt={startedAt}
+            finishedAt={finishedAt}
+            pausedAt={pausedAt}
+            accumulatedMs={accumulatedMs}
+            onStart={(act) => {
+              const matched = scheduleCatalog.find((s) => s.id === act.id);
+              if (matched) {
+                handleStartTimerForScheduleRow(matched);
+              } else {
+                handleStartTimerForScheduleRow({
+                  id: act.id,
+                  rowNumber: 3,
+                  week: 'Week 1',
+                  day: 'Monday',
+                  date: '',
+                  activityCount: 1,
+                  pic: act.pic || 'HRD',
+                  topic: act.name,
+                  mainMedia: 'Online Meeting',
+                  durationMinutes: act.durationMinutes,
+                  progress: 'In Progress',
+                });
+              }
+            }}
+            onPause={() => {
+              const rightNow = Date.now();
+              setPausedAt(rightNow);
+              if (startedAt) {
+                setAccumulatedMs((prev) => prev + (rightNow - startedAt));
+              }
+              toast.info('Stopwatch paused.');
+            }}
+            onResume={() => {
+              const rightNow = Date.now();
+              setStartedAt(rightNow);
+              setPausedAt(null);
+              toast.info('Stopwatch resumed.');
+            }}
+            onFinish={() => {
+              void finish();
+            }}
+            onReset={() => {
+              setResetConfirmOpen(true);
+            }}
+            onSelectActivity={(act) => {
+              setActiveActivityId(act.id);
+              if (!activities.some((a) => a.id === act.id)) {
+                setActivities((prev) => [...prev, act]);
+              }
+              toast.info(`Switched focus to: ${act.name.split('\n')[0].slice(0, 30)}...`);
+            }}
+            onAdjustTime={(deltaSeconds) => {
+              setAccumulatedMs((prev) => Math.max(0, prev + deltaSeconds * 1000));
+              toast.info(`Adjusted stopwatch: ${deltaSeconds > 0 ? `+${deltaSeconds / 60}m` : `${deltaSeconds / 60}m`}`);
+            }}
+            onFillSchedule={() => {
+              const target = currentActivity ?? (activeActivityId ? activities.find((a) => a.id === activeActivityId) ?? null : null);
+              if (target) {
+                const schedItem = scheduleCatalog.find((s) => s.id === target.id);
+                if (schedItem) {
+                  const finalElapsedMins = Math.max(1, Math.round(calculateElapsedSeconds(startedAt, finishedAt || Date.now(), pausedAt, accumulatedMs) / 60));
+                  setEditingScheduleItem({
+                    ...schedItem,
+                    durationMinutes: finalElapsedMins || schedItem.durationMinutes,
+                    startTime: startedAt ? formatTimeHHMM(startedAt) : schedItem.startTime,
+                    endTime: finishedAt ? formatTimeHHMM(finishedAt) : schedItem.endTime,
+                    progress: 'Done',
+                  });
+                }
+              }
+            }}
+            onWriteReflection={() => {
+              setSelectedActivityForLearning(currentActivity ?? (activeActivityId ? activities.find((a) => a.id === activeActivityId) ?? null : null));
+              setShowLearningCapture(true);
+            }}
+            onCopyGtoK={() => {
+              const target = currentActivity ?? (activeActivityId ? activities.find((a) => a.id === activeActivityId) ?? null : null);
+              if (target) {
+                const schedItem = scheduleCatalog.find((s) => s.id === target.id);
+                if (schedItem) {
+                  void handleCopyGtoK(schedItem);
+                } else {
+                  void handleCopyScheduleRow(target);
+                }
+              }
+            }}
+            copiedGtoKToast={copiedRowToast?.type === 'G-K'}
+          />
 
           {/* Sync status */}
           {sync && <p className="mt-4 text-center text-sm text-stone-500" role="status">{sync}</p>}
@@ -993,7 +1041,7 @@ export default function TodayPage() {
                           onClick={() => handleStartTimerForScheduleRow(item)}
                           className="inline-flex min-h-9 items-center gap-1 rounded-full bg-mint-50 px-3 py-1 text-xs font-semibold text-mint-700 transition hover:bg-mint-100 active:scale-95"
                         >
-                          ▶️ Start Timer
+                          ⏱️ Start Stopwatch
                         </button>
                       )}
                       {done && (
@@ -1071,6 +1119,34 @@ export default function TodayPage() {
         title="Continue to Next Activity?"
         message="This will clear the current completed focus card and queue up your next activity. Your completed records and learnings are safely preserved."
         confirmLabel="Continue"
+      />
+
+      <FloatingTimer
+        activity={currentActivity}
+        startedAt={startedAt}
+        pausedAt={pausedAt}
+        accumulatedMs={accumulatedMs}
+        onPause={() => {
+          const rightNow = Date.now();
+          setPausedAt(rightNow);
+          if (startedAt) {
+            setAccumulatedMs((prev) => prev + (rightNow - startedAt));
+          }
+          toast.info('Stopwatch paused.');
+        }}
+        onResume={() => {
+          const rightNow = Date.now();
+          setStartedAt(rightNow);
+          setPausedAt(null);
+          toast.info('Stopwatch resumed.');
+        }}
+        onFinish={() => {
+          void finish();
+        }}
+        onScrollToTimer={() => {
+          const el = document.getElementById('stopwatch-cockpit');
+          el?.scrollIntoView({ behavior: 'smooth' });
+        }}
       />
     </main>
   );
