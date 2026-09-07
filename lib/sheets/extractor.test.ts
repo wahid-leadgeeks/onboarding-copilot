@@ -5,6 +5,8 @@ import {
   extractContentFromMatrices,
   extractContentFromWorkbookBytes,
   extractGoogleSpreadsheet,
+  updateSheetCell,
+  getSheetRange,
 } from './extractor';
 
 describe('Google Sheets Extractor', () => {
@@ -172,4 +174,57 @@ describe('Google Sheets Extractor', () => {
       expect(threw).toBe(true);
     });
   });
+
+  describe('updateSheetCell and getSheetRange with mock fetch', () => {
+    const originalFetch = global.fetch;
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    it('successfully updates a specific sheet cell', async () => {
+      global.fetch = jest.fn((url: string | URL | Request, init?: RequestInit) => {
+        expect(init?.method).toBe('PUT');
+        expect(url.toString()).toContain("values/'Onboarding%20Diary'!H15");
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              updatedRange: "'Onboarding Diary'!H15",
+              updatedRows: 1,
+              updatedColumns: 1,
+              updatedCells: 1,
+            }),
+        } as Response);
+      }) as unknown as typeof fetch;
+
+      const result = await updateSheetCell('sheet-123', "'Onboarding Diary'!H15", 'My notes content', {
+        accessToken: 'mock-token',
+      });
+
+      expect(result.updatedRange).toBe("'Onboarding Diary'!H15");
+      expect(result.updatedCells).toBe(1);
+    });
+
+    it('successfully reads a specific sheet cell', async () => {
+      global.fetch = jest.fn(() => {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              values: [['My notes content']],
+            }),
+        } as Response);
+      }) as unknown as typeof fetch;
+
+      const values = await getSheetRange('sheet-123', "'Onboarding Diary'!H15", {
+        accessToken: 'mock-token',
+      });
+
+      expect(values).toEqual([['My notes content']]);
+    });
+  });
 });
+
