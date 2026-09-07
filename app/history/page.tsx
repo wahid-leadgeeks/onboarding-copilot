@@ -51,6 +51,17 @@ import {
   type FeedbackSession,
 } from '@/lib/feedback';
 import { FeedbackModal } from '@/app/components/FeedbackModal';
+import {
+  DIARY_COCKPIT_STORAGE_KEY,
+  calculateDiaryCockpitProgress,
+  clipboardRowForDiary,
+  readDiaryCockpitEntries,
+  upsertDiaryCockpitEntry,
+  writeDiaryCockpitEntries,
+  type DiaryEntryRecord,
+  type DiaryTopicItem,
+} from '@/lib/diary-cockpit';
+import { DiaryModal } from '@/app/components/DiaryModal';
 
 export default function HistoryPage() {
   const [sessions, setSessions] = useState<StoredSession[]>([]);
@@ -74,6 +85,13 @@ export default function HistoryPage() {
   const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
   const [copiedScheduleId, setCopiedScheduleId] = useState<string | null>(null);
 
+  // Diary Cockpit State
+  const [diaryCockpitEntries, setDiaryCockpitEntries] = useState<DiaryEntryRecord[]>([]);
+  const [activeDiaryTopic, setActiveDiaryTopic] = useState<DiaryTopicItem | null>(null);
+  const [copiedDiaryRowNumber, setCopiedDiaryRowNumber] = useState<number | null>(null);
+  const [diaryStatusFilter, setDiaryStatusFilter] = useState<'all' | 'needs-notes' | 'todo' | 'completed'>('all');
+  const [diarySearchQuery, setDiarySearchQuery] = useState<string>('');
+
   useEffect(() => {
     try {
       setSessions(
@@ -85,6 +103,7 @@ export default function HistoryPage() {
       setDiary(readDiary(localStorage.getItem(DIARY_STORAGE_KEY)));
       setQuickNotes(readQuickNotes(localStorage.getItem(QUICK_NOTES_STORAGE_KEY)));
       setFeedbackEntries(readFeedbackEntries(localStorage.getItem(FEEDBACK_STORAGE_KEY)));
+      setDiaryCockpitEntries(readDiaryCockpitEntries(localStorage.getItem(DIARY_COCKPIT_STORAGE_KEY)));
     } catch {
       /* ignore malformed local state */
     }
@@ -252,7 +271,58 @@ export default function HistoryPage() {
     }
   }
 
+  function persistDiaryCockpit(next: DiaryEntryRecord[]) {
+    setDiaryCockpitEntries(next);
+    try {
+      localStorage.setItem(DIARY_COCKPIT_STORAGE_KEY, writeDiaryCockpitEntries(next));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function handleSaveDiaryTopic(entry: DiaryEntryRecord) {
+    const next = upsertDiaryCockpitEntry(diaryCockpitEntries, entry);
+    persistDiaryCockpit(next);
+  }
+
+  async function handleCopyDiaryRow(topic: DiaryTopicItem, entry?: DiaryEntryRecord) {
+    const learned = entry ? entry.learned : (topic.defaultLearned || '');
+    const notes = entry ? entry.notes : (topic.defaultNotes || '');
+    const row = clipboardRowForDiary(topic.rowNumber, learned, notes);
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(row);
+        setCopiedDiaryRowNumber(topic.rowNumber);
+        setTimeout(() => setCopiedDiaryRowNumber(null), 2500);
+      }
+    } catch {
+      /* ignore clipboard write errors */
+    }
+  }
+
   const feedbackProgress = calculateFeedbackProgress(feedbackEntries);
+  const diaryCockpitProgress = calculateDiaryCockpitProgress(diaryCockpitEntries);
+
+  const filteredDiaryTopics = diaryCockpitProgress.rowStatuses.filter(({ topic, status }) => {
+    if (diaryStatusFilter === 'needs-notes' && status !== 'needs-notes') return false;
+    if (diaryStatusFilter === 'todo' && status !== 'todo') return false;
+    if (diaryStatusFilter === 'completed' && status !== 'completed') return false;
+
+    if (diarySearchQuery.trim()) {
+      const q = diarySearchQuery.toLowerCase();
+      return (
+        topic.topic.toLowerCase().includes(q) ||
+        topic.pic.toLowerCase().includes(q) ||
+        topic.day.toLowerCase().includes(q) ||
+        `row ${topic.rowNumber}`.includes(q)
+      );
+    }
+    return true;
+  });
+
+  const nextPendingDiaryTopic = diaryCockpitProgress.rowStatuses.find(
+    (s) => s.status === 'needs-notes'
+  )?.topic;
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
@@ -304,9 +374,274 @@ export default function HistoryPage() {
         </section>
       )}
 
-      {/* Session Feedback Section */}
+      {/* Immediate Attention Callout Banner if a topic needs notes */}
+      {nextPendingDiaryTopic && (
+        <section className="animate-fade-up stagger-1 mt-6 rounded-card border-l-4 border-peach-400 bg-peach-50/60 p-5 shadow-soft sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-peach-200 text-base">
+                ✍️
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-peach-200 px-2.5 py-0.5 text-xs font-semibold text-peach-900">
+                    Action Required
+                  </span>
+                  <span className="text-xs font-medium text-stone-500">
+                    Row {nextPendingDiaryTopic.rowNumber} · {nextPendingDiaryTopic.day}
+                  </span>
+                </div>
+                <h3 className="mt-1 text-base font-semibold text-stone-900">
+                  {nextPendingDiaryTopic.topic}
+                </h3>
+                <p className="mt-0.5 text-xs text-stone-600">
+                  Learnings are recorded in Column G, but your personal notes in Column H are still empty.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveDiaryTopic(nextPendingDiaryTopic)}
+              className="inline-flex min-h-10 items-center justify-center rounded-full bg-stone-900 px-5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800 active:scale-95 sm:self-center shrink-0"
+            >
+              Fill Notes & Sync 🚀
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Onboarding Diary Cockpit Section */}
       <section
         className="animate-fade-up stagger-2 mt-10"
+        aria-labelledby="diary-cockpit-heading"
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2
+            id="diary-cockpit-heading"
+            className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.18em] text-stone-500"
+          >
+            <span aria-hidden="true" className="inline-block size-2 rounded-full bg-lavender-400" />
+            Onboarding Diary Cockpit
+          </h2>
+          <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
+            {diaryCockpitProgress.completedCount} of {diaryCockpitProgress.totalCount} documented
+          </span>
+        </div>
+
+        <div className="rounded-card bg-white p-6 shadow-soft sm:p-8">
+          <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4">
+            <div>
+              <p className="text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
+                {diaryCockpitProgress.completedCount}{' '}
+                <span className="font-normal text-stone-400">of</span> {diaryCockpitProgress.totalCount}
+              </p>
+              <p className="mt-2 text-sm text-stone-500">
+                syllabus topics documented across 3 onboarding weeks
+              </p>
+            </div>
+            <p
+              className={`rounded-full px-4 py-2 text-sm font-medium ${
+                diaryCockpitProgress.isComplete
+                  ? 'bg-mint-50 text-mint-700'
+                  : diaryCockpitProgress.needsNotesCount > 0
+                    ? 'bg-peach-50 text-peach-700'
+                    : 'bg-stone-100 text-stone-700'
+              }`}
+            >
+              {diaryCockpitProgress.isComplete
+                ? 'All 28 topics documented! 🌿'
+                : diaryCockpitProgress.needsNotesCount > 0
+                  ? `${diaryCockpitProgress.needsNotesCount} topic needs your notes ✍️`
+                  : `${diaryCockpitProgress.todoCount} topics remaining 🌱`}
+            </p>
+          </div>
+
+          <div
+            className="mt-6 h-2.5 rounded-full bg-stone-200"
+            role="progressbar"
+            aria-valuenow={diaryCockpitProgress.completedCount}
+            aria-valuemin={0}
+            aria-valuemax={diaryCockpitProgress.totalCount}
+            aria-label="Onboarding diary completion progress"
+          >
+            <div
+              className="bar-gradient progress-shimmer h-2.5 rounded-full transition-[width]"
+              style={{ width: `${diaryCockpitProgress.percentage}%` }}
+            />
+          </div>
+
+          {/* Filters & Search */}
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 pb-4">
+            <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter diary topics">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={diaryStatusFilter === 'all'}
+                onClick={() => setDiaryStatusFilter('all')}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  diaryStatusFilter === 'all'
+                    ? 'bg-stone-900 text-white'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+              >
+                All ({diaryCockpitProgress.totalCount})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={diaryStatusFilter === 'needs-notes'}
+                onClick={() => setDiaryStatusFilter('needs-notes')}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  diaryStatusFilter === 'needs-notes'
+                    ? 'bg-peach-500 text-white'
+                    : diaryCockpitProgress.needsNotesCount > 0
+                      ? 'bg-peach-50 text-peach-800 hover:bg-peach-100 font-semibold'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+              >
+                Needs Notes ({diaryCockpitProgress.needsNotesCount})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={diaryStatusFilter === 'todo'}
+                onClick={() => setDiaryStatusFilter('todo')}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  diaryStatusFilter === 'todo'
+                    ? 'bg-stone-900 text-white'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+              >
+                To Do ({diaryCockpitProgress.todoCount})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={diaryStatusFilter === 'completed'}
+                onClick={() => setDiaryStatusFilter('completed')}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  diaryStatusFilter === 'completed'
+                    ? 'bg-mint-700 text-white'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                }`}
+              >
+                Completed ({diaryCockpitProgress.completedCount})
+              </button>
+            </div>
+
+            <div className="w-full sm:w-auto">
+              <input
+                type="search"
+                placeholder="Search topics, PIC..."
+                value={diarySearchQuery}
+                onChange={(e) => setDiarySearchQuery(e.target.value)}
+                className="w-full rounded-full border border-stone-200 bg-stone-50 px-3.5 py-1.5 text-xs text-stone-800 placeholder:text-stone-400 focus:border-stone-900 focus:bg-white focus:outline-none sm:w-56"
+              />
+            </div>
+          </div>
+
+          {/* Topics List */}
+          <ul className="mt-4 divide-y divide-stone-100" role="list">
+            {filteredDiaryTopics.map(({ topic, status, entry }) => {
+              const isCompleted = status === 'completed';
+              const isNeedsNotes = status === 'needs-notes';
+              const isCopied = copiedDiaryRowNumber === topic.rowNumber;
+
+              const learned = (entry ? entry.learned : topic.defaultLearned || '').trim();
+              const notes = (entry ? entry.notes : topic.defaultNotes || '').trim();
+
+              return (
+                <li
+                  key={topic.id}
+                  className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between"
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    <span
+                      role="img"
+                      className={`mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                        isCompleted
+                          ? 'bg-mint-100 text-mint-700'
+                          : isNeedsNotes
+                            ? 'bg-peach-100 text-peach-700'
+                            : 'bg-stone-100 text-stone-400'
+                      }`}
+                      aria-label={status}
+                    >
+                      {isCompleted ? '✓' : isNeedsNotes ? '✍️' : '○'}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-base font-medium text-stone-900 leading-snug">
+                          {topic.topic.split('\n')[0]}
+                        </h3>
+                        <span className="rounded-md bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
+                          Row {topic.rowNumber}
+                        </span>
+                        <span className="text-xs text-stone-400">
+                          Week {topic.week} · {topic.day}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-xs text-stone-500">PIC: {topic.pic}</p>
+
+                      {learned && (
+                        <p className="mt-1.5 line-clamp-1 text-xs text-stone-600">
+                          <span className="font-semibold text-stone-500">Learnings:</span>{' '}
+                          {learned.replace(/\n/g, ' · ')}
+                        </p>
+                      )}
+
+                      {notes ? (
+                        <p className="mt-1 line-clamp-1 text-xs text-stone-500">
+                          <span className="font-semibold text-stone-400">Notes:</span>{' '}
+                          {notes.replace(/\n/g, ' · ')}
+                        </p>
+                      ) : isNeedsNotes ? (
+                        <p className="mt-1 text-xs font-medium text-peach-700">
+                          Pending notes entry (Column H)...
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleCopyDiaryRow(topic, entry)}
+                      className="rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-stone-400"
+                      aria-label={`Copy TSV row for ${topic.topic}`}
+                    >
+                      {isCopied ? '✓ Copied! 🌿' : '📋 Copy TSV'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveDiaryTopic(topic)}
+                      className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition focus-visible:outline focus-visible:outline-2 ${
+                        isNeedsNotes
+                          ? 'bg-peach-500 text-white hover:bg-peach-600 focus-visible:outline-peach-500 font-semibold'
+                          : isCompleted
+                            ? 'bg-stone-100 text-stone-700 hover:bg-stone-200 focus-visible:outline-stone-400'
+                            : 'bg-stone-900 text-white hover:bg-stone-800 focus-visible:outline-stone-900'
+                      }`}
+                    >
+                      {isNeedsNotes ? 'Fill Notes' : isCompleted ? 'Edit' : 'Document'}
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          {filteredDiaryTopics.length === 0 && (
+            <p className="py-12 text-center text-sm text-stone-400">
+              No diary topics match your current filter.
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* Session Feedback Section */}
+      <section
+        className="animate-fade-up stagger-3 mt-10"
         aria-labelledby="session-feedback-heading"
       >
         <div className="mb-4 flex items-center justify-between">
@@ -632,6 +967,18 @@ export default function HistoryPage() {
           )}
           onSave={handleSaveFeedback}
           onClose={() => setActiveFeedbackSession(null)}
+        />
+      )}
+
+      {/* Diary Topic Modal Dialog */}
+      {activeDiaryTopic && (
+        <DiaryModal
+          topic={activeDiaryTopic}
+          existingEntry={diaryCockpitEntries.find(
+            (e) => e.rowNumber === activeDiaryTopic.rowNumber
+          )}
+          onSave={handleSaveDiaryTopic}
+          onClose={() => setActiveDiaryTopic(null)}
         />
       )}
     </main>
