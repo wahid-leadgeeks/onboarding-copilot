@@ -60,7 +60,13 @@ describe('Google Sheets Extractor', () => {
         return;
       }
       const buf = fs.readFileSync(filePath);
-      const result = extractContentFromWorkbookBytes(new Uint8Array(buf), '1X5OKuWjvp6vuqtbdJoBclFrBBmYA60SSvUQfS4B5U7M', 'Onboarding Kit Final 2026');
+      const result = extractContentFromWorkbookBytes(new Uint8Array(buf), '1X5OKuWjvp6vuqtbdJoBclFrBBmYA60SSvUQfS4B5U7M', 'Onboarding Kit Final 2026', true);
+
+      if (result.rawMatrices) {
+        fs.writeFileSync('/home/noah/.gemini/antigravity-cli/brain/871dcfc3-4629-4c29-b27a-e30f715229c4/scratch/glossaries.json', JSON.stringify(result.rawMatrices['Glossaries'] || [], null, 2));
+        fs.writeFileSync('/home/noah/.gemini/antigravity-cli/brain/871dcfc3-4629-4c29-b27a-e30f715229c4/scratch/guide.json', JSON.stringify(result.rawMatrices['Guide'] || [], null, 2));
+        fs.writeFileSync('/home/noah/.gemini/antigravity-cli/brain/871dcfc3-4629-4c29-b27a-e30f715229c4/scratch/reviews.json', JSON.stringify(result.rawMatrices['First Month Review'] || [], null, 2));
+      }
 
       expect(result.spreadsheetId).toBe('1X5OKuWjvp6vuqtbdJoBclFrBBmYA60SSvUQfS4B5U7M');
       expect(result.sheets.length).toBeGreaterThanOrEqual(4);

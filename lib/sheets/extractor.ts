@@ -306,14 +306,15 @@ export function extractContentFromMatrices(
 export function extractContentFromWorkbookBytes(
   bytes: Uint8Array,
   spreadsheetId = 'local-workbook',
-  title = 'United Onboarding Kit'
+  title = 'United Onboarding Kit',
+  includeRawMatrices = false
 ): ExtractedSpreadsheetContent {
   const parsedSheets = parseXlsxSheets(bytes);
   const matrices: Record<string, string[][]> = {};
   for (const s of parsedSheets) {
     matrices[s.name] = s.matrix;
   }
-  return extractContentFromMatrices(spreadsheetId, matrices, title);
+  return extractContentFromMatrices(spreadsheetId, matrices, title, includeRawMatrices);
 }
 
 /**
