@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="star-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FBBF24"/>
+      <stop offset="100%" stop-color="#D97706"/>
+    </linearGradient>
+    <linearGradient id="leaf-mint" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded squircle for tab visibility -->
+  <rect width="32" height="32" rx="7" fill="#1C1917"/>
+  <!-- 4-point glowing star -->
+  <path d="M16 4 C17 10 22 15 28 16 C22 17 17 22 16 28 C15 22 10 17 4 16 C10 15 15 10 16 4 Z" fill="url(#star-gold)"/>
+  <!-- Central green sprout seedling -->
+  <path d="M16 22 C16 18 14 15 11 14 C11 18 13.5 21 16 22 Z" fill="url(#leaf-mint)"/>
+  <path d="M16 22 C16 17 18.5 13 22 12 C22.5 17 19 21 16 22 Z" fill="#10B981"/>
+  <circle cx="16" cy="22" r="1" fill="#34D399"/>
+</svg>
