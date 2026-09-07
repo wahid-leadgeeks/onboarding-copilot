@@ -86,3 +86,20 @@ export function toSessionResponse(session: AuthSession | null): SessionResponse 
     },
   };
 }
+
+/**
+ * Extracts the Google OAuth access token from an incoming Request's cookies, if authenticated.
+ */
+export async function getSessionAccessToken(request: Request): Promise<string | undefined> {
+  const cookieHeader = request.headers.get('cookie') || '';
+  const cookies = new Map(
+    cookieHeader.split(';').map((pair) => {
+      const [k, ...v] = pair.trim().split('=');
+      return [k, decodeURIComponent(v.join('='))] as const;
+    })
+  );
+  const sessionCookie = cookies.get(NOVA_SESSION_COOKIE);
+  if (!sessionCookie) return undefined;
+  const { session } = await resolveActiveSession(sessionCookie);
+  return session?.tokens?.accessToken;
+}

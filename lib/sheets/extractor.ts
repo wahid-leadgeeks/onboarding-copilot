@@ -262,7 +262,12 @@ export async function extractGoogleSpreadsheet(
 
   if (!metaRes.ok) {
     const errText = await metaRes.text().catch(() => '');
-    throw new Error(`Google Sheets API metadata request failed (${metaRes.status}): ${errText}`);
+    let detail = errText;
+    try {
+      const parsed = JSON.parse(errText);
+      if (parsed?.error?.message) detail = parsed.error.message;
+    } catch { /* use raw text */ }
+    throw new Error(`Google Sheets API metadata request failed (${metaRes.status}): ${detail}`);
   }
 
   interface GoogleSheetMeta {
@@ -296,7 +301,12 @@ export async function extractGoogleSpreadsheet(
 
   if (!valuesRes.ok) {
     const errText = await valuesRes.text().catch(() => '');
-    throw new Error(`Google Sheets API values request failed (${valuesRes.status}): ${errText}`);
+    let detail = errText;
+    try {
+      const parsed = JSON.parse(errText);
+      if (parsed?.error?.message) detail = parsed.error.message;
+    } catch { /* use raw text */ }
+    throw new Error(`Google Sheets API values request failed (${valuesRes.status}): ${detail}`);
   }
 
   interface GoogleBatchValues {

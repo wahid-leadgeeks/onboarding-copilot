@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { readSchedule } from '@/lib/sheets/client';
 import { isActivity } from '@/lib/sheets/types';
+import { getSessionAccessToken } from '@/lib/auth/session';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const activities = await readSchedule();
+    const accessToken = await getSessionAccessToken(request);
+    const activities = await readSchedule(accessToken);
     if (!Array.isArray(activities) || !activities.every(isActivity)) {
       return NextResponse.json({ error: 'Invalid schedule data' }, { status: 502 });
     }
