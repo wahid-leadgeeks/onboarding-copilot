@@ -1084,3 +1084,51 @@ export function getPicBadge(pic?: string): string {
   if (p.includes('md')) return 'bg-indigo-50 text-indigo-700 border-indigo-200';
   return 'bg-stone-50 text-stone-700 border-stone-200';
 }
+
+/**
+ * Compares an activity date (supports DD/MM/YYYY or YYYY-MM-DD or D/M/YYYY) against a target Date.
+ */
+export function isSameDate(activityDate: string | undefined, targetDate: Date = new Date()): boolean {
+  if (!activityDate) return false;
+  const text = activityDate.trim();
+  if (!text) return false;
+
+  const targetDay = String(targetDate.getDate()).padStart(2, '0');
+  const targetMonth = String(targetDate.getMonth() + 1).padStart(2, '0');
+  const targetYear = String(targetDate.getFullYear());
+
+  const ddmmyyyy = `${targetDay}/${targetMonth}/${targetYear}`;
+  const yyyymmdd = `${targetYear}-${targetMonth}-${targetDay}`;
+
+  if (text === ddmmyyyy || text === yyyymmdd) return true;
+
+  const match = text.match(/^(\d{1,4})[/-](\d{1,2})[/-](\d{1,4})$/);
+  if (match) {
+    if (match[1].length === 4) {
+      // YYYY-MM-DD
+      const y = match[1];
+      const m = match[2].padStart(2, '0');
+      const d = match[3].padStart(2, '0');
+      return `${y}-${m}-${d}` === yyyymmdd;
+    } else {
+      // DD/MM/YYYY
+      const d = match[1].padStart(2, '0');
+      const m = match[2].padStart(2, '0');
+      const y = match[3];
+      return `${d}/${m}/${y}` === ddmmyyyy;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Filters a schedule catalog to only activities matching the given target Date.
+ */
+export function getTodayScheduleActivities(
+  activities: readonly ScheduleActivity[],
+  targetDate: Date = new Date()
+): ScheduleActivity[] {
+  return activities.filter((a) => isSameDate(a.date, targetDate));
+}
+
