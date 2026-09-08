@@ -3,7 +3,7 @@
 import React from 'react';
 import { ModalDialog } from './ModalDialog';
 import type { ScheduleActivity } from '@/lib/schedule-catalog';
-import { IconClipboard, IconEdit, IconPlay, IconNote, IconExternalLink } from './Icons';
+import { IconClipboard, IconEdit, IconPlay, IconNote, IconExternalLink, IconRocket, IconCheck } from './Icons';
 
 export interface ActivityDetailModalProps {
   activity: ScheduleActivity | null;
@@ -11,8 +11,12 @@ export interface ActivityDetailModalProps {
   onClose: () => void;
   onEdit: (activity: ScheduleActivity) => void;
   onCopyGtoK: (activity: ScheduleActivity) => void;
+  onCopyFullRow?: (activity: ScheduleActivity) => void;
+  onSyncRow?: (activity: ScheduleActivity) => void;
   onStartTimer?: (activity: ScheduleActivity) => void;
   onWriteReflection?: (activity: ScheduleActivity) => void;
+  copiedToast?: { rowNumber: number; type: 'G-K' | 'Full' } | null;
+  isSyncing?: boolean;
 }
 
 export function ActivityDetailModal({
@@ -21,8 +25,12 @@ export function ActivityDetailModal({
   onClose,
   onEdit,
   onCopyGtoK,
+  onCopyFullRow,
+  onSyncRow,
   onStartTimer,
   onWriteReflection,
+  copiedToast = null,
+  isSyncing = false,
 }: ActivityDetailModalProps) {
   if (!activity) return null;
 
@@ -34,13 +42,24 @@ export function ActivityDetailModal({
   const badge = (
     <div className="flex flex-wrap items-center gap-2">
       <span className="rounded-md bg-stone-900 px-2 py-0.5 text-[11px] font-bold text-white tracking-wide">
-        Sheet: Schedule · Row {activity.rowNumber}
+        Row {activity.rowNumber}
       </span>
       <span className="rounded-full bg-mint-50 px-2.5 py-0.5 text-[11px] font-semibold text-mint-700">
         {activity.week} · {activity.day} ({activity.date})
       </span>
       <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600">
         #{activity.activityCount}
+      </span>
+      <span
+        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold border ${
+          isDone
+            ? 'bg-mint-50 text-mint-700 border-mint-200'
+            : activity.progress === 'In Progress'
+            ? 'bg-peach-50 text-peach-700 border-peach-200'
+            : 'bg-stone-50 text-stone-600 border-stone-200'
+        }`}
+      >
+        {activity.progress || 'Not Started'}
       </span>
     </div>
   );
@@ -53,28 +72,72 @@ export function ActivityDetailModal({
       badge={badge}
       maxWidth="lg"
       footer={
-        <div className="flex flex-wrap items-center justify-between gap-2 w-full">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onCopyGtoK(activity)}
-              className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-200 transition"
-              title="Copy tab-separated Duration, Start, End, Progress, Notes"
-            >
-              <IconClipboard className="h-3.5 w-3.5" />
-              <span>Copy Cols G–K</span>
-            </button>
+        <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => {
                 onClose();
                 onEdit(activity);
               }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white hover:bg-stone-700 transition"
+              className="inline-flex items-center gap-1.5 rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white hover:bg-stone-700 transition active:scale-95"
             >
               <IconEdit className="h-3.5 w-3.5" />
               <span>Fill / Edit Row</span>
             </button>
+
+            {onSyncRow && (
+              <button
+                type="button"
+                disabled={isSyncing}
+                onClick={() => onSyncRow(activity)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-200 transition active:scale-95 disabled:opacity-50"
+                title="Sync this row to Google Sheets via API"
+              >
+                <IconRocket className="h-3.5 w-3.5 text-stone-600" />
+                <span>{isSyncing ? 'Syncing…' : 'Sync to Sheets'}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => onCopyGtoK(activity)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-200 transition active:scale-95"
+              title="Copy tab-separated Duration, Start, End, Progress, Notes"
+            >
+              {copiedToast?.rowNumber === activity.rowNumber && copiedToast.type === 'G-K' ? (
+                <>
+                  <IconCheck className="h-3.5 w-3.5 text-mint-600" />
+                  <span className="text-mint-700 font-semibold">Copied G–K!</span>
+                </>
+              ) : (
+                <>
+                  <IconClipboard className="h-3.5 w-3.5" />
+                  <span>Copy G–K TSV</span>
+                </>
+              )}
+            </button>
+
+            {onCopyFullRow && (
+              <button
+                type="button"
+                onClick={() => onCopyFullRow(activity)}
+                className="inline-flex items-center gap-1.5 rounded-full bg-stone-50 border border-stone-200 px-3 py-2 text-xs font-medium text-stone-600 hover:bg-stone-100 transition active:scale-95"
+                title="Copy all 11 columns A–K for this row"
+              >
+                {copiedToast?.rowNumber === activity.rowNumber && copiedToast.type === 'Full' ? (
+                  <>
+                    <IconCheck className="h-3.5 w-3.5 text-mint-600" />
+                    <span className="text-mint-700 font-semibold">Copied Row!</span>
+                  </>
+                ) : (
+                  <>
+                    <IconClipboard className="h-3.5 w-3.5" />
+                    <span>Copy Row A–K</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -85,7 +148,7 @@ export function ActivityDetailModal({
                   onClose();
                   onStartTimer(activity);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-full bg-mint-700 px-4 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition"
+                className="inline-flex items-center gap-1.5 rounded-full bg-mint-700 px-4 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition active:scale-95 shadow-xs"
               >
                 <IconPlay className="h-3.5 w-3.5 fill-current" />
                 <span>Start Stopwatch</span>
@@ -98,10 +161,10 @@ export function ActivityDetailModal({
                   onClose();
                   onWriteReflection(activity);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-full bg-mint-700 px-4 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition"
+                className="inline-flex items-center gap-1.5 rounded-full bg-mint-700 px-4 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition active:scale-95 shadow-xs"
               >
                 <IconNote className="h-3.5 w-3.5" />
-                <span>Diary Reflection</span>
+                <span>Write Diary Reflection</span>
               </button>
             )}
           </div>

@@ -12,6 +12,7 @@ import { ScheduleFillModal } from '@/app/components/ScheduleFillModal';
 import { useToast } from '@/app/components/Toast';
 import { ConfirmDialog } from '@/app/components/ConfirmDialog';
 import { ActivityDetailModal } from '@/app/components/ActivityDetailModal';
+import { ScheduleCard } from '@/app/components/ScheduleCard';
 import { CommandPalette } from '@/app/components/CommandPalette';
 import { StopwatchCard } from '@/app/components/StopwatchCard';
 import { FloatingTimer } from '@/app/components/FloatingTimer';
@@ -104,7 +105,19 @@ export default function TodayPage() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [copiedRowToast, setCopiedRowToast] = useState<{ rowNumber: number; type: 'G-K' | 'Full' } | null>(null);
-  const [expandedTopicRows, setExpandedTopicRows] = useState<Record<number, boolean>>({});
+  const [scheduleTipDismissed, setScheduleTipDismissed] = useState(false);
+  const [syncHelpExpanded, setSyncHelpExpanded] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setScheduleTipDismissed(localStorage.getItem('onboarding-schedule-tip-dismissed') === 'true');
+    }
+  }, []);
+
+  function handleDismissScheduleTip() {
+    setScheduleTipDismissed(true);
+    localStorage.setItem('onboarding-schedule-tip-dismissed', 'true');
+  }
 
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
@@ -132,6 +145,9 @@ export default function TodayPage() {
       const query = params.toString();
       window.history.replaceState(null, '', query ? `/?${query}` : '/');
       setTourOpen(true);
+      return;
+    }
+    if (params.get('tour') === 'skip' || params.get('tour') === 'false') {
       return;
     }
     const tourState = readGuideTourState(localStorage.getItem(GUIDE_TOUR_STORAGE_KEY));
@@ -958,15 +974,26 @@ export default function TodayPage() {
         </>
       )}
 
-      {/* Onboarding Master Schedule Cockpit */}
+      {/* Onboarding Schedule Cockpit */}
       <section data-tour="day-timeline" className="animate-fade-up stagger-2 mt-12">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">
-              Onboarding Master Schedule
-            </h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">
+                Onboarding Schedule
+              </h2>
+              {scheduleTipDismissed && (
+                <button
+                  type="button"
+                  onClick={() => setScheduleTipDismissed(false)}
+                  className="text-[11px] font-medium text-stone-400 hover:text-stone-700 underline underline-offset-2 transition"
+                >
+                  Show sync guide
+                </button>
+              )}
+            </div>
             <p className="text-xs text-stone-500 mt-0.5">
-              Worksheet <code className="rounded bg-stone-100 px-1.5 py-0.5 font-mono font-semibold text-stone-800">Schedule</code> · Columns A to K (59 Official Master Activities)
+              59 master activities across your 90-day onboarding journey
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -976,19 +1003,49 @@ export default function TodayPage() {
           </div>
         </div>
 
-        {/* How to fill instruction banner */}
-        <div className="mb-5 rounded-2xl bg-sky-50/80 border border-sky-100 p-4 text-xs text-sky-900 shadow-2xs">
-          <div className="flex items-start gap-2.5">
-            <IconLightbulb className="h-4 w-4 text-sky-600 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <p className="font-bold">How to fill Duration, Start Time, End Time, Progress & Notes:</p>
-              <p className="text-sky-800 leading-relaxed">
-                Click <span className="font-semibold text-stone-900">“Fill Row”</span> on any topic to update <span className="font-medium">Duration (Col G), Start Time (Col H), End Time (Col I), Progress (Col J), and Notes (Col K)</span>.
-                You can sync directly to Google Sheets with 1 click, or click <span className="font-semibold text-stone-900">“Copy G–K”</span> and paste straight into cell <code className="rounded bg-sky-100 px-1 py-0.2 font-mono font-bold">G&#123;row&#125;</code> in Google Sheets!
-              </p>
+        {/* Quick tip & sync guide (dismissible / collapsible) */}
+        {!scheduleTipDismissed && (
+          <div className="mb-5 rounded-2xl bg-sky-50/70 border border-sky-100/80 p-3.5 text-xs text-sky-900 shadow-2xs transition-all">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <IconLightbulb className="h-4 w-4 text-sky-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-sky-950">
+                    Click any activity to view outline details, log time, or sync with Google Sheets.
+                  </p>
+                  <div className="mt-1 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSyncHelpExpanded((prev) => !prev)}
+                      className="text-[11px] font-medium text-sky-700 hover:text-sky-950 underline underline-offset-2 transition"
+                    >
+                      {syncHelpExpanded ? 'Hide sync guide ▴' : 'How spreadsheet sync works ▾'}
+                    </button>
+                  </div>
+                  {syncHelpExpanded && (
+                    <div className="mt-2.5 space-y-1.5 rounded-xl bg-white/80 p-3 text-[11px] text-sky-900 border border-sky-100">
+                      <p>
+                        <strong>1-Click Direct Sync:</strong> Click the <code className="bg-sky-100 px-1 py-0.5 rounded font-mono font-semibold">Sync</code> option or open Activity Details to sync Duration, Start Time, End Time, Progress, and Notes straight to your Google Sheet.
+                      </p>
+                      <p>
+                        <strong>Clipboard Fallback:</strong> Click <code className="bg-sky-100 px-1 py-0.5 rounded font-mono font-semibold">Copy G–K</code> to copy tab-separated values, then paste into cell <code className="bg-sky-100 px-1 py-0.5 rounded font-mono font-bold">G&#123;row&#125;</code> in Google Sheets.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleDismissScheduleTip}
+                className="text-stone-400 hover:text-stone-700 p-1 transition rounded-md hover:bg-sky-100/60"
+                aria-label="Dismiss tip"
+                title="Dismiss tip"
+              >
+                <IconX className="h-3.5 w-3.5" />
+              </button>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Week Filter Tabs */}
         <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-stone-100 pb-3">
@@ -1135,296 +1192,33 @@ export default function TodayPage() {
         ) : (
           <div className="space-y-3">
             {filteredScheduleActivities.map((item) => {
-              const done = item.progress === 'Done';
               const isCurrentTimer = activeActivityId === item.id;
               const isTimerRunning = isCurrentTimer && Boolean(startedAt && !finishedAt && !pausedAt);
               const isTimerPaused = isCurrentTimer && Boolean(startedAt && !finishedAt && pausedAt);
-              const hasSubtopics = item.topic.includes('\n');
-              const lines = item.topic.split('\n');
-              const title = lines[0];
-              const subtopics = lines.slice(1);
-              const isExpanded = expandedTopicRows[item.rowNumber] ?? false;
+              const totalElapsedSecs = calculateElapsedSeconds(startedAt, Date.now(), pausedAt, accumulatedMs);
 
               return (
-                <div
+                <ScheduleCard
                   key={item.id}
-                  className={`rounded-2xl border bg-white p-4 sm:p-5 shadow-2xs transition hover:shadow-md ${
-                    isCurrentTimer
-                      ? 'border-peach-400 ring-2 ring-peach-200'
-                      : done
-                      ? 'border-stone-200/80 bg-stone-50/20'
-                      : 'border-stone-200'
-                  }`}
-                >
-                  {/* Top row: Row badge, Day, PIC, Media, Progress */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-md bg-stone-900 px-2 py-0.5 text-[11px] font-bold text-white tracking-wide">
-                        Row {item.rowNumber}
-                      </span>
-                      <span className="text-xs font-medium text-stone-500">
-                        #{item.activityCount} · {item.day}, {item.date}
-                      </span>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getPicBadge(item.pic)}`}>
-                        {item.pic}
-                      </span>
-                      <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[11px] font-medium text-stone-600">
-                        {item.mainMedia}
-                      </span>
-                      <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${getProgressBadge(isTimerRunning || isTimerPaused ? 'In Progress' : item.progress)}`}>
-                        {isTimerRunning ? (
-                          <span className="inline-flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-peach-500 animate-pulse" />
-                            <span>In Progress</span>
-                          </span>
-                        ) : isTimerPaused ? (
-                          <span className="inline-flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                            <span>Paused</span>
-                          </span>
-                        ) : (
-                          item.progress || 'Not Started'
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Title */}
-                  <div className="mt-1">
-                    <h3
-                      onClick={() => setDetailActivity(item)}
-                      className={`text-base font-semibold leading-snug cursor-pointer transition hover:text-mint-700 hover:underline ${
-                        done ? 'text-stone-700' : 'text-stone-900'
-                      }`}
-                      title="Click to view details & outline"
-                    >
-                      {title}
-                    </h3>
-                    {hasSubtopics && (
-                      <div className="mt-1">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setExpandedTopicRows((prev) => ({ ...prev, [item.rowNumber]: !isExpanded }))
-                          }
-                          className="text-[11px] font-medium text-stone-500 hover:text-stone-800 underline underline-offset-2"
-                        >
-                          {isExpanded ? 'Hide details ▴' : `View ${subtopics.length} details ▾`}
-                        </button>
-                        {isExpanded && (
-                          <ul className="mt-2 space-y-1 rounded-xl bg-stone-50 p-3 text-xs text-stone-600 border border-stone-100 animate-fade-in">
-                            {subtopics.map((sub, i) => (
-                              <li key={i} className="flex items-start gap-1.5">
-                                <span className="text-stone-400">•</span>
-                                <span>{sub.replace(/^[-*•]\s*/, '')}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Tracking Columns Grid (Cols G–K) */}
-                  <div className="mt-3.5 grid grid-cols-2 gap-2 rounded-xl bg-stone-50/80 p-2.5 sm:grid-cols-4 sm:gap-3 text-xs border border-stone-100">
-                    <div>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 block">
-                        Col G · Duration
-                      </span>
-                      <span className={`font-semibold ${isTimerRunning ? 'text-mint-700' : 'text-stone-800'}`}>
-                        {isTimerRunning || isTimerPaused
-                          ? `${Math.max(1, Math.round(calculateElapsedSeconds(startedAt, Date.now(), pausedAt, accumulatedMs) / 60))} min (live)`
-                          : item.durationMinutes !== undefined
-                          ? `${item.durationMinutes} min`
-                          : '—'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 block">
-                        Col H & I · Time
-                      </span>
-                      <span className={`font-semibold ${isTimerRunning ? 'text-mint-700' : 'text-stone-800'}`}>
-                        {isTimerRunning
-                          ? `${item.startTime || (startedAt ? formatTimeHHMM(startedAt) : '')} → (live...)`
-                          : isTimerPaused
-                          ? `${item.startTime || (startedAt ? formatTimeHHMM(startedAt) : '')} → (paused)`
-                          : item.startTime
-                          ? `${item.startTime} → ${item.endTime || '?'}`
-                          : '—'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 block">
-                        Col J · Progress
-                      </span>
-                      <span className="font-semibold text-stone-800">
-                        {isTimerRunning ? (
-                          <span className="inline-flex items-center gap-1.5 text-peach-700 font-bold">
-                            <span className="h-2 w-2 rounded-full bg-peach-500 animate-pulse" /> In Progress
-                          </span>
-                        ) : isTimerPaused ? (
-                          <span className="inline-flex items-center gap-1.5 text-amber-700 font-bold">
-                            <span className="h-2 w-2 rounded-full bg-amber-500" /> Paused
-                          </span>
-                        ) : (
-                          item.progress || 'Not Started'
-                        )}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-500 block">
-                        Col K · Notes
-                      </span>
-                      {item.notes ? (
-                        item.notes.startsWith('http') ? (
-                          <a
-                            href={item.notes}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 font-medium text-mint-700 underline truncate max-w-full"
-                          >
-                            <span>Open Link</span>
-                            <IconExternalLink className="h-3 w-3 shrink-0" />
-                          </a>
-                        ) : (
-                          <span className="font-medium text-stone-700 truncate block max-w-full" title={item.notes}>
-                            {item.notes}
-                          </span>
-                        )
-                      ) : (
-                        <span className="text-stone-400 font-normal">None</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Action Bar */}
-                  <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 pt-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setEditingScheduleItem(item)}
-                        className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-stone-900 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-stone-700 active:scale-95 shadow-2xs"
-                      >
-                        <IconEdit className="h-3.5 w-3.5" />
-                        <span>Fill Row (Cols G–K)</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => void handleDirectSyncScheduleRow(item)}
-                        className="inline-flex min-h-9 items-center gap-1 rounded-full bg-stone-50 px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900 transition active:scale-95"
-                        title="Sync this row to Google Sheets via API"
-                      >
-                        <IconRocket className="h-3.5 w-3.5" />
-                        <span>Sync</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setDetailActivity(item)}
-                        className="inline-flex min-h-9 items-center gap-1 rounded-full bg-stone-50 px-2.5 py-1.5 text-xs font-medium text-stone-600 hover:bg-stone-100 hover:text-stone-900 transition active:scale-95"
-                        title="View full topic objectives & details"
-                      >
-                        <IconSearch className="h-3.5 w-3.5" />
-                        <span>Details</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => void handleCopyGtoK(item)}
-                        className="inline-flex min-h-9 items-center gap-1 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
-                        title="Copies tab-separated: Duration, Start, End, Progress, Notes to paste into cell G"
-                      >
-                        {copiedRowToast?.rowNumber === item.rowNumber && copiedRowToast.type === 'G-K' ? (
-                          <>
-                            <IconCheck className="h-3.5 w-3.5 text-mint-600" />
-                            <span>Copied G–K TSV!</span>
-                          </>
-                        ) : (
-                          <>
-                            <IconClipboard className="h-3.5 w-3.5" />
-                            <span>Copy G–K</span>
-                          </>
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => void handleCopyFullRow(item)}
-                        className="inline-flex min-h-9 items-center gap-1 rounded-full bg-stone-50 px-2.5 py-1.5 text-xs font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-700 active:scale-95"
-                        title="Copies full 11 columns A–K for this row"
-                      >
-                        {copiedRowToast?.rowNumber === item.rowNumber && copiedRowToast.type === 'Full' ? (
-                          <>
-                            <IconCheck className="h-3.5 w-3.5 text-mint-600" />
-                            <span>Copied Row A–K!</span>
-                          </>
-                        ) : (
-                          <>
-                            <IconClipboard className="h-3.5 w-3.5" />
-                            <span>Row A–K</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {!done && (
-                        isTimerRunning ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-peach-100 px-3.5 py-1 text-xs font-semibold text-peach-800 transition hover:bg-peach-200 active:scale-95 animate-pulse-soft"
-                            title="Stopwatch is running above. Click to view."
-                          >
-                            <span className="h-2 w-2 rounded-full bg-peach-600 animate-ping" />
-                            <IconClock className="h-3.5 w-3.5" />
-                            <span>Stopwatch Running ▴</span>
-                          </button>
-                        ) : isTimerPaused ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              window.scrollTo({ top: 0, behavior: 'smooth' });
-                            }}
-                            className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-amber-100 px-3.5 py-1 text-xs font-semibold text-amber-800 transition hover:bg-amber-200 active:scale-95"
-                            title="Stopwatch is paused above. Click to view."
-                          >
-                            <IconPause className="h-3.5 w-3.5" />
-                            <span>Stopwatch Paused ▴</span>
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => handleStartTimerForScheduleRow(item)}
-                            className="inline-flex min-h-9 items-center gap-1 rounded-full bg-mint-50 px-3 py-1 text-xs font-semibold text-mint-700 transition hover:bg-mint-100 active:scale-95"
-                          >
-                            <IconClock className="h-3.5 w-3.5" />
-                            <span>Start Stopwatch</span>
-                          </button>
-                        )
-                      )}
-                      {done && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const matchAct = activities.find((a) => a.id === item.id) || scheduleActivityToActivity(item);
-                            setSelectedActivityForLearning(matchAct);
-                            setShowLearningCapture(true);
-                          }}
-                          className="inline-flex min-h-9 items-center gap-1 text-xs font-medium text-mint-700 underline underline-offset-4 hover:text-mint-800"
-                        >
-                          Write Reflection
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                  item={item}
+                  isCurrentTimer={isCurrentTimer}
+                  isTimerRunning={isTimerRunning}
+                  isTimerPaused={isTimerPaused}
+                  elapsedSeconds={totalElapsedSecs}
+                  startedAt={startedAt}
+                  onViewDetails={(act) => setDetailActivity(act)}
+                  onStartTimer={(act) => handleStartTimerForScheduleRow(act)}
+                  onFillRow={(act) => setEditingScheduleItem(act)}
+                  onSyncRow={(act) => void handleDirectSyncScheduleRow(act)}
+                  onCopyGtoK={(act) => void handleCopyGtoK(act)}
+                  onCopyFullRow={(act) => void handleCopyFullRow(act)}
+                  onWriteReflection={(act) => {
+                    const matchAct = activities.find((a) => a.id === act.id) || scheduleActivityToActivity(act);
+                    setSelectedActivityForLearning(matchAct);
+                    setShowLearningCapture(true);
+                  }}
+                  copiedToast={copiedRowToast}
+                />
               );
             })}
           </div>
@@ -1460,12 +1254,15 @@ export default function TodayPage() {
         onClose={() => setDetailActivity(null)}
         onEdit={(act) => setEditingScheduleItem(act)}
         onCopyGtoK={(act) => void handleCopyGtoK(act)}
+        onCopyFullRow={(act) => void handleCopyFullRow(act)}
+        onSyncRow={(act) => void handleDirectSyncScheduleRow(act)}
         onStartTimer={(act) => handleStartTimerForScheduleRow(act)}
         onWriteReflection={(act) => {
           const matchAct = activities.find((a) => a.id === act.id) || scheduleActivityToActivity(act);
           setSelectedActivityForLearning(matchAct);
           setShowLearningCapture(true);
         }}
+        copiedToast={copiedRowToast}
       />
 
       <CommandPalette

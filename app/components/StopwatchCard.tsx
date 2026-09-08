@@ -204,13 +204,13 @@ export function StopwatchCard({
         <div className="mt-5 flex flex-wrap items-baseline gap-x-6 gap-y-2 rounded-2xl bg-stone-50 p-4 border border-stone-100">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-              Logged Duration (Col G)
+              Logged Duration
             </span>
             <p className="font-mono text-3xl font-bold text-stone-900">{finalElapsedMins} min</p>
           </div>
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-              Time Window (Cols H → I)
+              Time Window
             </span>
             <p className="font-mono text-xl font-semibold text-stone-700">
               {startStr} → {endStr}
@@ -218,7 +218,7 @@ export function StopwatchCard({
           </div>
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
-              Status (Col J)
+              Status
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-mint-100 px-2.5 py-0.5 text-xs font-semibold text-mint-800 mt-1">
               <IconCheck className="h-3 w-3" /> Done
@@ -246,7 +246,7 @@ export function StopwatchCard({
             className="inline-flex items-center gap-2 min-h-12 rounded-full border border-stone-200 bg-white px-6 py-3 font-semibold text-stone-800 transition hover:bg-stone-50 active:scale-95 shadow-2xs"
           >
             <IconEdit className="h-4 w-4" />
-            <span>Fill Row in Schedule (Cols G–K)</span>
+            <span>Fill / Edit Row in Schedule</span>
           </button>
           <button
             type="button"
@@ -260,7 +260,7 @@ export function StopwatchCard({
             type="button"
             onClick={onCopyGtoK}
             className="inline-flex items-center gap-2 min-h-12 rounded-full bg-stone-100 px-5 py-3 font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
-            title="Copy tab-separated Duration, Start, End, Progress, Notes"
+            title="Copy tab-separated Duration, Start, End, Progress, Notes to clipboard"
           >
             {copiedGtoKToast ? (
               <>
