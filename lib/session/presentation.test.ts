@@ -25,4 +25,11 @@ describe('session presentation', () => {
     expect(mergeCompletedCount(null, 1)).toBe(1);
     expect(mergeCompletedCount(null, 0)).toBe(0);
   });
+
+  it('correctly reports progress labels for today with 2 tasks', () => {
+    expect(getProgressLabel({ completed: 0, inProgress: 0, total: 2 })).toBe('0 completed · 2 remaining');
+    expect(getProgressLabel({ completed: 0, inProgress: 1, total: 2 })).toBe('1 in progress · 1 remaining');
+    expect(getProgressLabel({ completed: 1, inProgress: 0, total: 2 })).toBe('1 completed · 1 remaining');
+    expect(getProgressLabel({ completed: 2, inProgress: 0, total: 2 })).toBe('2 completed · Nothing else scheduled');
+  });
 });

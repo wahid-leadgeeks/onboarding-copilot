@@ -48,6 +48,8 @@ import {
   scheduleActivityToActivity,
   getMergedScheduleActivities,
   calculateDurationFromTimes,
+  isSameDate,
+  getTodayScheduleActivities,
   type ScheduleActivity,
 } from '@/lib/schedule-catalog';
 import { GUIDE_TOUR_STORAGE_KEY, readGuideTourState, writeGuideTourState } from '@/lib/guide-tour';
@@ -96,7 +98,10 @@ export default function TodayPage() {
   const { toast } = useToast();
   const [activities, setActivities] = useState<Activity[]>(fallback);
   const [scheduleCatalog, setScheduleCatalog] = useState<ScheduleActivity[]>(() => [...OFFICIAL_SCHEDULE_ACTIVITIES]);
-  const [selectedWeek, setSelectedWeek] = useState<string>('Week 1');
+  const [selectedWeek, setSelectedWeek] = useState<string>(() => {
+    const todayTasks = getTodayScheduleActivities(OFFICIAL_SCHEDULE_ACTIVITIES, new Date());
+    return todayTasks.length > 0 ? 'Today' : 'Week 1';
+  });
   const [selectedDay, setSelectedDay] = useState<string>('All');
   const [scheduleSearch, setScheduleSearch] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -249,6 +254,16 @@ export default function TodayPage() {
   }, [finishedAt]);
 
   const completedIds = completedActivityIds(historySessions);
+
+  const isScheduleItemDone = (item: ScheduleActivity) =>
+    item.progress === 'Done' ||
+    completedIds.has(item.id) ||
+    activities.find((a) => a.id === item.id)?.status === 'done';
+
+  const todayActivities = getTodayScheduleActivities(scheduleCatalog, new Date(now));
+  const todayCompletedCount = todayActivities.filter(isScheduleItemDone).length;
+  const todayTotalCount = todayActivities.length;
+
   const currentActivity: Activity | null = (() => {
     if (activeActivityId) {
       const match =
@@ -259,22 +274,36 @@ export default function TodayPage() {
         })();
       if (match) return match;
     }
+    // Prefer today's first incomplete activity if available
+    const todayIncomplete = todayActivities.find((item) => !isScheduleItemDone(item));
+    if (todayIncomplete) {
+      const match = activities.find((a) => a.id === todayIncomplete.id) || scheduleActivityToActivity(todayIncomplete);
+      return match;
+    }
     const auto = selectCurrentActivity(activities, completedIds);
     if (auto) return auto;
     const fallbackSched = scheduleCatalog.find((s) => s.progress !== 'Done') || scheduleCatalog[0];
     return fallbackSched ? scheduleActivityToActivity(fallbackSched) : null;
   })();
+
   const isActivityDone = (activity: Activity) => completedIds.has(activity.id) || activity.status === 'done';
   const doneActivitiesCount = activities.filter(isActivityDone).length;
-  const completedCount = Math.max(doneActivitiesCount, mergeCompletedCount(progress?.completed ?? null, completedIds.size));
-  const totalCount = progress?.total ?? activities.length;
-  const inProgressCount = startedAt && !finishedAt ? 1 : 0;
-  const remainingCount = Math.max(0, totalCount - completedCount - inProgressCount);
+  const overallCompletedCount = Math.max(doneActivitiesCount, mergeCompletedCount(progress?.completed ?? null, completedIds.size));
+  const overallTotalCount = progress?.total ?? activities.length;
+  const overallProgressPercent = overallTotalCount > 0 ? Math.round((overallCompletedCount / overallTotalCount) * 100) : 0;
+
+  const todayInProgressCount =
+    startedAt && !finishedAt && currentActivity && todayActivities.some((a) => a.id === currentActivity.id) ? 1 : 0;
+  const todayRemainingCount = Math.max(0, todayTotalCount - todayCompletedCount - todayInProgressCount);
+  const todayProgressPercent = todayTotalCount > 0 ? Math.round((todayCompletedCount / todayTotalCount) * 100) : 0;
+  const todayProgressLabel =
+    todayTotalCount > 0
+      ? getProgressLabel({ completed: todayCompletedCount, inProgress: todayInProgressCount, total: todayTotalCount })
+      : 'No scheduled activities for today';
+
   const todayLabel = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(now);
   const hour = new Date(now).getHours();
   const greeting = hour >= 5 && hour < 12 ? 'Good morning' : hour >= 12 && hour < 18 ? 'Good afternoon' : 'Good evening';
-  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-  const progressLabel = getProgressLabel({ completed: completedCount, inProgress: inProgressCount, total: totalCount });
 
   // Calculate day of 90 (placeholder: start from September 1, 2026)
   const startDate = new Date(2026, 8, 1);
@@ -287,7 +316,7 @@ export default function TodayPage() {
 
   const targetLearningActivity = selectedActivityForLearning ?? (activeActivityId ? activities.find(a => a.id === activeActivityId) ?? null : currentActivity);
   const targetActivityIndex = targetLearningActivity ? activities.findIndex(a => a.id === targetLearningActivity.id) : -1;
-  const activityOrderNumber = targetActivityIndex >= 0 ? targetActivityIndex + 1 : (completedCount || 1);
+  const activityOrderNumber = targetActivityIndex >= 0 ? targetActivityIndex + 1 : (overallCompletedCount || 1);
 
   const learningActivityContext: LearningActivityContext | null = targetLearningActivity || finishedAt ? {
     id: targetLearningActivity?.id ?? activeActivityId ?? undefined,
@@ -739,23 +768,22 @@ export default function TodayPage() {
       ? { dotColor: 'bg-peach-500', label: 'Offline · Using saved schedule', className: 'bg-peach-50 text-peach-700' }
       : { dotColor: 'bg-mint-500', label: sync || 'Synced just now', className: 'bg-mint-50 text-mint-700' };
 
-  const seedling = seedlingStage(progressPercent);
+  const seedling = seedlingStage(todayTotalCount > 0 ? todayProgressPercent : overallProgressPercent);
   const diaryCount = typeof window === 'undefined' ? 0 : readDiary(localStorage.getItem(DIARY_STORAGE_KEY)).length;
-  const allDone = completedCount === totalCount && totalCount > 0 && !currentActivity;
+  const allDone = todayTotalCount > 0 && todayCompletedCount === todayTotalCount && !startedAt;
   const sessionToday = historySessions.length > 0 ? historySessions[historySessions.length - 1] : null;
   const durationHours = Math.floor(duration / 60);
   const durationMinutes = duration % 60;
 
   const headline = allDone
     ? 'That’s everything for today.'
-    : completedCount === 0
+    : todayTotalCount === 0
+    ? 'No activities scheduled for today.'
+    : todayCompletedCount === 0
     ? 'Your day is still unwritten.'
-    : progressPercent >= 50
+    : todayProgressPercent >= 50
     ? 'Almost there!'
     : 'You’ve had a pretty productive day.';
-
-  const todayFormatted = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(now);
-  const todayActivities = scheduleCatalog.filter((a) => a.date === todayFormatted || (a.day === 'Monday' && a.week === 'Week 2'));
 
   const weekCounts: Record<string, number> = {
     'Today': todayActivities.length,
@@ -769,7 +797,7 @@ export default function TodayPage() {
 
   const currentWeekActivities = scheduleCatalog.filter((a) => {
     if (selectedWeek === 'Today') {
-      return a.date === todayFormatted || (a.day === 'Monday' && a.week === 'Week 2');
+      return isSameDate(a.date, new Date(now));
     }
     if (selectedWeek === 'All') return true;
     if (selectedWeek === 'Month 2 & 3') return a.week === 'Month 2' || a.week === 'Month 3';
@@ -825,17 +853,23 @@ export default function TodayPage() {
 
       {/* Header */}
       <header data-tour="progress-header" className="animate-fade-up">
-        <p className="text-sm font-medium text-stone-500">{todayLabel} · Day {Math.min(dayNumber, totalDays)} of {totalDays}</p>
+        <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-stone-500">
+          <span>{todayLabel} · Day {Math.min(dayNumber, totalDays)} of {totalDays}</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-stone-700">
+            <span>Overall: {overallCompletedCount} of {overallTotalCount} done</span>
+            <span className="text-stone-400">({overallProgressPercent}%)</span>
+          </span>
+        </div>
         <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">{greeting}, Noah</h1>
         <p className="mt-3 text-lg text-stone-500">{headline}</p>
 
         <div className="mt-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
           <div>
             <p className="text-6xl font-semibold tracking-tight text-stone-900">
-              {completedCount}<span className="ml-3 align-baseline text-xl font-medium text-stone-500">of {totalCount} today</span>
+              {todayCompletedCount}<span className="ml-3 align-baseline text-xl font-medium text-stone-500">of {todayTotalCount} today</span>
             </p>
-            <div className="h-2.5 w-full min-w-56 overflow-hidden rounded-full bg-stone-200" aria-label={`${progressPercent}% of today’s activities complete`}>
-              <div className="bar-gradient progress-shimmer h-full rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
+            <div className="h-2.5 w-full min-w-56 overflow-hidden rounded-full bg-stone-200" aria-label={`${todayProgressPercent}% of today’s activities complete`}>
+              <div className="bar-gradient progress-shimmer h-full rounded-full transition-all" style={{ width: `${todayProgressPercent}%` }} />
             </div>
           </div>
           <p className="flex items-center text-lg text-stone-600">
@@ -849,7 +883,7 @@ export default function TodayPage() {
             <span>{seedling.label}</span>
           </p>
         </div>
-        <p className="mt-3 text-sm text-stone-500">{progressLabel}</p>
+        <p className="mt-3 text-sm text-stone-500">{todayProgressLabel}</p>
       </header>
 
       {allDone ? (
@@ -859,7 +893,7 @@ export default function TodayPage() {
             <IconTrophy className="h-8 w-8" />
           </div>
           <h2 className="mt-4 text-3xl font-semibold tracking-tight text-stone-900">Day wrapped up</h2>
-          <p className="mt-2 text-stone-600">{completedCount} activities{diaryCount > 0 ? ` · ${diaryCount} ${diaryCount === 1 ? 'thing' : 'things'} learned` : ''}</p>
+          <p className="mt-2 text-stone-600">{todayCompletedCount} {todayCompletedCount === 1 ? 'activity' : 'activities'} completed today{diaryCount > 0 ? ` · ${diaryCount} ${diaryCount === 1 ? 'thing' : 'things'} learned` : ''}</p>
           <p className="mt-1 text-stone-500">See you tomorrow.</p>
           <a href="/diary" className="mt-6 inline-flex min-h-11 items-center rounded-full bg-stone-900 px-5 py-3 font-semibold text-white transition hover:bg-stone-700">Open Onboarding Diary →</a>
         </section>
@@ -998,7 +1032,12 @@ export default function TodayPage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700">
-              {filteredScheduleActivities.length} of {scheduleCatalog.length} activities
+              {filteredScheduleActivities.length}{' '}
+              {selectedWeek === 'Today'
+                ? 'scheduled today'
+                : selectedWeek !== 'All'
+                ? `in ${selectedWeek}`
+                : `of ${scheduleCatalog.length} activities`}
             </span>
           </div>
         </div>
@@ -1101,7 +1140,7 @@ export default function TodayPage() {
         {/* Filter Toolbar: Day pills, Status, and Search */}
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           {/* Day filter pills */}
-          {availableDays.length > 1 && (
+          {selectedWeek !== 'Today' && availableDays.length > 1 && (
             <div className="flex flex-wrap items-center gap-1">
               <button
                 type="button"
@@ -1175,7 +1214,11 @@ export default function TodayPage() {
         {/* Schedule Cards */}
         {filteredScheduleActivities.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-stone-200 p-8 text-center text-stone-500">
-            <p className="text-sm font-medium">No schedule topics match your filters.</p>
+            <p className="text-sm font-medium">
+              {selectedWeek === 'Today'
+                ? 'No activities scheduled for today.'
+                : 'No schedule topics match your filters.'}
+            </p>
             <button
               type="button"
               onClick={() => {
@@ -1186,7 +1229,7 @@ export default function TodayPage() {
               }}
               className="mt-2 text-xs font-semibold text-mint-700 underline underline-offset-4"
             >
-              Reset filters
+              {selectedWeek === 'Today' ? 'View all activities →' : 'Reset filters'}
             </button>
           </div>
         ) : (

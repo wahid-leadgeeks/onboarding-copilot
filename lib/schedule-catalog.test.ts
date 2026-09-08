@@ -6,6 +6,8 @@ import {
   readScheduleCustomizations,
   writeScheduleCustomizations,
   getProgressBadge,
+  isSameDate,
+  getTodayScheduleActivities,
   type ScheduleActivity,
 } from './schedule-catalog';
 
@@ -152,4 +154,53 @@ describe('Official Schedule Catalog', () => {
     expect(getProgressBadge('')).toContain('stone');
     expect(getProgressBadge('Not Started')).toContain('stone');
   });
+
+  describe('isSameDate and getTodayScheduleActivities', () => {
+    const targetDate = new Date(2026, 8, 8); // Tuesday, September 8, 2026
+
+    it('correctly matches DD/MM/YYYY dates', () => {
+      expect(isSameDate('08/09/2026', targetDate)).toBe(true);
+      expect(isSameDate('07/09/2026', targetDate)).toBe(false);
+      expect(isSameDate('09/09/2026', targetDate)).toBe(false);
+    });
+
+    it('correctly matches YYYY-MM-DD ISO dates', () => {
+      expect(isSameDate('2026-09-08', targetDate)).toBe(true);
+      expect(isSameDate('2026-09-07', targetDate)).toBe(false);
+    });
+
+    it('handles single digit days and months', () => {
+      expect(isSameDate('8/9/2026', targetDate)).toBe(true);
+      expect(isSameDate('2026-9-8', targetDate)).toBe(true);
+    });
+
+    it('returns false for empty or invalid dates', () => {
+      expect(isSameDate(undefined, targetDate)).toBe(false);
+      expect(isSameDate('', targetDate)).toBe(false);
+      expect(isSameDate('TBD', targetDate)).toBe(false);
+    });
+
+    it('retrieves only the 2 tasks for Tuesday 08/09/2026 from official schedule catalog', () => {
+      const todayTasks = getTodayScheduleActivities(OFFICIAL_SCHEDULE_ACTIVITIES, targetDate);
+      expect(todayTasks).toHaveLength(2);
+      expect(todayTasks[0].activityCount).toBe(25);
+      expect(todayTasks[0].rowNumber).toBe(28);
+      expect(todayTasks[0].day).toBe('Tuesday');
+      expect(todayTasks[0].date).toBe('08/09/2026');
+      expect(todayTasks[0].topic).toContain('Infrastructure Management at LeadGeeks');
+
+      expect(todayTasks[1].activityCount).toBe(26);
+      expect(todayTasks[1].rowNumber).toBe(29);
+      expect(todayTasks[1].day).toBe('Tuesday');
+      expect(todayTasks[1].date).toBe('08/09/2026');
+      expect(todayTasks[1].topic).toContain('Independent Learning and Task');
+    });
+
+    it('does NOT include Monday activities in today tasks on Tuesday', () => {
+      const todayTasks = getTodayScheduleActivities(OFFICIAL_SCHEDULE_ACTIVITIES, targetDate);
+      expect(todayTasks.some((t) => t.day === 'Monday')).toBe(false);
+      expect(todayTasks.every((t) => t.day === 'Tuesday')).toBe(true);
+    });
+  });
 });
+
