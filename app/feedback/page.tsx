@@ -13,9 +13,9 @@ import {
   type FeedbackEntry,
   type FeedbackSession,
 } from '@/lib/feedback';
-import { FeedbackModal } from '@/app/components/FeedbackModal';
+import { FeedbackDetailSheet } from '@/app/components/FeedbackDetailSheet';
 import { useToast } from '@/app/components/Toast';
-import { IconAlertTriangle, IconCheck, IconClipboard } from '@/app/components/Icons';
+import { IconAlertTriangle, IconCheck } from '@/app/components/Icons';
 
 export default function FeedbackPage() {
   const { toast } = useToast();
@@ -106,7 +106,6 @@ export default function FeedbackPage() {
   function handleSaveFeedback(entry: FeedbackEntry) {
     const next = upsertFeedbackEntry(feedbackEntries, entry);
     persist(next);
-    setActiveSession(null);
     const match = FEEDBACK_SESSIONS.find((s) => s.id === entry.sessionId);
     const label = match ? `Row ${match.rowNumber} (${entry.sessionTitle})` : entry.sessionTitle;
     toast.success(`Feedback for ${label} saved!`);
@@ -148,14 +147,31 @@ export default function FeedbackPage() {
     return true;
   });
 
+  // Calculate previous/next session for the active drawer
+  const currentIndex = activeSession
+    ? FEEDBACK_SESSIONS.findIndex((s) => s.id === activeSession.id)
+    : -1;
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex >= 0 && currentIndex < FEEDBACK_SESSIONS.length - 1;
+  const onPrevSession = hasPrev ? () => setActiveSession(FEEDBACK_SESSIONS[currentIndex - 1]) : undefined;
+  const onNextSession = hasNext ? () => setActiveSession(FEEDBACK_SESSIONS[currentIndex + 1]) : undefined;
+
+  const activeEntry = activeSession
+    ? feedbackEntries.find(
+        (e) => e.sessionId === activeSession.id || e.sessionId === `row-${activeSession.rowNumber}`
+      )
+    : undefined;
+
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
       <PrimaryNav active="Feedback" />
 
       {/* Header */}
-      <header className="animate-fade-up pb-6">
+      <header className="animate-fade-up pb-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-medium text-stone-500">Sheet: Feedback Sheet · Session Ratings</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+            Worksheet: Feedback Sheet (Columns D–M)
+          </p>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -189,7 +205,7 @@ export default function FeedbackPage() {
             Feedback &amp; Evaluation
           </h1>
           <p className="mt-1 text-sm text-stone-600">
-            Rate your onboarding sessions across 6 dimensions (Cols D–I) and capture qualitative follow-ups.
+            Rate your onboarding sessions across 6 dimensions and capture qualitative follow-ups.
           </p>
         </div>
 
@@ -216,22 +232,25 @@ export default function FeedbackPage() {
         )}
       </header>
 
-      {/* Single-View Feedback Cockpit Card */}
-      <section className="animate-fade-up stagger-1 rounded-3xl bg-white p-5 shadow-soft sm:p-6">
+      {/* Minimal Pulse Bar & Filter Cockpit */}
+      <section className="animate-fade-up stagger-1 rounded-3xl bg-white p-4 sm:p-5 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <p className="text-3xl font-semibold text-stone-900 sm:text-4xl">
-              {progress.evaluatedCount} <span className="font-normal text-stone-400 text-xl sm:text-2xl">/ {progress.totalCount}</span>
+            <p className="text-2xl font-bold text-stone-900 sm:text-3xl">
+              {progress.evaluatedCount}{' '}
+              <span className="font-normal text-stone-400 text-lg sm:text-xl">
+                / {progress.totalCount}
+              </span>
             </p>
             <span
-              className={`rounded-full px-3 py-1 text-xs font-medium ${
+              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                 progress.isComplete
                   ? 'bg-mint-50 text-mint-700'
                   : 'bg-peach-50 text-peach-700'
               }`}
             >
               {progress.isComplete
-                ? `All ${progress.totalCount} evaluated!`
+                ? 'All evaluated! 🎉'
                 : `${progress.remainingCount} pending evaluation`}
             </span>
           </div>
@@ -239,7 +258,7 @@ export default function FeedbackPage() {
           <div className="w-full sm:w-64">
             <input
               type="search"
-              placeholder="Search session, PIC..."
+              placeholder="Search session or PIC..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-full border border-stone-200 bg-stone-50 px-3.5 py-1.5 text-xs text-stone-800 placeholder:text-stone-400 focus:border-stone-900 focus:bg-white focus:outline-none"
@@ -248,15 +267,15 @@ export default function FeedbackPage() {
         </div>
 
         {/* Progress Bar */}
-        <div className="mt-4 h-2 rounded-full bg-stone-100">
+        <div className="mt-3 h-1.5 rounded-full bg-stone-100">
           <div
-            className="bar-gradient progress-shimmer h-2 rounded-full transition-[width]"
+            className="bar-gradient progress-shimmer h-1.5 rounded-full transition-[width]"
             style={{ width: `${progress.percentage}%` }}
           />
         </div>
 
         {/* Filter Pills */}
-        <div className="mt-5 flex flex-wrap gap-1.5 border-b border-stone-100 pb-4">
+        <div className="mt-4 flex flex-wrap items-center gap-1.5 border-b border-stone-100 pb-3">
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
@@ -275,8 +294,8 @@ export default function FeedbackPage() {
               statusFilter === 'pending'
                 ? 'bg-peach-500 text-white shadow-xs'
                 : progress.remainingCount > 0
-                  ? 'bg-peach-50 text-peach-800 font-semibold hover:bg-peach-100'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                ? 'bg-peach-50 text-peach-800 font-semibold hover:bg-peach-100'
+                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
             }`}
           >
             Pending ({progress.remainingCount})
@@ -294,120 +313,106 @@ export default function FeedbackPage() {
           </button>
         </div>
 
-        {/* Sessions List */}
-        <ul className="mt-3 divide-y divide-stone-100" role="list">
+        {/* Clean 1-Line Session Rows */}
+        <div className="mt-3 space-y-2">
           {filteredSessions.map(({ session, status, entry }) => {
             const isEvaluated = status === 'evaluated';
-            const isCopied = copiedSessionId === session.id;
+            const avgRating = entry
+              ? (
+                  (entry.ratings.communication +
+                    entry.ratings.alignment +
+                    entry.ratings.understanding +
+                    entry.ratings.readiness +
+                    entry.ratings.pace +
+                    entry.ratings.overall) /
+                  6
+                ).toFixed(1)
+              : null;
 
             return (
-              <li
+              <div
                 key={session.id}
-                className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+                onClick={() => setActiveSession(session)}
+                className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-2xl border p-3 sm:px-4 sm:py-2.5 cursor-pointer transition-all ${
+                  isEvaluated
+                    ? 'border-stone-100 bg-white/70 hover:border-stone-200 hover:bg-white'
+                    : 'border-peach-200 bg-peach-50/30 hover:border-peach-300 hover:bg-peach-50/60 shadow-2xs'
+                }`}
               >
-                <div className="flex items-start gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Status Indicator */}
                   <span
-                    className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                    className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                       isEvaluated
                         ? 'bg-mint-100 text-mint-700'
-                        : 'bg-stone-100 text-stone-400'
+                        : 'bg-peach-100 text-peach-700'
                     }`}
                   >
-                    {isEvaluated ? <IconCheck className="h-3.5 w-3.5" /> : <span className="size-1.5 rounded-full bg-stone-300" />}
+                    {isEvaluated ? (
+                      <IconCheck className="h-3.5 w-3.5" />
+                    ) : (
+                      <span className="size-2 rounded-full bg-peach-500" />
+                    )}
                   </span>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-sm font-medium text-stone-900 sm:text-base leading-snug">
-                        {session.title}
-                      </h3>
-                      <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-stone-600">
-                        Row {session.rowNumber}
+
+                  {/* Row Badge */}
+                  <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] font-bold text-stone-700 shrink-0">
+                    Row {session.rowNumber}
+                  </span>
+
+                  {/* Title */}
+                  <h3 className="text-sm font-medium text-stone-900 truncate">
+                    {session.title}
+                  </h3>
+                </div>
+
+                {/* Right side: PIC chip + Rating / Evaluate action */}
+                <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pl-9 sm:pl-0">
+                  <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-medium text-stone-600">
+                    {session.pic}
+                  </span>
+
+                  {isEvaluated ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="rounded-full bg-mint-50 border border-mint-200 px-2.5 py-0.5 text-xs font-bold text-mint-700">
+                        ★ {avgRating}
+                      </span>
+                      <span className="text-xs font-medium text-stone-400 group-hover:text-stone-700 transition">
+                        Details →
                       </span>
                     </div>
-                    <p className="mt-0.5 text-xs text-stone-500">
-                      PIC: {session.pic} {session.department && `· ${session.department}`}
-                    </p>
-                    {entry && (
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-500">
-                        <span>
-                          Evaluated on {entry.date} · Overall rating:{' '}
-                          <span className="font-semibold text-mint-700">{entry.ratings.overall}/6</span>
-                        </span>
-                        {entry.questionAddressing && (
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[11px] font-medium border ${
-                              entry.questionAddressing === 'Chat response is fine'
-                                ? 'bg-amber-50 text-amber-900 border-amber-200'
-                                : entry.questionAddressing === "I don't have any questions today"
-                                  ? 'bg-purple-50 text-purple-900 border-purple-200'
-                                  : entry.questionAddressing.includes('meeting')
-                                    ? 'bg-sky-50 text-sky-900 border-sky-200'
-                                    : 'bg-stone-100 text-stone-700 border-stone-200'
-                            }`}
-                          >
-                            {entry.questionAddressing}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                  {isEvaluated && entry && (
-                    <button
-                      type="button"
-                      onClick={() => handleCopyRow(entry)}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
-                    >
-                      {isCopied ? (
-                        <>
-                          <IconCheck className="h-3.5 w-3.5 text-mint-600" />
-                          <span>Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <IconClipboard className="h-3.5 w-3.5" />
-                          <span>Copy TSV</span>
-                        </>
-                      )}
-                    </button>
+                  ) : (
+                    <span className="rounded-full bg-stone-900 px-3 py-1 text-xs font-semibold text-white shadow-2xs group-hover:bg-stone-800 transition">
+                      Evaluate
+                    </span>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => setActiveSession(session)}
-                    className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition ${
-                      isEvaluated
-                        ? 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                        : 'bg-stone-900 text-white hover:bg-stone-800'
-                    }`}
-                  >
-                    {isEvaluated ? 'Edit' : 'Evaluate'}
-                  </button>
                 </div>
-              </li>
+              </div>
             );
           })}
-        </ul>
 
-        {filteredSessions.length === 0 && (
-          <p className="py-10 text-center text-sm text-stone-400">
-            No feedback sessions match your search or filter.
-          </p>
-        )}
+          {filteredSessions.length === 0 && (
+            <p className="py-8 text-center text-xs text-stone-400">
+              No feedback sessions match your filter.
+            </p>
+          )}
+        </div>
       </section>
 
-      {/* Feedback Modal */}
-      {activeSession && (
-        <FeedbackModal
-          session={activeSession}
-          existingEntry={feedbackEntries.find(
-            (e) => e.sessionId === activeSession.id || e.sessionId === `row-${activeSession.rowNumber}`
-          )}
-          onSave={handleSaveFeedback}
-          onClose={() => setActiveSession(null)}
-        />
-      )}
+      {/* Slide-over Feedback Detail & Inline Edit Drawer */}
+      <FeedbackDetailSheet
+        session={activeSession}
+        existingEntry={activeEntry}
+        isOpen={Boolean(activeSession)}
+        onClose={() => setActiveSession(null)}
+        onSave={handleSaveFeedback}
+        onCopyRow={handleCopyRow}
+        onPrevSession={onPrevSession}
+        onNextSession={onNextSession}
+        hasPrev={hasPrev}
+        hasNext={hasNext}
+        isCopied={Boolean(activeSession && copiedSessionId === activeSession.id)}
+      />
     </main>
   );
 }

@@ -12,13 +12,11 @@ import {
   type DiaryEntryRecord,
   type DiaryTopicItem,
 } from '@/lib/diary-cockpit';
-import { DiaryModal } from '@/app/components/DiaryModal';
+import { DiaryDetailSheet } from '@/app/components/DiaryDetailSheet';
 import { useToast } from '@/app/components/Toast';
 import {
-  IconEdit,
-  IconRocket,
   IconCheck,
-  IconClipboard,
+  IconEdit,
 } from '@/app/components/Icons';
 
 export default function DiaryPage() {
@@ -91,12 +89,24 @@ export default function DiaryPage() {
     (s) => s.status === 'needs-notes'
   )?.topic;
 
+  // Previous & Next navigation inside the drawer
+  const allTopics = progress.rowStatuses.map((r) => r.topic);
+  const currentIndex = activeTopic ? allTopics.findIndex((t) => t.id === activeTopic.id) : -1;
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex >= 0 && currentIndex < allTopics.length - 1;
+  const onPrevTopic = hasPrev ? () => setActiveTopic(allTopics[currentIndex - 1]) : undefined;
+  const onNextTopic = hasNext ? () => setActiveTopic(allTopics[currentIndex + 1]) : undefined;
+
+  const activeEntry = activeTopic
+    ? diaryEntries.find((e) => e.rowNumber === activeTopic.rowNumber)
+    : undefined;
+
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
       <PrimaryNav active="Diary" />
 
       {/* Header */}
-      <header className="animate-fade-up pb-6">
+      <header className="animate-fade-up pb-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
@@ -106,7 +116,7 @@ export default function DiaryPage() {
               Onboarding Diary
             </h1>
             <p className="mt-1 text-sm text-stone-600">
-              28 syllabus topics · Document 3 things you learned (Col G) &amp; your personal notes (Col H).
+              28 syllabus topics · Document 3 things you learned (Col G) &amp; personal notes (Col H).
             </p>
           </div>
           <span className="rounded-full bg-lavender-50 px-3.5 py-1 text-xs font-semibold text-lavender-800">
@@ -117,10 +127,10 @@ export default function DiaryPage() {
 
       {/* Attention Callout if notes pending */}
       {nextPendingTopic && (
-        <section className="animate-fade-up stagger-1 mb-6 rounded-2xl border-l-4 border-peach-400 bg-peach-50/70 p-4 shadow-xs sm:p-5">
+        <section className="animate-fade-up stagger-1 mb-5 rounded-2xl border-l-4 border-peach-400 bg-peach-50/70 p-4 shadow-2xs">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-peach-200 text-peach-800">
+            <div className="flex items-center gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-peach-200 text-peach-800">
                 <IconEdit className="h-4 w-4" />
               </span>
               <div>
@@ -132,54 +142,53 @@ export default function DiaryPage() {
                     Row {nextPendingTopic.rowNumber} · {nextPendingTopic.day}
                   </span>
                 </div>
-                <h3 className="mt-1 text-sm font-semibold text-stone-900 sm:text-base">
+                <h3 className="text-sm font-semibold text-stone-900">
                   {nextPendingTopic.topic}
                 </h3>
-                <p className="text-xs text-stone-600">
-                  Learnings are saved, but Column H notes are still empty.
-                </p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setActiveTopic(nextPendingTopic)}
-              className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full bg-stone-900 px-4 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800 active:scale-95 sm:self-center shrink-0"
+              className="inline-flex min-h-8 items-center justify-center rounded-full bg-stone-900 px-4 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800 active:scale-95 sm:self-center shrink-0"
             >
-              <IconRocket className="h-3.5 w-3.5" />
-              <span>Fill Notes &amp; Sync</span>
+              Fill Notes &amp; Sync
             </button>
           </div>
         </section>
       )}
 
-      {/* Progress & Filters Card (Single-View Cockpit) */}
-      <section className="animate-fade-up stagger-2 rounded-3xl bg-white p-5 shadow-soft sm:p-6">
+      {/* Minimal Pulse Bar & Filter Cockpit */}
+      <section className="animate-fade-up stagger-2 rounded-3xl bg-white p-4 sm:p-5 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <p className="text-3xl font-semibold text-stone-900 sm:text-4xl">
-              {progress.completedCount} <span className="font-normal text-stone-400 text-xl sm:text-2xl">/ {progress.totalCount}</span>
+            <p className="text-2xl font-bold text-stone-900 sm:text-3xl">
+              {progress.completedCount}{' '}
+              <span className="font-normal text-stone-400 text-lg sm:text-xl">
+                / {progress.totalCount}
+              </span>
             </p>
             <span
-              className={`rounded-full px-3 py-1 text-xs font-medium ${
+              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                 progress.isComplete
                   ? 'bg-mint-50 text-mint-700'
                   : progress.needsNotesCount > 0
-                    ? 'bg-peach-50 text-peach-700'
-                    : 'bg-stone-100 text-stone-600'
+                  ? 'bg-peach-50 text-peach-700'
+                  : 'bg-stone-100 text-stone-600'
               }`}
             >
               {progress.isComplete
-                ? 'All complete!'
+                ? 'All complete! 🎉'
                 : progress.needsNotesCount > 0
-                  ? `${progress.needsNotesCount} needs notes`
-                  : `${progress.todoCount} to do`}
+                ? `${progress.needsNotesCount} needs notes`
+                : `${progress.todoCount} to do`}
             </span>
           </div>
 
           <div className="w-full sm:w-64">
             <input
               type="search"
-              placeholder="Search topic, PIC, day..."
+              placeholder="Search topic or PIC..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-full border border-stone-200 bg-stone-50 px-3.5 py-1.5 text-xs text-stone-800 placeholder:text-stone-400 focus:border-stone-900 focus:bg-white focus:outline-none"
@@ -188,15 +197,15 @@ export default function DiaryPage() {
         </div>
 
         {/* Progress Bar */}
-        <div className="mt-4 h-2 rounded-full bg-stone-100">
+        <div className="mt-3 h-1.5 rounded-full bg-stone-100">
           <div
-            className="bar-gradient progress-shimmer h-2 rounded-full transition-[width]"
+            className="bar-gradient progress-shimmer h-1.5 rounded-full transition-[width]"
             style={{ width: `${progress.percentage}%` }}
           />
         </div>
 
         {/* Filter Pills */}
-        <div className="mt-5 flex flex-wrap gap-1.5 border-b border-stone-100 pb-4">
+        <div className="mt-4 flex flex-wrap gap-1.5 border-b border-stone-100 pb-3">
           <button
             type="button"
             onClick={() => setStatusFilter('all')}
@@ -215,8 +224,8 @@ export default function DiaryPage() {
               statusFilter === 'needs-notes'
                 ? 'bg-peach-500 text-white shadow-xs'
                 : progress.needsNotesCount > 0
-                  ? 'bg-peach-50 text-peach-800 font-semibold hover:bg-peach-100'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                ? 'bg-peach-50 text-peach-800 font-semibold hover:bg-peach-100'
+                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
             }`}
           >
             Needs Notes ({progress.needsNotesCount})
@@ -245,29 +254,33 @@ export default function DiaryPage() {
           </button>
         </div>
 
-        {/* Topics List */}
-        <ul className="mt-3 divide-y divide-stone-100" role="list">
+        {/* Clean 1-Line Topic Rows */}
+        <div className="mt-3 space-y-2">
           {filteredTopics.map(({ topic, status, entry }) => {
             const isCompleted = status === 'completed';
             const isNeedsNotes = status === 'needs-notes';
-            const isCopied = copiedRowNumber === topic.rowNumber;
-
-            const learned = (entry ? entry.learned : topic.defaultLearned || '').trim();
-            const notes = (entry ? entry.notes : topic.defaultNotes || '').trim();
 
             return (
-              <li
+              <div
                 key={topic.id}
-                className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-start sm:justify-between"
+                onClick={() => setActiveTopic(topic)}
+                className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-2xl border p-3 sm:px-4 sm:py-2.5 cursor-pointer transition-all ${
+                  isCompleted
+                    ? 'border-stone-100 bg-white/70 hover:border-stone-200 hover:bg-white'
+                    : isNeedsNotes
+                    ? 'border-peach-200 bg-peach-50/30 hover:border-peach-300 hover:bg-peach-50/60 shadow-2xs'
+                    : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-2xs'
+                }`}
               >
-                <div className="flex items-start gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  {/* Status Indicator */}
                   <span
-                    className={`mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                    className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                       isCompleted
                         ? 'bg-mint-100 text-mint-700'
                         : isNeedsNotes
-                          ? 'bg-peach-100 text-peach-700'
-                          : 'bg-stone-100 text-stone-400'
+                        ? 'bg-peach-100 text-peach-700'
+                        : 'bg-stone-100 text-stone-400'
                     }`}
                   >
                     {isCompleted ? (
@@ -278,93 +291,64 @@ export default function DiaryPage() {
                       <span className="size-1.5 rounded-full bg-stone-300" />
                     )}
                   </span>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-sm font-medium text-stone-900 sm:text-base leading-snug">
-                        {topic.topic.split('\n')[0]}
-                      </h3>
-                      <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] font-medium text-stone-600">
-                        Row {topic.rowNumber}
-                      </span>
-                      <span className="text-[11px] text-stone-400">
-                        {topic.day} · Week {topic.week}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-xs text-stone-500">PIC: {topic.pic}</p>
 
-                    {learned && (
-                      <p className="mt-1 line-clamp-1 text-xs text-stone-600">
-                        <span className="font-semibold text-stone-500">Learnings:</span>{' '}
-                        {learned.replace(/\n/g, ' · ')}
-                      </p>
-                    )}
+                  {/* Row Badge */}
+                  <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] font-bold text-stone-700 shrink-0">
+                    Row {topic.rowNumber}
+                  </span>
 
-                    {notes ? (
-                      <p className="mt-0.5 line-clamp-1 text-xs text-stone-500">
-                        <span className="font-semibold text-stone-400">Notes:</span>{' '}
-                        {notes.replace(/\n/g, ' · ')}
-                      </p>
-                    ) : isNeedsNotes ? (
-                      <p className="mt-0.5 text-xs font-medium text-peach-700">
-                        Pending notes entry (Column H)...
-                      </p>
-                    ) : null}
-                  </div>
+                  {/* Topic Title */}
+                  <h3 className="text-sm font-medium text-stone-900 truncate">
+                    {topic.topic.split('\n')[0]}
+                  </h3>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => handleCopyRow(topic, entry)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95 focus-visible:outline focus-visible:outline-2"
-                  >
-                    {isCopied ? (
-                      <>
-                        <IconCheck className="h-3.5 w-3.5 text-mint-600" />
-                        <span>Copied!</span>
-                      </>
-                    ) : (
-                      <>
-                        <IconClipboard className="h-3.5 w-3.5" />
-                        <span>Copy TSV</span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTopic(topic)}
-                    className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition ${
-                      isNeedsNotes
-                        ? 'bg-peach-500 text-white font-semibold hover:bg-peach-600'
-                        : isCompleted
-                          ? 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-                          : 'bg-stone-900 text-white hover:bg-stone-800'
-                    }`}
-                  >
-                    {isNeedsNotes ? 'Fill Notes' : isCompleted ? 'Edit' : 'Document'}
-                  </button>
+                {/* Right side: PIC chip + Action badge */}
+                <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pl-9 sm:pl-0">
+                  <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-medium text-stone-600">
+                    {topic.pic}
+                  </span>
+
+                  {isCompleted ? (
+                    <span className="text-xs font-semibold text-mint-700 px-2 py-0.5">
+                      Done ✓
+                    </span>
+                  ) : isNeedsNotes ? (
+                    <span className="rounded-full bg-peach-100 px-2.5 py-1 text-xs font-semibold text-peach-800">
+                      Add Notes
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-stone-100 hover:bg-stone-200 px-3 py-1 text-xs font-medium text-stone-700 transition">
+                      Write Notes
+                    </span>
+                  )}
                 </div>
-              </li>
+              </div>
             );
           })}
-        </ul>
 
-        {filteredTopics.length === 0 && (
-          <p className="py-10 text-center text-sm text-stone-400">
-            No diary topics match your search or filter.
-          </p>
-        )}
+          {filteredTopics.length === 0 && (
+            <p className="py-8 text-center text-xs text-stone-400">
+              No diary topics match your filter.
+            </p>
+          )}
+        </div>
       </section>
 
-      {/* Diary Modal */}
-      {activeTopic && (
-        <DiaryModal
-          topic={activeTopic}
-          existingEntry={diaryEntries.find((e) => e.rowNumber === activeTopic.rowNumber)}
-          onSave={handleSaveTopic}
-          onClose={() => setActiveTopic(null)}
-        />
-      )}
+      {/* Slide-over Diary Detail & Inline Edit Drawer */}
+      <DiaryDetailSheet
+        topic={activeTopic}
+        existingEntry={activeEntry}
+        isOpen={Boolean(activeTopic)}
+        onClose={() => setActiveTopic(null)}
+        onSave={handleSaveTopic}
+        onCopyTsv={handleCopyRow}
+        onPrevTopic={onPrevTopic}
+        onNextTopic={onNextTopic}
+        hasPrev={hasPrev}
+        hasNext={hasNext}
+        isCopied={Boolean(activeTopic && copiedRowNumber === activeTopic.rowNumber)}
+      />
     </main>
   );
 }

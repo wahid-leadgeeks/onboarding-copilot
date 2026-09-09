@@ -9,8 +9,6 @@ import {
   calculateTimelineProgress,
   clipboardRowForTimelineStage,
   clipboardSummaryForTimeline,
-  formatTimelineDateForInput,
-  formatTimelineDateForSheet,
   getDefaultTimelineState,
   getStageDates,
   readTimelineState,
@@ -18,7 +16,8 @@ import {
   updateStageDates,
   writeTimelineState,
 } from '@/lib/timeline';
-import type { StageDates, TimelineState } from '@/lib/types/timeline';
+import type { StageDates, TimelineStage, TimelineState } from '@/lib/types/timeline';
+import { StageDetailSheet } from '@/app/components/StageDetailSheet';
 import {
   IconCheck,
   IconClipboard,
@@ -40,7 +39,7 @@ function getJourneyDay(now: Date): number {
 export default function TimelinePage() {
   const [timelineState, setTimelineState] = useState<TimelineState>(() => getDefaultTimelineState());
   const [isHydrated, setIsHydrated] = useState(false);
-  const [activeStageNumber, setActiveStageNumber] = useState<'1.0' | '2.0' | '3.0'>('1.0');
+  const [activeStage, setActiveStage] = useState<TimelineStage | null>(null);
   const [copiedStageId, setCopiedStageId] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
 
@@ -105,16 +104,21 @@ export default function TimelinePage() {
   const day = getJourneyDay(new Date());
   const overallProgress = calculateTimelineProgress(timelineState, { currentDate: new Date() });
 
-  const activeStage = TIMELINE_STAGES.find((s) => s.stageNumber === activeStageNumber) ?? TIMELINE_STAGES[0];
-  const activeStageProgress = calculateStageProgress(activeStage, timelineState);
-  const activeDates = getStageDates(timelineState, activeStage.id);
-
   const growthIcon =
     overallProgress.percentage <= 25
       ? 'sprout'
       : overallProgress.percentage <= 75
-        ? 'tree'
-        : 'trophy';
+      ? 'tree'
+      : 'trophy';
+
+  // Previous & Next navigation for active stage in drawer
+  const currentStageIndex = activeStage
+    ? TIMELINE_STAGES.findIndex((s) => s.id === activeStage.id)
+    : -1;
+  const hasPrev = currentStageIndex > 0;
+  const hasNext = currentStageIndex >= 0 && currentStageIndex < TIMELINE_STAGES.length - 1;
+  const onPrevStage = hasPrev ? () => setActiveStage(TIMELINE_STAGES[currentStageIndex - 1]) : undefined;
+  const onNextStage = hasNext ? () => setActiveStage(TIMELINE_STAGES[currentStageIndex + 1]) : undefined;
 
   return (
     <main
@@ -124,9 +128,11 @@ export default function TimelinePage() {
       <PrimaryNav active="Timeline" />
 
       {/* Header */}
-      <header className="animate-fade-up pb-6">
+      <header className="animate-fade-up pb-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-medium text-stone-500">Sheet: Timeline · 90-Day Journey</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+            Worksheet: Timeline (Columns A–I)
+          </p>
           <span className="rounded-full bg-mint-50 px-3 py-1 text-xs font-semibold text-mint-700">
             Day {day} of {totalDays}
           </span>
@@ -137,7 +143,7 @@ export default function TimelinePage() {
               Timeline &amp; Evidence
             </h1>
             <p className="mt-1 text-sm text-stone-600">
-              Track your 3 onboarding stages, verify output deliverables, and copy rows directly into your Timeline sheet.
+              3 onboarding stages, output deliverables, and 1-click Google Sheets TSV synchronization.
             </p>
           </div>
           <button
@@ -162,10 +168,10 @@ export default function TimelinePage() {
       </header>
 
       {/* Holistic Progress Bar */}
-      <section className="animate-fade-up stagger-1 rounded-card bg-white p-5 shadow-soft sm:p-6">
+      <section className="animate-fade-up stagger-1 rounded-3xl bg-white p-5 shadow-soft sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">
+            <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">
               Overall Journey Deliverables
             </span>
             <div className="mt-1 flex items-baseline gap-2">
@@ -177,7 +183,10 @@ export default function TimelinePage() {
               </span>
             </div>
           </div>
-          <span className="flex size-10 items-center justify-center rounded-2xl bg-mint-50 text-mint-700" aria-hidden="true">
+          <span
+            className="flex size-10 items-center justify-center rounded-2xl bg-mint-50 text-mint-700"
+            aria-hidden="true"
+          >
             {growthIcon === 'trophy' ? (
               <IconTrophy className="h-6 w-6 text-sun-500" />
             ) : growthIcon === 'tree' ? (
@@ -203,240 +212,105 @@ export default function TimelinePage() {
         </div>
       </section>
 
-      {/* Stage Selector Tabs - Single View Page Principle */}
-      <div className="animate-fade-up stagger-2 mt-6" role="tablist" aria-label="Timeline Stages">
-        <div className="grid grid-cols-3 gap-2 rounded-2xl bg-stone-100 p-1">
+      {/* High-Level 3-Stage Milestone Cards */}
+      <div className="animate-fade-up stagger-2 mt-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-stone-400">
+            3-Stage Roadmap &amp; Milestones
+          </h2>
+          <span className="text-xs text-stone-400">Click any stage to view checklist &amp; dates</span>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {TIMELINE_STAGES.map((st) => {
             const sp = calculateStageProgress(st, timelineState);
-            const isSelected = activeStageNumber === st.stageNumber;
+            const dates = getStageDates(timelineState, st.id);
+
             return (
-              <button
-                key={st.stageNumber}
-                type="button"
-                role="tab"
-                aria-selected={isSelected}
-                onClick={() => setActiveStageNumber(st.stageNumber)}
-                className={`flex flex-col items-center justify-center rounded-xl px-2 py-2.5 text-center transition ${
-                  isSelected
-                    ? 'bg-white font-semibold text-stone-900 shadow-xs'
-                    : 'text-stone-500 hover:text-stone-800'
+              <div
+                key={st.id}
+                onClick={() => setActiveStage(st)}
+                className={`group flex flex-col justify-between rounded-3xl border p-5 cursor-pointer transition-all ${
+                  sp.isComplete
+                    ? 'border-mint-200 bg-white hover:border-mint-300 hover:shadow-soft'
+                    : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-soft'
                 }`}
               >
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold">Stage {st.stageNumber}</span>
-                  {sp.isComplete && (
-                    <IconCheck className="h-3 w-3 text-mint-600" />
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="rounded-md bg-stone-900 px-2 py-0.5 text-[11px] font-bold text-white">
+                      Stage {st.stageNumber}
+                    </span>
+                    {sp.isComplete ? (
+                      <span className="rounded-full bg-mint-50 px-2.5 py-0.5 text-[11px] font-semibold text-mint-700 border border-mint-200">
+                        Completed ✓
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600">
+                        {sp.completed}/{sp.total} Deliverables
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 className="mt-3 text-base font-semibold text-stone-900 group-hover:text-mint-800 transition">
+                    {st.title}
+                  </h3>
+                  <p className="mt-0.5 text-xs text-stone-500 font-medium">
+                    {st.pedagogicalSubtitle}
+                  </p>
+                  {st.pedagogy && (
+                    <p className="mt-1 text-[11px] text-stone-400 italic">
+                      {st.pedagogy}
+                    </p>
                   )}
                 </div>
-                <span className="mt-0.5 text-[11px] text-stone-400 truncate max-w-full">
-                  {st.stageNumber === '1.0' ? 'Training' : st.stageNumber === '2.0' ? 'Trial' : 'Transition'}
-                </span>
-              </button>
+
+                <div className="mt-5 space-y-3 pt-3 border-t border-stone-100">
+                  {/* Mini Progress */}
+                  <div>
+                    <div className="flex justify-between text-[11px] mb-1">
+                      <span className="text-stone-500 font-medium">Progress</span>
+                      <span className="font-bold text-stone-800">{sp.percentage}%</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-stone-100 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-mint-500 transition-all duration-300"
+                        style={{ width: `${sp.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dates & Action */}
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <span className="text-stone-400 text-[11px] truncate max-w-[130px]">
+                      {dates.startDate || 'Set dates'}
+                    </span>
+                    <span className="font-semibold text-stone-700 group-hover:text-stone-900 group-hover:translate-x-0.5 transition">
+                      View →
+                    </span>
+                  </div>
+                </div>
+              </div>
             );
           })}
         </div>
       </div>
 
-      {/* Active Stage Single View Card */}
-      <section
-        className={`animate-fade-up stagger-3 mt-4 rounded-card bg-white p-6 shadow-soft sm:p-7 ${
-          activeStageProgress.isComplete ? 'ring-2 ring-mint-300' : ''
-        }`}
-        aria-labelledby="active-stage-title"
-      >
-        {/* Stage Header */}
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-stone-700">
-                Stage {activeStage.stageNumber}
-              </span>
-              <span className="rounded-full bg-stone-50 px-2.5 py-0.5 text-xs font-medium text-stone-600">
-                {activeStage.pedagogy}
-              </span>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                  activeStageProgress.isComplete
-                    ? 'bg-mint-50 text-mint-700'
-                    : activeStageProgress.completed > 0
-                      ? 'bg-peach-50 text-peach-700'
-                      : 'bg-stone-100 text-stone-500'
-                }`}
-              >
-                {activeStageProgress.isComplete
-                  ? 'Done'
-                  : activeStageProgress.completed > 0
-                    ? 'In Progress'
-                    : 'Upcoming'}
-              </span>
-            </div>
-            <h2 id="active-stage-title" className="mt-2 text-xl font-semibold text-stone-900 sm:text-2xl">
-              {activeStage.title}
-            </h2>
-            <p className="mt-0.5 text-xs font-medium text-stone-500">
-              {activeStage.pedagogicalSubtitle} · Duration: {activeStage.duration}
-            </p>
-          </div>
-
-          <div className="text-right">
-            <span className="text-2xl font-bold text-stone-900">
-              {activeStageProgress.completed}
-              <span className="text-sm font-normal text-stone-400">/{activeStageProgress.total}</span>
-            </span>
-            <p className="text-[11px] font-medium text-stone-400">deliverables ({activeStageProgress.percentage}%)</p>
-          </div>
-        </div>
-
-        {/* Objective */}
-        <div className="mt-4 rounded-xl bg-cream/70 p-3.5 text-xs leading-relaxed text-stone-700">
-          <span className="font-semibold text-stone-900">Objective: </span>
-          {activeStage.objective}
-        </div>
-
-        {/* Editable Dates */}
-        <div className="mt-5 border-t border-stone-100 pt-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">
-            Timeline Dates (Sheet Columns C & D)
-          </p>
-          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label htmlFor={`start-${activeStage.id}`} className="block text-xs font-medium text-stone-600 mb-1">
-                Start Date
-              </label>
-              <input
-                id={`start-${activeStage.id}`}
-                type="date"
-                value={formatTimelineDateForInput(activeDates.startDate)}
-                onChange={(e) => handleDateChange(activeStage.id, 'startDate', e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3 py-1.5 text-xs text-stone-900 transition hover:bg-stone-50 focus:border-mint-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-mint-100"
-              />
-              <span className="mt-0.5 block text-[11px] text-stone-400">
-                Spreadsheet: {formatTimelineDateForSheet(activeDates.startDate) || '—'}
-              </span>
-            </div>
-            <div>
-              <label htmlFor={`end-${activeStage.id}`} className="block text-xs font-medium text-stone-600 mb-1">
-                End Date
-              </label>
-              <input
-                id={`end-${activeStage.id}`}
-                type="date"
-                value={formatTimelineDateForInput(activeDates.endDate)}
-                onChange={(e) => handleDateChange(activeStage.id, 'endDate', e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-3 py-1.5 text-xs text-stone-900 transition hover:bg-stone-50 focus:border-mint-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-mint-100"
-              />
-              <span className="mt-0.5 block text-[11px] text-stone-400">
-                Spreadsheet: {formatTimelineDateForSheet(activeDates.endDate) || '—'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Evidence Checklist */}
-        <div className="mt-5 border-t border-stone-100 pt-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-400">
-              Outputs / Evidence Checklist (Columns G & H)
-            </h3>
-            <span className="text-xs text-stone-400">
-              {activeStageProgress.completed} of {activeStageProgress.total} verified
-            </span>
-          </div>
-
-          <ul className="space-y-2" role="list">
-            {activeStage.deliverables.map((item) => {
-              const isCompleted = Boolean(
-                timelineState.completedEvidence?.[item.id] ??
-                  timelineState.stages?.[activeStage.stageNumber]?.evidence?.[item.id] ??
-                  timelineState.stages?.[activeStage.id]?.evidence?.[item.id]
-              );
-
-              return (
-                <li key={item.id}>
-                  <label
-                    htmlFor={item.id}
-                    className={`group flex min-h-10 cursor-pointer items-center gap-3 rounded-xl border p-2.5 transition select-none ${
-                      isCompleted
-                        ? 'border-mint-100 bg-mint-50/40 text-stone-700'
-                        : 'border-stone-100 bg-white text-stone-800 hover:border-stone-200 hover:bg-stone-50/50'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      id={item.id}
-                      checked={isCompleted}
-                      onChange={() => handleToggleEvidence(item.id)}
-                      className="sr-only peer"
-                    />
-                    <span
-                      className={`flex size-5 shrink-0 items-center justify-center rounded-lg border text-[10px] font-bold transition-all ${
-                        isCompleted
-                          ? 'border-mint-500 bg-mint-500 text-white'
-                          : 'border-stone-300 bg-white text-transparent group-hover:border-stone-400'
-                      }`}
-                      aria-hidden="true"
-                    >
-                      <IconCheck className="h-3 w-3 text-white" />
-                    </span>
-                    <span
-                      className={`text-xs font-medium transition ${
-                        isCompleted ? 'text-stone-400 line-through' : 'text-stone-800'
-                      }`}
-                    >
-                      {item.text}
-                    </span>
-                    {isCompleted ? (
-                      <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-mint-100 px-2 py-0.5 text-[10px] font-semibold text-mint-700">
-                        <IconCheck className="h-2.5 w-2.5" />
-                        <span>Done</span>
-                      </span>
-                    ) : (
-                      <span className="ml-auto text-[11px] text-stone-400 group-hover:text-stone-500">
-                        Pending
-                      </span>
-                    )}
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-
-        {/* Stage Footer: Copy TSV */}
-        <div className="mt-5 flex flex-col gap-2 border-t border-stone-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[11px] text-stone-400">
-            Copies 9-column TSV row (Cols A–I) for Stage {activeStage.stageNumber} to paste into Timeline sheet.
-          </p>
-          <button
-            type="button"
-            onClick={() => handleCopyStage(activeStage.id)}
-            className={`inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold transition active:scale-95 ${
-              copiedStageId === activeStage.id
-                ? 'bg-mint-500 text-white shadow-soft'
-                : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-            }`}
-            aria-label={`Copy Timeline row for Stage ${activeStage.stageNumber}`}
-          >
-            {copiedStageId === activeStage.id ? (
-              <>
-                <IconCheck className="h-3.5 w-3.5" />
-                <span>Copied Stage TSV!</span>
-              </>
-            ) : (
-              <>
-                <IconClipboard className="h-3.5 w-3.5" />
-                <span>Copy Stage TSV</span>
-              </>
-            )}
-          </button>
-        </div>
-      </section>
-
-      {/* Compact Quick Link */}
-      <footer className="mt-8 flex justify-between items-center text-xs text-stone-400">
-        <a href="/" className="hover:text-stone-700 transition">← Back to Schedule</a>
-        <a href="/diary" className="hover:text-stone-700 transition">Go to Onboarding Diary →</a>
-      </footer>
+      {/* Slide-over Stage Detail & Checklist Drawer */}
+      <StageDetailSheet
+        stage={activeStage}
+        timelineState={timelineState}
+        isOpen={Boolean(activeStage)}
+        onClose={() => setActiveStage(null)}
+        onDateChange={handleDateChange}
+        onToggleEvidence={handleToggleEvidence}
+        onCopyStage={handleCopyStage}
+        onPrevStage={onPrevStage}
+        onNextStage={onNextStage}
+        hasPrev={hasPrev}
+        hasNext={hasNext}
+        isCopied={Boolean(activeStage && copiedStageId === activeStage.id)}
+      />
     </main>
   );
 }
