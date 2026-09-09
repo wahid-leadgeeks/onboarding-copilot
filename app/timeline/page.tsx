@@ -218,7 +218,7 @@ export default function TimelinePage() {
           <span className="text-xs text-stone-400">Click any stage to view checklist &amp; dates</span>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div data-tour="timeline-stage-cards" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {TIMELINE_STAGES.map((st) => {
             const sp = calculateStageProgress(st, timelineState);
             const dates = getStageDates(timelineState, st.id);

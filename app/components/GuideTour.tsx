@@ -4,65 +4,151 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { clampStep } from '@/lib/guide-tour';
 
 export type GuideTourStep = {
+  /** Optional route to navigate to for this step */
+  route?: string;
   /** `data-tour` attribute value of the highlight target. Omit for a centered step. */
   target?: string;
+  /** Primary category badge (e.g. "Diary Feature", "Daily Execution", etc.) */
+  badge?: string;
   title: string;
   body: string;
+  /** Actionable, numbered step-by-step instructions */
+  steps?: readonly string[];
+  /** Helpful tip or reminder */
+  proTip?: string;
 };
 
 export const allPagesTourSteps: readonly GuideTourStep[] = [
   {
-    title: 'Welcome to your onboarding cockpit!',
-    body: "Starting a new role comes with a lot of new information. NOVA is your friendly personal guide designed to keep your first 90 days calm, organized, and clear — without wrestling with complex spreadsheets. Let's take a quick 1-minute look around!",
+    route: '/',
+    badge: 'Welcome to NOVA',
+    title: 'Your onboarding cockpit',
+    body: 'Starting a new role involves lots of activities, documents, and spreadsheet columns. NOVA is your personal companion designed to keep your first 90 days calm, organized, and clear — with zero guesswork. Let’s explore how to use the core feature on every page!',
+    proTip: '💡 This tour will navigate through each page and show you how to take action step-by-step.',
   },
   {
-    target: 'nav-today',
-    title: 'Today: Your daily focus & timer',
-    body: 'Never wonder what to work on next. Today highlights your current task, gives you a simple start/stop timer, and tracks your working hours automatically so you never have to log them by hand.',
+    route: '/',
+    target: 'current-activity',
+    badge: 'Today · Daily Execution',
+    title: 'How to track your daily work',
+    body: 'Your day is focused on one activity at a time. You never need to calculate hours or guess what to do next.',
+    steps: [
+      'Check your current task: The card shows your scheduled topic, mentor (PIC), and planned duration.',
+      'Click "Start Timer": Hit the green button when you begin. NOVA records your exact start time automatically.',
+      'Click "Complete & Log": When finished, hit Complete. NOVA calculates your duration and prompts you for a quick reflection note.',
+    ],
+    proTip: '💡 Stepping away for a break? Hit "Pause" anytime to pause the timer without losing your progress.',
   },
   {
-    target: 'nav-schedule',
-    title: 'Schedule: Your complete 90-day plan',
-    body: 'Browse all 59 onboarding activities, training sessions, and team meetings planned for your first three months. You can search by topic, filter by week, and see who is leading each session.',
+    route: '/schedule',
+    target: 'schedule-toolbar',
+    badge: 'Schedule · 90-Day Plan',
+    title: 'How to explore & check off sessions',
+    body: 'Explore all 59 onboarding activities planned across Weeks 1–4 and Months 2 & 3 in one master calendar.',
+    steps: [
+      'Filter by Week: Click tabs like "Week 1", "Week 2", or "Today" to see scheduled sessions.',
+      'Search topics or trainers: Type any topic, mentor name, or session number to find activities instantly.',
+      'Click any activity card: Open the side drawer to see detailed subtopics, syllabus outlines, or sync your status to Google Sheets.',
+    ],
+    proTip: '💡 Use "Copy G–K" in any activity drawer to copy your duration and timestamps directly into Google Sheets.',
   },
   {
-    target: 'nav-timeline',
-    title: 'Timeline: Major milestones & deliverables',
-    body: 'See your journey broken down into 3 clear 30-day phases. Check off key deliverables as you complete them and watch your onboarding progress grow week by week.',
+    route: '/timeline',
+    target: 'timeline-stage-cards',
+    badge: 'Timeline · Milestones',
+    title: 'How to track 30-60-90 day deliverables',
+    body: 'Your 90-day journey is divided into 3 clear phases: Stage 1 (Training), Stage 2 (Trial), and Stage 3 (Transition).',
+    steps: [
+      'View phase deliverables: Click any stage card to view required presentations, trial assignments, and HR evidence.',
+      'Check off completed items: Tick off deliverables as you finish them to advance your stage progress toward 100%.',
+      'Track stage dates: Set and review your planned start and completion dates to stay on schedule with HR.',
+    ],
+    proTip: '💡 Click "Copy Entire Timeline Sheet" at the top to copy all stage dates and checklists in 1 click.',
   },
   {
-    target: 'nav-reviews',
-    title: 'Reviews: Check-ins with your manager',
-    body: 'Keep communication open and transparent. Use this page for your 30, 60, and 90-day review conversations to celebrate milestones, share feedback, and request any support you need.',
+    route: '/reviews',
+    target: 'reviews-cards-grid',
+    badge: 'Reviews · Manager 1-on-1s',
+    title: 'How to prepare for manager check-ins',
+    body: 'At the end of Month 1, Month 2, and Month 3, you will have a formal check-in conversation with your manager.',
+    steps: [
+      'Open your upcoming review: Click Month 1, Month 2, or Month 3 to view your review agenda.',
+      'Write your self-reflection: Fill in your achievements, challenges faced, and goals for the next month.',
+      'Align during your meeting: Walk through company core values (HARPS) and technical rubric together with your manager.',
+    ],
+    proTip: '💡 Draft your reflections a few days before your review meeting so you feel confident and prepared.',
   },
   {
-    target: 'nav-diary',
-    title: 'Diary: Your personal learning notes',
-    body: 'Capture quick takeaways, lightbulb moments, or questions as you learn. Record up to three key notes each day to build your personal onboarding journal.',
+    route: '/diary',
+    target: 'diary-topics-list',
+    badge: 'Diary · Learning Notes',
+    title: 'How to write your daily notes',
+    body: 'The HR workbook requires you to document learnings across 28 syllabus topics. NOVA makes recording them fast and effortless.',
+    steps: [
+      'Pick today’s session: Find your topic in the list and click "Write" or "Fill Notes".',
+      'Document 3 Key Learnings (Col G): Write 3 concise takeaways from the session. Click ✨ AI Suggestions if you need inspiration!',
+      'Add Personal Notes (Col H): Note down your reflections, questions, or ideas for your mentor.',
+      'Save & Sync: Click "Save Notes" to store them safely on your device, or "Sync to Sheets" to send them to the workbook!',
+    ],
+    proTip: '💡 Use "Copy Row TSV" if you ever want to paste your 3 takeaways directly into cell A of Google Sheets.',
   },
   {
-    target: 'nav-feedback',
-    title: 'Feedback: Share how your week went',
-    body: 'Your experience matters! Rate your onboarding sessions on an easy 1-to-6 scale and ask questions so your team and mentor can help you succeed.',
+    route: '/feedback',
+    target: 'feedback-sessions-list',
+    badge: 'Feedback · Weekly Reflections',
+    title: 'How to rate onboarding sessions',
+    body: 'Your feedback helps your mentor and HR team ensure you have all the support and resources you need.',
+    steps: [
+      'Select an onboarding session: Click any session you attended this week to open its rating drawer.',
+      'Rate on a 1-to-6 scale: Score key dimensions like topic clarity, material quality, and mentor support.',
+      'Share questions & comments: Type any questions or suggestions so your team can help immediately.',
+    ],
+    proTip: '💡 You can sync your evaluation directly to Google Sheets with 1 click or copy the TSV row.',
   },
   {
-    target: 'nav-glossary',
-    title: 'Glossary: Guides, videos & resources',
-    body: 'Find essential company links, training videos, and helpful documentation curated specifically for your role — all organized in one convenient place.',
+    route: '/glossary',
+    target: 'glossary-tabs-container',
+    badge: 'Glossary · Training Library',
+    title: 'How to find training videos & guides',
+    body: 'Never waste time hunting through email threads or chat messages for training links and company guides.',
+    steps: [
+      'Search by keyword: Type any topic, system name, or term to instantly find matching materials.',
+      'Filter by format: Switch between Video recordings, Online Meeting links, and Reading Materials.',
+      'Direct links: Click any module card to view syllabus objectives and open documents or slides directly.',
+    ],
+    proTip: '💡 Check the "Sheet Guide" tab to understand exactly what each tab in the company spreadsheet is for.',
   },
   {
-    target: 'nav-settings',
-    title: 'Settings: Connect & customize',
-    body: "NOVA works completely in your browser with zero setup. When you are ready, you can connect your team's Google Sheet with a single click to keep everything in sync.",
+    route: '/settings',
+    target: 'settings-connection-card',
+    badge: 'Settings · Data & Sync',
+    title: 'How data backup & Google Sheets sync work',
+    body: 'NOVA is built local-first so your work is always preserved, even if you lose your internet connection.',
+    steps: [
+      'Automatic local saving: All timers, notes, and feedback save instantly in your browser.',
+      'Link Google Sheets: Connect your Google account or sheet ID whenever you want live cloud synchronization.',
+      'Copy-paste fallback: Every page has 1-click clipboard copy buttons formatted specifically for the company workbook.',
+    ],
+    proTip: '💡 You can restart this guide tour anytime from this page or from the sidebar footer.',
   },
   {
     target: 'assistant-launcher',
-    title: 'Ask NOVA: Your anytime helper',
-    body: "Need help finding a document, understanding a company process, or checking what's next? Click this floating sparkle button anytime to chat with your virtual assistant.",
+    badge: 'Ask NOVA · AI Assistant',
+    title: 'How to ask NOVA for help anytime',
+    body: 'Have questions about who to contact, company policies, or what’s on your schedule today?',
+    steps: [
+      'Click the floating sparkle ✨ button: Located in the bottom right corner of every screen.',
+      'Ask in plain English: Ask questions like "What’s my schedule today?" or "Who is my mentor for Week 2?".',
+      'Instant answers: NOVA knows your syllabus, schedule, and company guides to give you helpful answers immediately.',
+    ],
+    proTip: '💡 Press the Escape key anytime to quickly close the assistant chat.',
   },
   {
-    title: "You're all set to begin!",
-    body: "Take things one step at a time at your own pace. You can restart this tour anytime from the sidebar or by pressing ⌘K. We're thrilled to have you here!",
+    route: '/',
+    badge: 'You’re All Set!',
+    title: 'Ready to start your journey!',
+    body: 'You now know how to use every core feature in NOVA. Move at your own pace, take things one task at a time, and remember: NOVA handles the tracking so you can focus on learning.',
+    proTip: '💡 If you ever want a refresher, click "🧭 Quick Guide Tour" in the sidebar or press ⌘K.',
   },
 ];
 
@@ -75,11 +161,17 @@ const guideTourCss = `
 .guide-tour-shield { position: fixed; inset: 0; z-index: 40; }
 .guide-tour-shield--dim { background: rgb(28 25 23 / 0.45); animation: guide-fade 0.25s ease both; }
 .guide-tour-spotlight { position: fixed; z-index: 41; pointer-events: none; border: 2px solid #23ae77; border-radius: 16px; box-shadow: 0 0 0 9999px rgb(28 25 23 / 0.45); animation: guide-fade 0.25s ease both; }
-.guide-tour-popover { position: fixed; z-index: 50; width: min(24rem, calc(100vw - 2rem)); background: #ffffff; border: 1px solid #e7e5e4; border-radius: 20px; padding: 24px; box-shadow: 0 16px 40px rgb(87 70 31 / 0.14); font-family: inherit; animation: guide-pop-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.guide-tour-popover { position: fixed; z-index: 50; width: min(30rem, calc(100vw - 2rem)); max-height: calc(100vh - 2rem); overflow-y: auto; background: #ffffff; border: 1px solid #e7e5e4; border-radius: 20px; padding: 22px 24px; box-shadow: 0 16px 40px rgb(87 70 31 / 0.14); font-family: inherit; animation: guide-pop-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .guide-tour-popover--centered { left: 50%; top: 50%; transform: translate(-50%, -50%); animation-name: guide-pop-center; }
-.guide-tour-step-label { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; color: #23ae77; }
-.guide-tour-title { margin: 8px 0 0; font-size: 20px; line-height: 1.2; font-weight: 600; color: #1c1917; }
-.guide-tour-body { margin: 8px 0 0; font-size: 14px; line-height: 24px; color: #57534e; }
+.guide-tour-top-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.guide-tour-badge { display: inline-block; padding: 3px 9px; border-radius: 9999px; background: #ecfdf5; color: #047857; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.guide-tour-step-label { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.08em; color: #78716c; }
+.guide-tour-title { margin: 4px 0 0; font-size: 19px; line-height: 1.25; font-weight: 700; color: #1c1917; }
+.guide-tour-body { margin: 8px 0 0; font-size: 13.5px; line-height: 1.5; color: #57534e; }
+.guide-tour-steps-list { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.guide-tour-steps-item { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.45; color: #292524; background: #fafaf7; border: 1px solid #f5f5f4; border-radius: 12px; padding: 8px 10px; }
+.guide-tour-step-num { flex-shrink: 0; width: 20px; height: 20px; border-radius: 9999px; background: #1c1917; color: #ffffff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+.guide-tour-protip { margin-top: 12px; padding: 8px 12px; border-radius: 12px; background: #fefce8; border: 1px solid #fef08a; font-size: 12px; color: #854d0e; line-height: 1.45; }
 .guide-tour-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; }
 .guide-tour-dots { display: flex; align-items: center; gap: 6px; }
 .guide-tour-dot { width: 6px; height: 6px; border-radius: 9999px; background: #d6d3d1; transition: width 0.2s ease, background-color 0.2s ease; }
@@ -102,7 +194,7 @@ const VIEWPORT_MARGIN = 16;
 const POPOVER_GAP = 12;
 
 function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -111,7 +203,19 @@ function clamp(value: number, min: number, max: number): number {
 
 type Rect = { top: number; left: number; width: number; height: number };
 
-export function GuideTour({ steps, open, onFinish }: { steps: readonly GuideTourStep[]; open: boolean; onFinish: () => void }) {
+export function GuideTour({
+  steps,
+  open,
+  currentRoute,
+  onNavigate,
+  onFinish,
+}: {
+  steps: readonly GuideTourStep[];
+  open: boolean;
+  currentRoute?: string;
+  onNavigate?: (route: string) => void;
+  onFinish: () => void;
+}) {
   const [index, setIndex] = useState(0);
   const [spotlight, setSpotlight] = useState<Rect | null>(null);
   const [popoverTop, setPopoverTop] = useState<number | null>(null);
@@ -123,8 +227,20 @@ export function GuideTour({ steps, open, onFinish }: { steps: readonly GuideTour
   const isLast = index === steps.length - 1;
   const centered = !step?.target;
 
-  const next = useCallback(() => setIndex(current => clampStep(current + 1, steps.length)), [steps.length]);
-  const back = useCallback(() => setIndex(current => clampStep(current - 1, steps.length)), [steps.length]);
+  const goToStep = useCallback(
+    (nextIdx: number) => {
+      const clamped = clampStep(nextIdx, steps.length);
+      setIndex(clamped);
+      const targetStep = steps[clamped];
+      if (targetStep?.route && onNavigate && currentRoute !== targetStep.route) {
+        onNavigate(targetStep.route);
+      }
+    },
+    [steps, onNavigate, currentRoute]
+  );
+
+  const next = useCallback(() => goToStep(index + 1), [goToStep, index]);
+  const back = useCallback(() => goToStep(index - 1), [goToStep, index]);
   const finish = useCallback(() => {
     setIndex(0);
     onFinish();
@@ -148,15 +264,15 @@ export function GuideTour({ steps, open, onFinish }: { steps: readonly GuideTour
     const rect = element.getBoundingClientRect();
     setSpotlight({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
     const popover = popoverRef.current;
-    const popoverWidth = popover?.offsetWidth ?? 384;
-    const popoverHeight = popover?.offsetHeight ?? 220;
+    const popoverWidth = popover?.offsetWidth ?? 440;
+    const popoverHeight = popover?.offsetHeight ?? 280;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     let top: number;
     let left: number;
 
-    // If target is docked on the left (e.g. sidebar nav) and there is enough room on the right, position alongside it
-    if (rect.right + popoverWidth + POPOVER_GAP + VIEWPORT_MARGIN <= viewportWidth && rect.left < 320) {
+    // If target is docked on the left (e.g. sidebar nav) and element is narrow, position alongside it
+    if (rect.right + popoverWidth + POPOVER_GAP + VIEWPORT_MARGIN <= viewportWidth && rect.left < 320 && rect.width < 320) {
       left = rect.right + POPOVER_GAP;
       top = clamp(
         rect.top + rect.height / 2 - popoverHeight / 2,
@@ -192,6 +308,15 @@ export function GuideTour({ steps, open, onFinish }: { steps: readonly GuideTour
       });
     }
   }, [index, step, centered]);
+
+  // Track route transitions or DOM changes so the spotlight follows its target.
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => {
+      updatePosition();
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [open, index, currentRoute, updatePosition]);
 
   // Track viewport changes so the spotlight follows its target.
   useEffect(() => {
@@ -285,13 +410,39 @@ export function GuideTour({ steps, open, onFinish }: { steps: readonly GuideTour
         className={`guide-tour-popover${centeredRender ? ' guide-tour-popover--centered' : ''}`}
         style={centeredRender ? undefined : { top: popoverTop ?? undefined, left: popoverLeft ?? undefined }}
       >
-        <p className="guide-tour-step-label">
-          Step {index + 1} of {steps.length}
-        </p>
+        <div className="guide-tour-top-bar">
+          {step.badge ? (
+            <span className="guide-tour-badge">{step.badge}</span>
+          ) : (
+            <span />
+          )}
+          <p className="guide-tour-step-label">
+            Step {index + 1} of {steps.length}
+          </p>
+        </div>
+
         <h2 id={titleId} className="guide-tour-title">
           {step.title}
         </h2>
         <p className="guide-tour-body">{step.body}</p>
+
+        {step.steps && step.steps.length > 0 && (
+          <ol className="guide-tour-steps-list">
+            {step.steps.map((st, i) => (
+              <li key={i} className="guide-tour-steps-item">
+                <span className="guide-tour-step-num">{i + 1}</span>
+                <span>{st}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+
+        {step.proTip && (
+          <div className="guide-tour-protip">
+            <span>{step.proTip}</span>
+          </div>
+        )}
+
         <div className="guide-tour-footer">
           <div className="guide-tour-dots" aria-hidden="true">
             {steps.map((_, dot) => (
