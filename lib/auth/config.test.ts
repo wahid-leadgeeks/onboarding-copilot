@@ -3,6 +3,7 @@ import {
   GOOGLE_OAUTH_SCOPES,
   getGoogleOAuthConfig,
   isGoogleAuthConfigured,
+  resolveRedirectUri,
 } from './config';
 
 describe('Google OAuth Configuration', () => {
@@ -47,5 +48,50 @@ describe('Google OAuth Configuration', () => {
     process.env.GOOGLE_REDIRECT_URI = 'http://env.test/callback';
     const configWithEnv = getGoogleOAuthConfig();
     expect(configWithEnv?.redirectUri).toBe('http://env.test/callback');
+  });
+
+  describe('resolveRedirectUri', () => {
+    it('prefers custom argument', () => {
+      process.env.GOOGLE_REDIRECT_URI = 'https://env.example.com/callback';
+      expect(resolveRedirectUri(undefined, 'https://custom.example.com/callback')).toBe(
+        'https://custom.example.com/callback'
+      );
+    });
+
+    it('prefers GOOGLE_REDIRECT_URI env if present', () => {
+      process.env.GOOGLE_REDIRECT_URI = 'https://env.example.com/callback';
+      const req = new Request('https://req.example.com/api/auth/login');
+      expect(resolveRedirectUri(req)).toBe('https://env.example.com/callback');
+    });
+
+    it('derives redirect URI dynamically from request forwarded headers', () => {
+      delete process.env.GOOGLE_REDIRECT_URI;
+      const req = new Request('http://internal-cluster:3000/api/auth/login', {
+        headers: {
+          'x-forwarded-host': 'my-app.vercel.app',
+          'x-forwarded-proto': 'https',
+        },
+      });
+      expect(resolveRedirectUri(req)).toBe('https://my-app.vercel.app/api/auth/callback/google');
+    });
+
+    it('derives redirect URI from request URL when no forwarded headers exist', () => {
+      delete process.env.GOOGLE_REDIRECT_URI;
+      const req = new Request('https://preview-deploy.vercel.app/api/auth/login');
+      expect(resolveRedirectUri(req)).toBe('https://preview-deploy.vercel.app/api/auth/callback/google');
+    });
+
+    it('derives redirect URI from VERCEL_URL if no request is provided', () => {
+      delete process.env.GOOGLE_REDIRECT_URI;
+      process.env.VERCEL_URL = 'my-vercel-app.vercel.app';
+      expect(resolveRedirectUri()).toBe('https://my-vercel-app.vercel.app/api/auth/callback/google');
+    });
+
+    it('falls back to default localhost callback URI if nothing is specified', () => {
+      delete process.env.GOOGLE_REDIRECT_URI;
+      delete process.env.VERCEL_URL;
+      delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+      expect(resolveRedirectUri()).toBe(DEFAULT_GOOGLE_REDIRECT_URI);
+    });
   });
 });
