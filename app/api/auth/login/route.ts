@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getGoogleAuthUrl } from '@/lib/auth/google';
+import { resolveRedirectUri } from '@/lib/auth/config';
 import { NOVA_STATE_COOKIE, STATE_COOKIE_OPTIONS } from '@/lib/auth/session';
 
 export async function GET(request: Request) {
@@ -10,7 +11,8 @@ export async function GET(request: Request) {
   // Generate a random CSRF state token
   const state = crypto.randomBytes(24).toString('hex');
 
-  const authUrl = getGoogleAuthUrl(state, customRedirect);
+  const redirectUri = resolveRedirectUri(request, customRedirect);
+  const authUrl = getGoogleAuthUrl(state, redirectUri);
   if (!authUrl) {
     return NextResponse.redirect(new URL('/settings?error=oauth_unconfigured', request.url));
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { exchangeCodeForTokens, fetchGoogleUserProfile } from '@/lib/auth/google';
+import { DEFAULT_GOOGLE_REDIRECT_URI, resolveRedirectUri } from '@/lib/auth/config';
 import {
   NOVA_SESSION_COOKIE,
   NOVA_STATE_COOKIE,
@@ -45,7 +46,11 @@ export async function GET(request: Request) {
 
   // Exchange code for tokens
   // Note: redirect_uri must match exactly what was sent in the auth request
-  const tokens = await exchangeCodeForTokens(code);
+  const redirectUri = resolveRedirectUri(request);
+  let tokens = await exchangeCodeForTokens(code, redirectUri);
+  if (!tokens && redirectUri !== DEFAULT_GOOGLE_REDIRECT_URI) {
+    tokens = await exchangeCodeForTokens(code, DEFAULT_GOOGLE_REDIRECT_URI);
+  }
   if (!tokens) {
     redirectBase.searchParams.set('error', 'token_exchange_failed');
     return NextResponse.redirect(redirectBase);

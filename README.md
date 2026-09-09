@@ -43,7 +43,10 @@ Create `.env.local` in the project root:
 ```env
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+# Optional: defaults to dynamic host/Vercel URL or http://localhost:4000/api/auth/callback/google
+GOOGLE_REDIRECT_URI=
 GOOGLE_SHEETS_ID=
+AUTH_SECRET=
 N8N_WEBHOOK_URL=
 AI_API_KEY=
 AI_API_BASE_URL=
