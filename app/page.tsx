@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { isActivityList } from '@/lib/sheets/types';
 import type { Activity } from '@/lib/types/activity';
 import { QuickNote } from '@/app/components/QuickNote';
-import { GuideTour, todayTourSteps } from '@/app/components/GuideTour';
 import { LearningModal } from '@/app/components/LearningModal';
 import type { LearningActivityContext, LearningSubmission } from '@/app/components/LearningModal';
 import { ScheduleFillModal } from '@/app/components/ScheduleFillModal';
@@ -50,7 +49,6 @@ import {
   getTodayScheduleActivities,
   type ScheduleActivity,
 } from '@/lib/schedule-catalog';
-import { GUIDE_TOUR_STORAGE_KEY, readGuideTourState, writeGuideTourState } from '@/lib/guide-tour';
 import { IMPORTED_SCHEDULE_STORAGE_KEY, clipboardRowForSchedule, readImportedSchedule } from '@/lib/imported-schedule';
 import { ACTIVE_SESSION_STORAGE_KEY, DIARY_STORAGE_KEY, QUICK_NOTES_STORAGE_KEY, SESSION_HISTORY_STORAGE_KEY, appendDiary, appendQuickNote, appendSession, completedActivityIds, readDiary, readQuickNotes, readSessions, type StoredSession } from '@/lib/local-records';
 import { diarySyncPayload, learningDiaryEntry } from '@/lib/learning-capture';
@@ -118,24 +116,7 @@ export default function TodayPage() {
   const [showLearningCapture, setShowLearningCapture] = useState(false);
   const [selectedActivityForLearning, setSelectedActivityForLearning] = useState<Activity | null>(null);
   const [copiedScheduleId, setCopiedScheduleId] = useState<string | null>(null);
-  const [tourOpen, setTourOpen] = useState(false);
   const [isSyncingDirectSheets, setIsSyncingDirectSheets] = useState(false);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('tour') === 'start') {
-      params.delete('tour');
-      const query = params.toString();
-      window.history.replaceState(null, '', query ? `/?${query}` : '/');
-      setTourOpen(true);
-      return;
-    }
-    if (params.get('tour') === 'skip' || params.get('tour') === 'false') {
-      return;
-    }
-    const tourState = readGuideTourState(localStorage.getItem(GUIDE_TOUR_STORAGE_KEY));
-    if (!tourState?.completed) setTourOpen(true);
-  }, []);
 
   useEffect(() => {
     function handleOpenPalette() {
@@ -144,11 +125,6 @@ export default function TodayPage() {
     window.addEventListener('open-command-palette', handleOpenPalette);
     return () => window.removeEventListener('open-command-palette', handleOpenPalette);
   }, []);
-
-  function handleTourFinish() {
-    localStorage.setItem(GUIDE_TOUR_STORAGE_KEY, writeGuideTourState({ completed: true, completedAt: new Date().toISOString() }));
-    setTourOpen(false);
-  }
 
   useEffect(() => {
     const custom = readScheduleCustomizations(localStorage.getItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY));
@@ -1106,7 +1082,6 @@ export default function TodayPage() {
           onClose={() => setEditingScheduleItem(null)}
         />
       )}
-      <GuideTour steps={todayTourSteps} open={tourOpen} onFinish={handleTourFinish} />
 
       <ActivityDetailSheet
         activity={detailActivity}

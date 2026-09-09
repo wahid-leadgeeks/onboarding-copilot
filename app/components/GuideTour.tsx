@@ -10,46 +10,64 @@ export type GuideTourStep = {
   body: string;
 };
 
-export const todayTourSteps: readonly GuideTourStep[] = [
+export const allPagesTourSteps: readonly GuideTourStep[] = [
   {
-    title: 'Welcome to NOVA',
-    body: "NOVA is a bright guide for every new employee's journey. We'll track the hours, the notes, and the paperwork — you focus on learning. Let's take a quick look around.",
+    title: 'Welcome to your onboarding cockpit!',
+    body: "Starting a new role comes with a lot of new information. NOVA is your friendly personal guide designed to keep your first 90 days calm, organized, and clear — without wrestling with complex spreadsheets. Let's take a quick 1-minute look around!",
   },
   {
-    target: 'status-bar',
-    title: 'Know where you stand',
-    body: "This little badge says whether you're looking at demo data, a saved schedule, or a live connection.",
+    target: 'nav-today',
+    title: 'Today: Your daily focus & timer',
+    body: 'Never wonder what to work on next. Today highlights your current task, gives you a simple start/stop timer, and tracks your working hours automatically so you never have to log them by hand.',
   },
   {
-    target: 'progress-header',
-    title: 'Your day at a glance',
-    body: 'How far into the 90 days you are, and how today is going — no spreadsheet required.',
+    target: 'nav-schedule',
+    title: 'Schedule: Your complete 90-day plan',
+    body: 'Browse all 59 onboarding activities, training sessions, and team meetings planned for your first three months. You can search by topic, filter by week, and see who is leading each session.',
   },
   {
-    target: 'current-activity',
-    title: 'One thing at a time',
-    body: "This card is your only job right now. Start it, finish it — we'll write down the times.",
+    target: 'nav-timeline',
+    title: 'Timeline: Major milestones & deliverables',
+    body: 'See your journey broken down into 3 clear 30-day phases. Check off key deliverables as you complete them and watch your onboarding progress grow week by week.',
   },
   {
-    target: 'day-timeline',
-    title: 'The shape of your day',
-    body: "Everything scheduled today at a glance. If plans change, 'Something changed?' has you covered.",
+    target: 'nav-reviews',
+    title: 'Reviews: Check-ins with your manager',
+    body: 'Keep communication open and transparent. Use this page for your 30, 60, and 90-day review conversations to celebrate milestones, share feedback, and request any support you need.',
   },
   {
-    target: 'quick-note',
-    title: 'Capture thoughts on the fly',
-    body: 'Had an idea? Jot it down in seconds. Drafts wait safely under Learnings.',
+    target: 'nav-diary',
+    title: 'Diary: Your personal learning notes',
+    body: 'Capture quick takeaways, lightbulb moments, or questions as you learn. Record up to three key notes each day to build your personal onboarding journal.',
   },
   {
-    target: 'primary-nav',
-    title: "Explore when you're ready",
-    body: 'Journey is your 90-day path, Learnings keeps your notes, Settings handles the boring parts.',
+    target: 'nav-feedback',
+    title: 'Feedback: Share how your week went',
+    body: 'Your experience matters! Rate your onboarding sessions on an easy 1-to-6 scale and ask questions so your team and mentor can help you succeed.',
   },
   {
-    title: "You're all set",
-    body: "Start your first activity whenever you're ready. We'll handle the rest.",
+    target: 'nav-glossary',
+    title: 'Glossary: Guides, videos & resources',
+    body: 'Find essential company links, training videos, and helpful documentation curated specifically for your role — all organized in one convenient place.',
+  },
+  {
+    target: 'nav-settings',
+    title: 'Settings: Connect & customize',
+    body: "NOVA works completely in your browser with zero setup. When you are ready, you can connect your team's Google Sheet with a single click to keep everything in sync.",
+  },
+  {
+    target: 'assistant-launcher',
+    title: 'Ask NOVA: Your anytime helper',
+    body: "Need help finding a document, understanding a company process, or checking what's next? Click this floating sparkle button anytime to chat with your virtual assistant.",
+  },
+  {
+    title: "You're all set to begin!",
+    body: "Take things one step at a time at your own pace. You can restart this tour anytime from the sidebar or by pressing ⌘K. We're thrilled to have you here!",
   },
 ];
+
+/** Maintained for backwards compatibility */
+export const todayTourSteps: readonly GuideTourStep[] = allPagesTourSteps;
 
 // Self-contained styles so the tour renders identically regardless of the
 // Tailwind pipeline state.
@@ -120,8 +138,8 @@ export function GuideTour({ steps, open, onFinish }: { steps: readonly GuideTour
       return;
     }
     const element = document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`);
-    if (!element) {
-      // Target not rendered (e.g. day complete): fall back to a centered step.
+    if (!element || (element.offsetWidth === 0 && element.offsetHeight === 0)) {
+      // Target not rendered or hidden (e.g. mobile hidden sidebar): fall back to a centered step.
       setSpotlight(null);
       setPopoverTop(null);
       setPopoverLeft(null);
@@ -135,14 +153,26 @@ export function GuideTour({ steps, open, onFinish }: { steps: readonly GuideTour
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     let top: number;
-    if (rect.bottom + popoverHeight + POPOVER_GAP + VIEWPORT_MARGIN <= viewportHeight) {
+    let left: number;
+
+    // If target is docked on the left (e.g. sidebar nav) and there is enough room on the right, position alongside it
+    if (rect.right + popoverWidth + POPOVER_GAP + VIEWPORT_MARGIN <= viewportWidth && rect.left < 320) {
+      left = rect.right + POPOVER_GAP;
+      top = clamp(
+        rect.top + rect.height / 2 - popoverHeight / 2,
+        VIEWPORT_MARGIN,
+        Math.max(VIEWPORT_MARGIN, viewportHeight - popoverHeight - VIEWPORT_MARGIN)
+      );
+    } else if (rect.bottom + popoverHeight + POPOVER_GAP + VIEWPORT_MARGIN <= viewportHeight) {
       top = rect.bottom + POPOVER_GAP;
+      left = clamp(rect.left + rect.width / 2 - popoverWidth / 2, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewportWidth - popoverWidth - VIEWPORT_MARGIN));
     } else if (rect.top - popoverHeight - POPOVER_GAP - VIEWPORT_MARGIN >= 0) {
       top = rect.top - popoverHeight - POPOVER_GAP;
+      left = clamp(rect.left + rect.width / 2 - popoverWidth / 2, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewportWidth - popoverWidth - VIEWPORT_MARGIN));
     } else {
       top = clamp((viewportHeight - popoverHeight) / 2, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewportHeight - popoverHeight - VIEWPORT_MARGIN));
+      left = clamp(rect.left + rect.width / 2 - popoverWidth / 2, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewportWidth - popoverWidth - VIEWPORT_MARGIN));
     }
-    const left = clamp(rect.left + rect.width / 2 - popoverWidth / 2, VIEWPORT_MARGIN, Math.max(VIEWPORT_MARGIN, viewportWidth - popoverWidth - VIEWPORT_MARGIN));
     setPopoverTop(top);
     setPopoverLeft(left);
   }, [step, centered]);
@@ -154,10 +184,13 @@ export function GuideTour({ steps, open, onFinish }: { steps: readonly GuideTour
   // Bring the highlighted element into view whenever the step changes.
   useEffect(() => {
     if (!step || centered) return;
-    document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`)?.scrollIntoView({
-      block: 'center',
-      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-    });
+    const el = document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`);
+    if (el && (el.offsetWidth > 0 || el.offsetHeight > 0)) {
+      el.scrollIntoView({
+        block: 'center',
+        behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+      });
+    }
   }, [index, step, centered]);
 
   // Track viewport changes so the spotlight follows its target.

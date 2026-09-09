@@ -77,57 +77,72 @@ export function CommandPalette({
   // Define commands
   const pageCommands: CommandItem[] = [
     {
-      id: 'page-schedule',
-      title: 'Schedule (Cockpit)',
+      id: 'page-today',
+      title: 'Today (Daily Focus & Stopwatch)',
       category: 'Pages',
       badge: '1',
       onSelect: () => router.push('/'),
     },
     {
-      id: 'page-timeline',
-      title: 'Timeline (90-Day Journey)',
+      id: 'page-schedule',
+      title: 'Schedule (90-Day Activity Calendar)',
       category: 'Pages',
       badge: '2',
+      onSelect: () => router.push('/schedule'),
+    },
+    {
+      id: 'page-timeline',
+      title: 'Timeline (Milestones & Growth)',
+      category: 'Pages',
+      badge: '3',
       onSelect: () => router.push('/timeline'),
     },
     {
-      id: 'page-diary',
-      title: 'Diary (Onboarding Learnings)',
+      id: 'page-reviews',
+      title: 'Reviews (Manager Check-ins)',
       category: 'Pages',
-      badge: '3',
+      badge: '4',
+      onSelect: () => router.push('/reviews'),
+    },
+    {
+      id: 'page-diary',
+      title: 'Diary (Personal Learning Notes)',
+      category: 'Pages',
+      badge: '5',
       onSelect: () => router.push('/diary'),
     },
     {
       id: 'page-feedback',
-      title: 'Feedback (Weekly Reflections)',
+      title: 'Feedback (Weekly Reflections & Questions)',
       category: 'Pages',
-      badge: '4',
+      badge: '6',
       onSelect: () => router.push('/feedback'),
     },
     {
-      id: 'page-reviews',
-      title: 'Reviews (Evaluation Milestones)',
-      category: 'Pages',
-      badge: '5',
-      onSelect: () => router.push('/reviews'),
-    },
-    {
       id: 'page-glossary',
-      title: 'Glossary (Knowledge Modules & Links)',
+      title: 'Glossary (Guides, Videos & Resources)',
       category: 'Pages',
-      badge: '6',
+      badge: '7',
       onSelect: () => router.push('/glossary'),
     },
     {
       id: 'page-settings',
-      title: 'Settings (Preferences & OAuth Sync)',
+      title: 'Settings (Google Sheets Connection)',
       category: 'Pages',
-      badge: '7',
+      badge: '8',
       onSelect: () => router.push('/settings'),
     },
   ];
 
   const actionCommands: CommandItem[] = [
+    {
+      id: 'action-guide-tour',
+      title: 'Start App Guide Tour',
+      category: 'Actions',
+      badge: '?',
+      keywords: 'help walkthrough tutorial onboarding tour guide intro',
+      onSelect: () => window.dispatchEvent(new CustomEvent('open-guide-tour')),
+    },
     ...(onOpenQuickNote
       ? [
           {
