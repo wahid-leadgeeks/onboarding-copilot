@@ -230,7 +230,7 @@ export default function FeedbackPage() {
       </header>
 
       {/* Minimal Pulse Bar & Filter Cockpit */}
-      <section className="animate-fade-up stagger-1 rounded-3xl bg-white p-4 sm:p-5 shadow-soft">
+      <section data-tour="feedback-sessions-list" className="animate-fade-up stagger-1 rounded-3xl bg-white p-4 sm:p-5 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <p className="text-2xl font-bold text-stone-900 sm:text-3xl">

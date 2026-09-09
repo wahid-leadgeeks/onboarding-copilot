@@ -316,7 +316,7 @@ export default function MasterSchedulePage() {
       )}
 
       {/* Week Filter Tabs */}
-      <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-stone-100 pb-3">
+      <div data-tour="schedule-toolbar" className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-stone-100 pb-3">
         {(['All', 'Today', 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Month 2 & 3'] as const).map((w) => {
           const active = selectedWeek === w;
           const count = weekCounts[w] || 0;

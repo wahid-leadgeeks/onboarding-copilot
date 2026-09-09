@@ -75,7 +75,7 @@ export default function GlossaryPage() {
       </header>
 
       {/* Tabs */}
-      <div className="animate-fade-up stagger-1" role="tablist" aria-label="Glossary Views">
+      <div data-tour="glossary-tabs-container" className="animate-fade-up stagger-1" role="tablist" aria-label="Glossary Views">
         <div className="grid grid-cols-2 gap-2 rounded-2xl bg-stone-100 p-1">
           <button
             type="button"

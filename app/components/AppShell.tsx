@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { NovaLogo } from '@/app/components/NovaLogo';
 import {
   IconBook,
@@ -67,6 +67,7 @@ const NAV_SECTIONS: readonly NavSection[] = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
 
@@ -413,7 +414,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <GuideTour steps={allPagesTourSteps} open={tourOpen} onFinish={handleTourFinish} />
+      <GuideTour
+        steps={allPagesTourSteps}
+        open={tourOpen}
+        currentRoute={pathname}
+        onNavigate={(route) => router.push(route)}
+        onFinish={handleTourFinish}
+      />
     </div>
   );
 }

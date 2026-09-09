@@ -122,7 +122,7 @@ export default function ReviewsPage() {
 
       {/* 3 Clean Milestone Cards */}
       <section className="animate-fade-up stagger-1 mt-4 space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div data-tour="reviews-cards-grid" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {OFFICIAL_MONTHLY_REVIEWS.map((milestone) => {
             const assessment = assessments.find((a) => a.month === milestone.month);
             const isCompleted = Boolean(
