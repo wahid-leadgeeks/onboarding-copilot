@@ -187,5 +187,140 @@ describe('/api/sheets/update-cell route', () => {
 
       expect(updateRangeSpy.mock.calls.length).toBe(1);
     });
+
+    it('updates Feedback Sheet Cols A–M for a valid rowNumber', async () => {
+      jest.spyOn(sessionModule, 'getSessionAccessToken').mockResolvedValue('valid-token');
+      const updateRangeSpy = jest.spyOn(extractorModule, 'updateSheetRange').mockResolvedValue({
+        updatedRange: "'Feedback Sheet'!A3:M3",
+        updatedRows: 1,
+        updatedColumns: 13,
+        updatedCells: 13,
+      });
+
+      const req = new Request('http://localhost/api/sheets/update-cell', {
+        method: 'POST',
+        body: JSON.stringify({
+          sheet: 'Feedback Sheet',
+          rowNumber: 3,
+          feedback: {
+            date: '2026-09-10',
+            pic: 'Managing Director',
+            sessionTitle: 'Introduction to Company',
+            ratings: {
+              communication: 6,
+              alignment: 5,
+              understanding: 6,
+              readiness: 5,
+              pace: 6,
+              overall: 6,
+            },
+            hasQuestions: false,
+            suggestions: 'Great session overall!',
+          },
+        }),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.sheet).toBe('Feedback Sheet');
+      expect(data.rowNumber).toBe(3);
+      expect(data.range).toBe("'Feedback Sheet'!A3:M3");
+      expect(data.values[0]).toEqual([
+        '10/09/2026',
+        'Managing Director',
+        'Introduction to Company',
+        '6. Excellent',
+        '5. Very Good',
+        '6. Excellent',
+        '5. Very Good',
+        '6. Excellent',
+        '6. Excellent',
+        'NO',
+        '',
+        '',
+        'Great session overall!',
+      ]);
+
+      expect(updateRangeSpy.mock.calls.length).toBe(1);
+      expect(updateRangeSpy.mock.calls[0]).toEqual([
+        'test-spreadsheet-id-123',
+        "'Feedback Sheet'!A3:M3",
+        [
+          [
+            '10/09/2026',
+            'Managing Director',
+            'Introduction to Company',
+            '6. Excellent',
+            '5. Very Good',
+            '6. Excellent',
+            '5. Very Good',
+            '6. Excellent',
+            '6. Excellent',
+            'NO',
+            '',
+            '',
+            'Great session overall!',
+          ],
+        ],
+        { accessToken: 'valid-token' },
+      ]);
+    });
+
+    it('retries with alternative sheet name "Feedback" if "Feedback Sheet" fails', async () => {
+      jest.spyOn(sessionModule, 'getSessionAccessToken').mockResolvedValue('valid-token');
+      const updateRangeSpy = jest
+        .spyOn(extractorModule, 'updateSheetRange')
+        .mockRejectedValueOnce(new Error("Unable to parse range: 'Feedback Sheet'!A4:M4"))
+        .mockResolvedValueOnce({
+          updatedRange: "'Feedback'!A4:M4",
+          updatedRows: 1,
+          updatedColumns: 13,
+          updatedCells: 13,
+        });
+
+      const req = new Request('http://localhost/api/sheets/update-cell', {
+        method: 'POST',
+        body: JSON.stringify({
+          sheet: 'Feedback Sheet',
+          rowNumber: 4,
+          topic: 'Beyond the Slides',
+          pic: 'Managing Director',
+          ratings: {
+            communication: 6,
+            alignment: 6,
+            understanding: 6,
+            readiness: 6,
+            pace: 6,
+            overall: 6,
+          },
+          hasQuestions: true,
+          questionExplanation: 'How do we track quarterly OKRs?',
+          questionAddressing: 'Chat response is fine',
+        }),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.sheet).toBe('Feedback');
+      expect(data.range).toBe("'Feedback'!A4:M4");
+      expect(updateRangeSpy.mock.calls.length).toBe(2);
+    });
+
+    it('rejects invalid Feedback row numbers', async () => {
+      jest.spyOn(sessionModule, 'getSessionAccessToken').mockResolvedValue('valid-token');
+
+      const req = new Request('http://localhost/api/sheets/update-cell', {
+        method: 'POST',
+        body: JSON.stringify({ sheet: 'Feedback Sheet', rowNumber: 2 }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toBe('Invalid feedback rowNumber (expected 3-50)');
+    });
   });
 });

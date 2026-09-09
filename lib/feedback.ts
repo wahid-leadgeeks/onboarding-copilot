@@ -534,24 +534,24 @@ export function escapeTsvCell(value: unknown): string {
 }
 
 /**
- * Serializes a feedback evaluation into the exact 13-column TSV row
+ * Formats a feedback evaluation into the exact 13 column values
  * matching columns A–M of the Feedback Sheet worksheet:
  *
- * Col 1: Insert Date
- * Col 2: PIC
- * Col 3: Topic
- * Col 4: Q1 (Communication)
- * Col 5: Q2 (Alignment)
- * Col 6: Q3 (Understanding)
- * Col 7: Q4 (Readiness)
- * Col 8: Q5 (Pace)
- * Col 9: Q6 (Overall)
- * Col 10: Questions? (YES/NO)
- * Col 11: Please explain your answer
- * Col 12: How would you like your question to be addressed?
- * Col 13: Any suggestions to improve the onboarding process in the future?
+ * Col 1 (A): Insert Date
+ * Col 2 (B): PIC
+ * Col 3 (C): Topic
+ * Col 4 (D): Q1 (Communication)
+ * Col 5 (E): Q2 (Alignment)
+ * Col 6 (F): Q3 (Understanding)
+ * Col 7 (G): Q4 (Readiness)
+ * Col 8 (H): Q5 (Pace)
+ * Col 9 (I): Q6 (Overall)
+ * Col 10 (J): Questions? (YES/NO)
+ * Col 11 (K): Please explain your answer
+ * Col 12 (L): How would you like your question to be addressed?
+ * Col 13 (M): Any suggestions to improve the onboarding process in the future?
  */
-export function clipboardRowForFeedback(entry: FeedbackEntry | FeedbackClipboardInput): string {
+export function formatFeedbackRowValues(entry: FeedbackEntry | FeedbackClipboardInput): string[] {
   const date = entry.date ? formatFeedbackDate(entry.date) : '';
   const pic = entry.pic ?? '';
   const topic = (entry as FeedbackEntry).sessionTitle ?? (entry as FeedbackClipboardInput).topic ?? '';
@@ -574,7 +574,7 @@ export function clipboardRowForFeedback(entry: FeedbackEntry | FeedbackClipboard
   const howAddressed = entry.questionAddressing ?? (typeof rawEntry.howAddressed === 'string' ? rawEntry.howAddressed : '');
   const suggestions = entry.suggestions ?? '';
 
-  const columns = [
+  return [
     date,
     pic,
     topic,
@@ -589,6 +589,12 @@ export function clipboardRowForFeedback(entry: FeedbackEntry | FeedbackClipboard
     howAddressed,
     suggestions,
   ];
+}
 
-  return columns.map(escapeTsvCell).join('\t');
+/**
+ * Serializes a feedback evaluation into the exact 13-column TSV row
+ * matching columns A–M of the Feedback Sheet worksheet.
+ */
+export function clipboardRowForFeedback(entry: FeedbackEntry | FeedbackClipboardInput): string {
+  return formatFeedbackRowValues(entry).map(escapeTsvCell).join('\t');
 }
