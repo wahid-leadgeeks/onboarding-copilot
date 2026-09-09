@@ -18,11 +18,15 @@ import {
   IconX,
 } from '@/app/components/Icons';
 
+import { GuideTour, allPagesTourSteps } from '@/app/components/GuideTour';
+import { GUIDE_TOUR_STORAGE_KEY, readGuideTourState, writeGuideTourState } from '@/lib/guide-tour';
+
 interface NavItem {
   readonly label: string;
   readonly href: string;
   readonly icon: React.ComponentType<{ className?: string }>;
   readonly badge?: string;
+  readonly tourId?: string;
 }
 
 interface NavSection {
@@ -34,29 +38,29 @@ const NAV_SECTIONS: readonly NavSection[] = [
   {
     title: 'Daily Execution',
     items: [
-      { label: 'Today', href: '/', icon: IconSun },
-      { label: 'Schedule', href: '/schedule', icon: IconCalendar },
+      { label: 'Today', href: '/', icon: IconSun, tourId: 'nav-today' },
+      { label: 'Schedule', href: '/schedule', icon: IconCalendar, tourId: 'nav-schedule' },
     ],
   },
   {
     title: 'Milestones & Growth',
     items: [
-      { label: 'Timeline', href: '/timeline', icon: IconTree },
-      { label: 'Reviews', href: '/reviews', icon: IconTrophy },
+      { label: 'Timeline', href: '/timeline', icon: IconTree, tourId: 'nav-timeline' },
+      { label: 'Reviews', href: '/reviews', icon: IconTrophy, tourId: 'nav-reviews' },
     ],
   },
   {
     title: 'Reflections & Input',
     items: [
-      { label: 'Diary', href: '/diary', icon: IconFileText },
-      { label: 'Feedback', href: '/feedback', icon: IconStar },
+      { label: 'Diary', href: '/diary', icon: IconFileText, tourId: 'nav-diary' },
+      { label: 'Feedback', href: '/feedback', icon: IconStar, tourId: 'nav-feedback' },
     ],
   },
   {
     title: 'System & Knowledge',
     items: [
-      { label: 'Glossary', href: '/glossary', icon: IconBook },
-      { label: 'Settings', href: '/settings', icon: IconSettings },
+      { label: 'Glossary', href: '/glossary', icon: IconBook, tourId: 'nav-glossary' },
+      { label: 'Settings', href: '/settings', icon: IconSettings, tourId: 'nav-settings' },
     ],
   },
 ];
@@ -64,11 +68,46 @@ const NAV_SECTIONS: readonly NavSection[] = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
 
   // Close mobile drawer on route transition
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
+
+  // Check tour parameter or first-time visit
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tour') === 'start') {
+      params.delete('tour');
+      const query = params.toString();
+      window.history.replaceState(null, '', query ? `${window.location.pathname}?${query}` : window.location.pathname);
+      setTourOpen(true);
+      return;
+    }
+    if (params.get('tour') === 'skip' || params.get('tour') === 'false') {
+      return;
+    }
+    const tourState = readGuideTourState(localStorage.getItem(GUIDE_TOUR_STORAGE_KEY));
+    if (!tourState?.completed) setTourOpen(true);
+  }, []);
+
+  // Listen for open-guide-tour event (e.g. from CommandPalette or buttons)
+  useEffect(() => {
+    function handleOpenTour() {
+      setTourOpen(true);
+    }
+    window.addEventListener('open-guide-tour', handleOpenTour);
+    return () => window.removeEventListener('open-guide-tour', handleOpenTour);
+  }, []);
+
+  function handleTourFinish() {
+    localStorage.setItem(
+      GUIDE_TOUR_STORAGE_KEY,
+      writeGuideTourState({ completed: true, completedAt: new Date().toISOString() })
+    );
+    setTourOpen(false);
+  }
 
   // Close mobile drawer on Escape key
   useEffect(() => {
@@ -161,6 +200,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <Link
                       key={item.label}
                       href={item.href}
+                      data-tour={item.tourId}
                       aria-current={active ? 'page' : undefined}
                       className={`group flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition-all ${
                         active
@@ -188,8 +228,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        {/* Bottom Cockpit Status */}
-        <div className="border-t border-stone-100 p-4 bg-stone-50/50">
+        {/* Bottom Cockpit Status & Tour */}
+        <div className="border-t border-stone-100 p-4 bg-stone-50/50 space-y-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="size-2 rounded-full bg-mint-500 animate-pulse" />
@@ -205,6 +245,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               Sync →
             </Link>
           </div>
+          <button
+            type="button"
+            onClick={() => setTourOpen(true)}
+            className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-stone-200/80 bg-white py-1.5 text-[11px] font-semibold text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition shadow-2xs cursor-pointer active:scale-98"
+          >
+            <span>🧭 Quick Guide Tour</span>
+          </button>
         </div>
       </aside>
 
@@ -325,7 +372,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </nav>
 
               {/* Drawer Footer */}
-              <div className="border-t border-stone-100 p-4 bg-stone-50/60">
+              <div className="border-t border-stone-100 p-4 bg-stone-50/60 space-y-2.5">
                 <div className="flex items-center justify-between text-xs text-stone-500">
                   <span className="flex items-center gap-1.5">
                     <span className="size-2 rounded-full bg-mint-500" />
@@ -339,6 +386,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     Settings
                   </Link>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setTourOpen(true);
+                  }}
+                  className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-stone-200/80 bg-white py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition shadow-2xs cursor-pointer active:scale-98"
+                >
+                  <span>🧭 Quick Guide Tour</span>
+                </button>
               </div>
             </div>
           </div>
@@ -355,6 +412,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </div>
+
+      <GuideTour steps={allPagesTourSteps} open={tourOpen} onFinish={handleTourFinish} />
     </div>
   );
 }

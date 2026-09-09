@@ -84,6 +84,7 @@ export function Assistant() {
         <button
           type="button"
           aria-label="Ask NOVA"
+          data-tour="assistant-launcher"
           onClick={() => setOpen(true)}
           className="hero-gradient animate-float fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-xl transition hover:shadow-2xl active:scale-95"
         >
