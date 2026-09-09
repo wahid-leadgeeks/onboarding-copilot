@@ -26,9 +26,18 @@ export * from '@/lib/types/feedback';
 export const FEEDBACK_STORAGE_KEY = 'onboarding-feedback';
 
 /**
- * The 13 official evaluation sessions defined in rows 4–16 of the Feedback Sheet worksheet.
+ * The 14 official evaluation sessions defined in rows 3–16 of the Feedback Sheet worksheet.
  */
 export const FEEDBACK_SESSIONS: readonly FeedbackSession[] = [
+  {
+    id: 'row-3',
+    title: 'Introduction to Company',
+    topic: 'Introduction to Company',
+    pic: 'Managing Director',
+    rowNumber: 3,
+    row: 3,
+    department: 'Executive Management',
+  },
   {
     id: 'row-4',
     title: 'Beyond the Slides: Chat with the MD',
@@ -201,15 +210,16 @@ export const FEEDBACK_DIMENSIONS: readonly FeedbackDimensionDefinition[] = [
 ] as const;
 
 export const LIKERT_LABELS: Record<LikertScore, LikertLabel> = {
+  6: '6. Excellent',
   5: '5. Very Good',
   4: '4. Good',
-  3: '3. Neutral',
+  3: '3. Fair',
   2: '2. Poor',
   1: '1. Very Poor',
 } as const;
 
 /**
- * Formats a Likert rating integer 1–5 to its official label.
+ * Formats a Likert rating integer 1–6 to its official label.
  */
 export function formatLikertLabel(rating: number): string {
   if (rating in LIKERT_LABELS) {
@@ -227,17 +237,41 @@ export function toLikertLabel(rating: unknown): string {
   }
   if (typeof rating === 'string') {
     const trimmed = rating.trim();
-    if (trimmed.startsWith('5')) return '5. Very Good';
-    if (trimmed.startsWith('4')) return '4. Good';
-    if (trimmed.startsWith('3')) return '3. Neutral';
-    if (trimmed.startsWith('2')) return '2. Poor';
-    if (trimmed.startsWith('1')) return '1. Very Poor';
+    if (trimmed.startsWith('6') || trimmed.toLowerCase().includes('excellent')) return '6. Excellent';
+    if (trimmed.startsWith('5') || trimmed.toLowerCase().includes('very good')) return '5. Very Good';
+    if (trimmed.startsWith('4') || (trimmed.toLowerCase().includes('good') && !trimmed.toLowerCase().includes('very'))) return '4. Good';
+    if (trimmed.startsWith('3') || trimmed.toLowerCase().includes('fair') || trimmed.toLowerCase().includes('neutral')) return '3. Fair';
+    if (trimmed.startsWith('2') || (trimmed.toLowerCase().includes('poor') && !trimmed.toLowerCase().includes('very'))) return '2. Poor';
+    if (trimmed.startsWith('1') || trimmed.toLowerCase().includes('very poor')) return '1. Very Poor';
     const num = parseInt(trimmed, 10);
     if (!Number.isNaN(num)) {
       return formatLikertLabel(num);
     }
   }
   return '';
+}
+
+/**
+ * Parses an arbitrary raw value (number or label string) into a LikertScore (1–6).
+ */
+export function parseLikertScore(raw: unknown): LikertScore | undefined {
+  if (typeof raw === 'number' && Number.isInteger(raw) && raw >= 1 && raw <= 6) {
+    return raw as LikertScore;
+  }
+  if (typeof raw === 'string') {
+    const t = raw.trim().toLowerCase();
+    if (t.startsWith('6') || t.includes('excellent')) return 6;
+    if (t.startsWith('5') || t.includes('very good')) return 5;
+    if (t.startsWith('4') || (t.includes('good') && !t.includes('very'))) return 4;
+    if (t.startsWith('3') || t.includes('fair') || t.includes('neutral')) return 3;
+    if (t.startsWith('2') || (t.includes('poor') && !t.includes('very'))) return 2;
+    if (t.startsWith('1') || t.includes('very poor')) return 1;
+    const num = parseInt(t, 10);
+    if (!Number.isNaN(num) && num >= 1 && num <= 6) {
+      return num as LikertScore;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -302,7 +336,7 @@ function areRatingsValid(val: unknown): val is FeedbackRatings {
   ];
   return keys.every((k) => {
     const v = r[k];
-    return typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 5;
+    return typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 6;
   });
 }
 

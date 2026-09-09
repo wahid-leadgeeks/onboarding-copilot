@@ -4,8 +4,10 @@ import { PrimaryNav } from '@/app/components/PrimaryNav';
 import { pendingSyncStorageKey, readPendingSyncs, removePendingSync, writePendingSyncs } from '@/lib/sync-queue';
 import { IMPORTED_SCHEDULE_STORAGE_KEY, readImportedSchedule, writeImportedSchedule, type ImportedSchedule } from '@/lib/imported-schedule';
 import { DIARY_STORAGE_KEY, mergeImportedDiary, readDiary, type StoredDiary } from '@/lib/local-records';
+import { FEEDBACK_STORAGE_KEY, readFeedbackEntries, upsertFeedbackEntry, writeFeedbackEntries } from '@/lib/feedback';
 import { isActivityList } from '@/lib/sheets/types';
 import type { Activity } from '@/lib/types/activity';
+import type { ExtractedSpreadsheetContent } from '@/lib/sheets/extractor';
 import {
   IconAlertTriangle,
   IconCheck,
@@ -63,15 +65,7 @@ export default function SettingsPage() {
   const [session, setSession] = useState<{ authenticated: boolean; user: { name: string; email: string; picture?: string } | null } | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
-  const [extractResult, setExtractResult] = useState<{
-    spreadsheetId: string;
-    title?: string;
-    sheets: Array<{ title: string; rowCount: number; columnCount: number }>;
-    schedule?: { activities: Activity[]; count: number; skipped: number; warnings: string[] };
-    diary?: { entries: StoredDiary[]; count: number };
-    timeline?: { stages: Array<{ stageNumber: string; stageName: string; objective: string }>; count: number };
-    feedback?: { sessions: Array<{ rowNumber: number; sessionTitle: string; pic: string }>; count: number };
-  } | null>(null);
+  const [extractResult, setExtractResult] = useState<ExtractedSpreadsheetContent | null>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
 
   async function handleExtractSheets(source?: 'local') {
@@ -111,7 +105,17 @@ export default function SettingsPage() {
       const merged = mergeImportedDiary(existingDiary, extractResult.diary.entries);
       localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(merged));
     }
-    setImportMessage(`Applied ${activities.length} activities and ${extractResult.diary?.entries?.length || 0} diary notes to local schedule!`);
+    if (extractResult.feedback?.entries?.length) {
+      const existingFeedback = readFeedbackEntries(localStorage.getItem(FEEDBACK_STORAGE_KEY));
+      let mergedFeedback = [...existingFeedback];
+      for (const item of extractResult.feedback.entries) {
+        mergedFeedback = upsertFeedbackEntry(mergedFeedback, item);
+      }
+      localStorage.setItem(FEEDBACK_STORAGE_KEY, writeFeedbackEntries(mergedFeedback));
+    }
+    setImportMessage(
+      `Applied ${activities.length} activities, ${extractResult.diary?.entries?.length || 0} diary notes, and ${extractResult.feedback?.entries?.length || 0} feedback evaluations!`
+    );
   }
 
   async function refreshSession() {

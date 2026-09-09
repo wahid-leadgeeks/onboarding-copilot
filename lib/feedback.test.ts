@@ -111,14 +111,14 @@ describe('feedback system (lib/feedback)', () => {
       expect(FEEDBACK_STORAGE_KEY).toBe('onboarding-feedback');
     });
 
-    it('defines exactly 13 required evaluation sessions', () => {
-      expect(FEEDBACK_SESSIONS).toHaveLength(13);
-      expect(REQUIRED_FEEDBACK_SESSIONS).toHaveLength(13);
+    it('defines exactly 14 required evaluation sessions', () => {
+      expect(FEEDBACK_SESSIONS).toHaveLength(14);
+      expect(REQUIRED_FEEDBACK_SESSIONS).toHaveLength(14);
     });
 
-    it('contains valid row numbers from 4 to 16 in order', () => {
+    it('contains valid row numbers from 3 to 16 in order', () => {
       const rows = FEEDBACK_SESSIONS.map((s) => s.rowNumber);
-      expect(rows).toEqual([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+      expect(rows).toEqual([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
     });
 
     it('has valid non-empty topic and PIC for each session', () => {
@@ -130,10 +130,10 @@ describe('feedback system (lib/feedback)', () => {
     });
 
     it('matches the HR workbook first and last session titles', () => {
-      expect(FEEDBACK_SESSIONS[0].title).toBe('Beyond the Slides: Chat with the MD');
+      expect(FEEDBACK_SESSIONS[0].title).toBe('Introduction to Company');
       expect(FEEDBACK_SESSIONS[0].pic).toBe('Managing Director');
-      expect(FEEDBACK_SESSIONS[12].title.includes('ESMR')).toBe(true);
-      expect(FEEDBACK_SESSIONS[12].pic).toBe('External Experience Staff');
+      expect(FEEDBACK_SESSIONS[13].title.includes('ESMR')).toBe(true);
+      expect(FEEDBACK_SESSIONS[13].pic).toBe('External Experience Staff');
     });
 
     it('defines exactly 6 rating dimensions in order D through I', () => {
@@ -214,7 +214,7 @@ describe('feedback system (lib/feedback)', () => {
       expect(
         isFeedbackEntry({
           ...SAMPLE_ENTRY_1,
-          ratings: { ...SAMPLE_ENTRY_1.ratings, overall: 6 },
+          ratings: { ...SAMPLE_ENTRY_1.ratings, overall: 7 },
         })
       ).toBe(false);
       expect(
@@ -307,9 +307,9 @@ describe('feedback system (lib/feedback)', () => {
         }
       });
 
-      it('rejects ratings > 5 across all 6 dimensions', () => {
+      it('rejects ratings > 6 across all 6 dimensions', () => {
         const dimensions = ['communication', 'alignment', 'understanding', 'readiness', 'pace', 'overall'] as const;
-        const overRange = [6, 7, 10, 100, 9999];
+        const overRange = [7, 10, 100, 9999];
         for (const dim of dimensions) {
           for (const val of overRange) {
             const brokenRatings = { ...SAMPLE_ENTRY_1.ratings, [dim]: val };
@@ -496,13 +496,13 @@ describe('feedback system (lib/feedback)', () => {
       const progress = calculateFeedbackProgress([]);
       expect(progress.evaluated).toBe(0);
       expect(progress.evaluatedCount).toBe(0);
-      expect(progress.total).toBe(13);
-      expect(progress.totalCount).toBe(13);
+      expect(progress.total).toBe(14);
+      expect(progress.totalCount).toBe(14);
       expect(progress.percentage).toBe(0);
       expect(progress.isComplete).toBe(false);
-      expect(progress.pending).toBe(13);
-      expect(progress.remainingCount).toBe(13);
-      expect(progress.sessionStatuses).toHaveLength(13);
+      expect(progress.pending).toBe(14);
+      expect(progress.remainingCount).toBe(14);
+      expect(progress.sessionStatuses).toHaveLength(14);
       expect(progress.sessionStatuses.every((s) => s.status === 'pending')).toBe(true);
     });
 
@@ -511,11 +511,11 @@ describe('feedback system (lib/feedback)', () => {
       const progress = calculateFeedbackProgress(entries);
       expect(progress.evaluated).toBe(2);
       expect(progress.evaluatedCount).toBe(2);
-      expect(progress.total).toBe(13);
-      expect(progress.percentage).toBe(15); // Math.round((2 / 13) * 100) = 15
+      expect(progress.total).toBe(14);
+      expect(progress.percentage).toBe(14); // Math.round((2 / 14) * 100) = 14
       expect(progress.isComplete).toBe(false);
-      expect(progress.pending).toBe(11);
-      expect(progress.remainingCount).toBe(11);
+      expect(progress.pending).toBe(12);
+      expect(progress.remainingCount).toBe(12);
 
       const s1 = progress.sessionStatuses.find((s) => s.session.id === 'row-4');
       expect(s1 !== undefined).toBe(true);
@@ -528,7 +528,7 @@ describe('feedback system (lib/feedback)', () => {
       expect(s3?.entry === undefined).toBe(true);
     });
 
-    it('calculates 100% progress when all 13 sessions are evaluated', () => {
+    it('calculates 100% progress when all 14 sessions are evaluated', () => {
       const allEntries: FeedbackEntry[] = FEEDBACK_SESSIONS.map((session) => ({
         sessionId: session.id,
         sessionTitle: session.title,
@@ -540,8 +540,8 @@ describe('feedback system (lib/feedback)', () => {
       }));
 
       const progress = calculateFeedbackProgress(allEntries);
-      expect(progress.evaluated).toBe(13);
-      expect(progress.total).toBe(13);
+      expect(progress.evaluated).toBe(14);
+      expect(progress.total).toBe(14);
       expect(progress.percentage).toBe(100);
       expect(progress.isComplete).toBe(true);
       expect(progress.pending).toBe(0);
@@ -564,7 +564,7 @@ describe('feedback system (lib/feedback)', () => {
     });
 
     describe('stress-testing calculateFeedbackProgress across all counts and edge cases', () => {
-      it('calculates exact fractional percentages for all evaluation counts from 1 to 12', () => {
+      it('calculates exact fractional percentages for all evaluation counts from 1 to 13', () => {
         const allEntries: FeedbackEntry[] = FEEDBACK_SESSIONS.map((session, idx) => ({
           sessionId: session.id,
           sessionTitle: session.title,
@@ -575,28 +575,28 @@ describe('feedback system (lib/feedback)', () => {
           createdAt: new Date().toISOString(),
         }));
 
-        for (let k = 1; k <= 12; k++) {
+        for (let k = 1; k <= 13; k++) {
           const subset = allEntries.slice(0, k);
           const progress = calculateFeedbackProgress(subset);
 
-          const expectedPercent = Math.round((k / 13) * 100);
-          expect(progress.total).toBe(13);
-          expect(progress.totalCount).toBe(13);
+          const expectedPercent = Math.round((k / 14) * 100);
+          expect(progress.total).toBe(14);
+          expect(progress.totalCount).toBe(14);
           expect(progress.evaluated).toBe(k);
           expect(progress.evaluatedCount).toBe(k);
-          expect(progress.pending).toBe(13 - k);
-          expect(progress.remainingCount).toBe(13 - k);
+          expect(progress.pending).toBe(14 - k);
+          expect(progress.remainingCount).toBe(14 - k);
           expect(progress.percentage).toBe(expectedPercent);
           expect(progress.isComplete).toBe(false);
 
           const evaluatedStatuses = progress.sessionStatuses.filter((s) => s.status === 'evaluated');
           const pendingStatuses = progress.sessionStatuses.filter((s) => s.status === 'pending');
           expect(evaluatedStatuses).toHaveLength(k);
-          expect(pendingStatuses).toHaveLength(13 - k);
+          expect(pendingStatuses).toHaveLength(14 - k);
         }
       });
 
-      it('calculates 13 evaluations as 100% progress and isComplete=true', () => {
+      it('calculates 14 evaluations as 100% progress and isComplete=true', () => {
         const allEntries: FeedbackEntry[] = FEEDBACK_SESSIONS.map((session, idx) => ({
           sessionId: session.id,
           sessionTitle: session.title,
@@ -608,8 +608,8 @@ describe('feedback system (lib/feedback)', () => {
         }));
 
         const progress = calculateFeedbackProgress(allEntries);
-        expect(progress.total).toBe(13);
-        expect(progress.evaluated).toBe(13);
+        expect(progress.total).toBe(14);
+        expect(progress.evaluated).toBe(14);
         expect(progress.pending).toBe(0);
         expect(progress.percentage).toBe(100);
         expect(progress.isComplete).toBe(true);
@@ -622,10 +622,10 @@ describe('feedback system (lib/feedback)', () => {
         const progressA = calculateFeedbackProgress(fiveDuplicates);
         expect(progressA.evaluated).toBe(1);
         expect(progressA.evaluatedCount).toBe(1);
-        expect(progressA.percentage).toBe(8); // Math.round(1/13 * 100) = 8
-        expect(progressA.pending).toBe(12);
+        expect(progressA.percentage).toBe(7); // Math.round(1/14 * 100) = 7
+        expect(progressA.pending).toBe(13);
 
-        // Test B: 26 entries (2 of each of the 13 sessions)
+        // Test B: 28 entries (2 of each of the 14 sessions)
         const doubleAll: FeedbackEntry[] = [
           ...FEEDBACK_SESSIONS.map((session): FeedbackEntry => ({
             sessionId: session.id,
@@ -648,8 +648,8 @@ describe('feedback system (lib/feedback)', () => {
         ];
 
         const progressB = calculateFeedbackProgress(doubleAll);
-        expect(progressB.evaluated).toBe(13);
-        expect(progressB.evaluatedCount).toBe(13);
+        expect(progressB.evaluated).toBe(14);
+        expect(progressB.evaluatedCount).toBe(14);
         expect(progressB.percentage).toBe(100);
         expect(progressB.isComplete).toBe(true);
         expect(progressB.pending).toBe(0);
@@ -666,22 +666,25 @@ describe('feedback system (lib/feedback)', () => {
   });
 
   describe('formatLikertLabel & toLikertLabel', () => {
-    it('maps ratings 1 through 5 to official labels', () => {
+    it('maps ratings 1 through 6 to official labels', () => {
       expect(formatLikertLabel(1)).toBe('1. Very Poor');
       expect(formatLikertLabel(2)).toBe('2. Poor');
-      expect(formatLikertLabel(3)).toBe('3. Neutral');
+      expect(formatLikertLabel(3)).toBe('3. Fair');
       expect(formatLikertLabel(4)).toBe('4. Good');
       expect(formatLikertLabel(5)).toBe('5. Very Good');
+      expect(formatLikertLabel(6)).toBe('6. Excellent');
     });
 
     it('falls back safely for out-of-range numbers', () => {
       expect(formatLikertLabel(0)).toBe('');
-      expect(formatLikertLabel(6)).toBe('');
+      expect(formatLikertLabel(7)).toBe('');
     });
 
     it('handles string input via toLikertLabel', () => {
+      expect(toLikertLabel('6')).toBe('6. Excellent');
       expect(toLikertLabel('5')).toBe('5. Very Good');
       expect(toLikertLabel('4. Good')).toBe('4. Good');
+      expect(toLikertLabel('3. Fair')).toBe('3. Fair');
       expect(toLikertLabel('invalid')).toBe('');
     });
   });
@@ -727,7 +730,7 @@ describe('feedback system (lib/feedback)', () => {
       expect(cells[2]).toBe('Intro to HRD Department');
       expect(cells[3]).toBe('4. Good');
       expect(cells[4]).toBe('4. Good');
-      expect(cells[5]).toBe('3. Neutral');
+      expect(cells[5]).toBe('3. Fair');
       expect(cells[6]).toBe('4. Good');
       expect(cells[7]).toBe('4. Good');
       expect(cells[8]).toBe('4. Good');
