@@ -283,7 +283,7 @@ describe('Empirical Challenge: clipboardRowForFeedback (Milestone 2 Iteration 2)
       expect(cells[2]).toBe(`Topic\n${cocktail}`);
       expect(cells[3]).toBe('5. Very Good');
       expect(cells[4]).toBe('4. Good');
-      expect(cells[5]).toBe('3. Neutral');
+      expect(cells[5]).toBe('3. Fair');
       expect(cells[6]).toBe('2. Poor');
       expect(cells[7]).toBe('1. Very Poor');
       expect(cells[8]).toBe('5. Very Good');
@@ -343,12 +343,12 @@ describe('Empirical Challenge: clipboardRowForFeedback (Milestone 2 Iteration 2)
     });
   });
 
-  describe('Suite 3: All 13 Official Session Entries Verification', () => {
-    it('verifies exact 13-column layout and zero shift for every official session (Row 4 to 16)', () => {
-      expect(FEEDBACK_SESSIONS).toHaveLength(13);
+  describe('Suite 3: All 14 Official Session Entries Verification', () => {
+    it('verifies exact 13-column layout and zero shift for every official session (Row 3 to 16)', () => {
+      expect(FEEDBACK_SESSIONS).toHaveLength(14);
 
       FEEDBACK_SESSIONS.forEach((session, index) => {
-        const expectedRowNumber = index + 4;
+        const expectedRowNumber = index + 3;
         expect(session.rowNumber).toBe(expectedRowNumber);
 
         // Construct standard entry for this official session
@@ -392,7 +392,7 @@ describe('Empirical Challenge: clipboardRowForFeedback (Milestone 2 Iteration 2)
       });
     });
 
-    it('verifies zero shift across all 13 sessions under adversarial content injection', () => {
+    it('verifies zero shift across all 14 sessions under adversarial content injection', () => {
       FEEDBACK_SESSIONS.forEach((session, index) => {
         // Inject adversarial quotes, tabs, newlines into topic, PIC, and qualitative fields
         const adversarialEntry: FeedbackClipboardInput = {
@@ -422,7 +422,7 @@ describe('Empirical Challenge: clipboardRowForFeedback (Milestone 2 Iteration 2)
         expect(cells[2]).toBe(`${session.title}\n[Session #${index + 1}\t"Official"]`);
         expect(cells[3]).toBe('5. Very Good');
         expect(cells[4]).toBe('4. Good');
-        expect(cells[5]).toBe('3. Neutral');
+        expect(cells[5]).toBe('3. Fair');
         expect(cells[6]).toBe('2. Poor');
         expect(cells[7]).toBe('1. Very Poor');
         expect(cells[8]).toBe('5. Very Good');
@@ -433,8 +433,8 @@ describe('Empirical Challenge: clipboardRowForFeedback (Milestone 2 Iteration 2)
       });
     });
 
-    it('verifies bulk 13-session multiline export maintains exactly 13 rows and 13 columns per row', () => {
-      // Generate rows for all 13 official sessions with mixed multiline content
+    it('verifies bulk 14-session multiline export maintains exactly 14 rows and 13 columns per row', () => {
+      // Generate rows for all 14 official sessions with mixed multiline content
       const rows = FEEDBACK_SESSIONS.map((session, index) => {
         const entry: FeedbackClipboardInput = {
           date: `0${(index % 9) + 1}/09/2026`,
@@ -456,11 +456,11 @@ describe('Empirical Challenge: clipboardRowForFeedback (Milestone 2 Iteration 2)
         return clipboardRowForFeedback(entry);
       });
 
-      // Join all 13 session rows with newlines
+      // Join all 14 session rows with newlines
       const fullDocument = rows.join('\n');
       const parsedRows = parseTsvDocument(fullDocument);
 
-      expect(parsedRows).toHaveLength(13);
+      expect(parsedRows).toHaveLength(14);
       parsedRows.forEach((cols, rowIndex) => {
         expect(cols).toHaveLength(13);
         expect(cols[1]).toBe(FEEDBACK_SESSIONS[rowIndex].pic);

@@ -3,14 +3,16 @@
  * Aligned with the official HR Onboarding Kit (Feedback Sheet worksheet, Rows 4-16)
  */
 
-export type LikertScore = 1 | 2 | 3 | 4 | 5;
+export type LikertScore = 1 | 2 | 3 | 4 | 5 | 6;
 
 export type LikertLabel =
+  | '6. Excellent'
   | '5. Very Good'
   | '4. Good'
-  | '3. Neutral'
+  | '3. Fair'
   | '2. Poor'
-  | '1. Very Poor';
+  | '1. Very Poor'
+  | '3. Neutral';
 
 export type FeedbackRatingDimension =
   | 'communication'

@@ -15,7 +15,7 @@ import {
 } from '@/lib/feedback';
 import { FeedbackModal } from '@/app/components/FeedbackModal';
 import { useToast } from '@/app/components/Toast';
-import { IconCheck, IconClipboard } from '@/app/components/Icons';
+import { IconAlertTriangle, IconCheck, IconClipboard } from '@/app/components/Icons';
 
 export default function FeedbackPage() {
   const { toast } = useToast();
@@ -24,6 +24,66 @@ export default function FeedbackPage() {
   const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'evaluated'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  async function syncWithSheets(silent = false) {
+    setIsSyncing(true);
+    if (!silent) setSyncError(null);
+    try {
+      let res = await fetch('/api/sheets/extract', { cache: 'no-store' });
+      let data = await res.json().catch(() => null);
+
+      // If remote sheets requires auth and local test file is available, fallback for local testing
+      if (!res.ok || !data?.success) {
+        const localRes = await fetch('/api/sheets/extract?source=local', { cache: 'no-store' });
+        if (localRes.ok) {
+          const localData = await localRes.json().catch(() => null);
+          if (localData?.success) {
+            res = localRes;
+            data = localData;
+          }
+        }
+      }
+
+      if (data?.success && data?.data?.feedback) {
+        const extractedEntries: FeedbackEntry[] = data.data.feedback.entries || [];
+        if (extractedEntries.length > 0) {
+          setFeedbackEntries((prev) => {
+            let merged = [...prev];
+            for (const item of extractedEntries) {
+              merged = upsertFeedbackEntry(merged, item);
+            }
+            try {
+              localStorage.setItem(FEEDBACK_STORAGE_KEY, writeFeedbackEntries(merged));
+            } catch {
+              /* ignore */
+            }
+            return merged;
+          });
+          const msg = `Synced ${extractedEntries.length} evaluation${extractedEntries.length === 1 ? '' : 's'} from spreadsheet!`;
+          setSyncStatus(msg);
+          if (!silent) toast.success(msg);
+        } else {
+          setSyncStatus('Connected to spreadsheet (no evaluated rows found yet).');
+          if (!silent) toast.info('No evaluated feedback rows found in spreadsheet.');
+        }
+      } else if (!silent) {
+        if (data?.loginUrl || res.status === 401) {
+          setSyncError('Google OAuth required to sync live Google Sheets. Please sign in on Settings.');
+        } else {
+          setSyncError(data?.error || data?.message || 'Failed to sync with spreadsheet.');
+        }
+      }
+    } catch (err: unknown) {
+      if (!silent) {
+        setSyncError(err instanceof Error ? err.message : 'Failed to connect to spreadsheet.');
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  }
 
   useEffect(() => {
     try {
@@ -31,6 +91,7 @@ export default function FeedbackPage() {
     } catch {
       /* ignore */
     }
+    void syncWithSheets(true);
   }, []);
 
   function persist(next: FeedbackEntry[]) {
@@ -94,10 +155,34 @@ export default function FeedbackPage() {
       {/* Header */}
       <header className="animate-fade-up pb-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-medium text-stone-500">Sheet: Feedback · Session Ratings</p>
-          <span className="rounded-full bg-sun-50 px-3 py-1 text-xs font-semibold text-sun-800">
-            {progress.evaluatedCount} / {progress.totalCount} Evaluated
-          </span>
+          <p className="text-sm font-medium text-stone-500">Sheet: Feedback Sheet · Session Ratings</p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void syncWithSheets(false)}
+              disabled={isSyncing}
+              aria-label="Sync feedback from Google Sheets"
+              className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-2xs transition hover:bg-stone-50 disabled:opacity-60"
+            >
+              <svg
+                className={`size-3.5 ${isSyncing ? 'animate-spin text-stone-900' : 'text-stone-500'}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              <span>{isSyncing ? 'Syncing...' : 'Sync Sheet'}</span>
+            </button>
+            <span className="rounded-full bg-sun-50 px-3 py-1 text-xs font-semibold text-sun-800">
+              {progress.evaluatedCount} / {progress.totalCount} Evaluated
+            </span>
+          </div>
         </div>
         <div className="mt-2">
           <h1 className="text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
@@ -107,6 +192,28 @@ export default function FeedbackPage() {
             Rate your onboarding sessions across 6 dimensions (Cols D–I) and capture qualitative follow-ups.
           </p>
         </div>
+
+        {syncError && (
+          <div className="animate-fade-up mt-3 flex items-center justify-between rounded-2xl border border-peach-200 bg-peach-50 px-4 py-3 text-xs text-peach-900">
+            <div className="flex items-center gap-2">
+              <IconAlertTriangle className="size-4 shrink-0 text-peach-600" />
+              <span>{syncError}</span>
+            </div>
+            <a
+              href="/settings"
+              className="shrink-0 font-semibold underline hover:text-peach-700 ml-2"
+            >
+              Open Settings
+            </a>
+          </div>
+        )}
+
+        {syncStatus && !syncError && (
+          <div className="animate-fade-up mt-3 flex items-center gap-2 rounded-2xl border border-mint-200 bg-mint-50/70 px-4 py-2 text-xs font-medium text-mint-900">
+            <IconCheck className="size-3.5 shrink-0 text-mint-600" />
+            <span>{syncStatus}</span>
+          </div>
+        )}
       </header>
 
       {/* Single-View Feedback Cockpit Card */}
@@ -124,7 +231,7 @@ export default function FeedbackPage() {
               }`}
             >
               {progress.isComplete
-                ? 'All 13 evaluated!'
+                ? `All ${progress.totalCount} evaluated!`
                 : `${progress.remainingCount} pending evaluation`}
             </span>
           </div>

@@ -40,7 +40,7 @@ export function tabWrapTarget<T>(active: T | null, focusable: readonly T[], shif
 }
 
 /**
- * Validates if all 6 Likert dimensions have been rated 1–5.
+ * Validates if all 6 Likert dimensions have been rated 1–6.
  */
 export function isRatingComplete(ratings: Partial<FeedbackRatings>): ratings is FeedbackRatings {
   const dims: FeedbackRatingDimension[] = [
@@ -52,14 +52,15 @@ export function isRatingComplete(ratings: Partial<FeedbackRatings>): ratings is 
     'overall',
   ];
   return dims.every(
-    (d) => typeof ratings[d] === 'number' && ratings[d]! >= 1 && ratings[d]! <= 5
+    (d) => typeof ratings[d] === 'number' && ratings[d]! >= 1 && ratings[d]! <= 6
   );
 }
 
 const LIKERT_OPTIONS: Array<{ score: LikertScore; label: string; short: string }> = [
+  { score: 6, label: '6. Excellent', short: 'Excellent' },
   { score: 5, label: '5. Very Good', short: 'Very Good' },
   { score: 4, label: '4. Good', short: 'Good' },
-  { score: 3, label: '3. Neutral', short: 'Neutral' },
+  { score: 3, label: '3. Fair', short: 'Fair' },
   { score: 2, label: '2. Poor', short: 'Poor' },
   { score: 1, label: '1. Very Poor', short: 'Very Poor' },
 ];
@@ -164,7 +165,7 @@ export function FeedbackModal({ session, existingEntry, onSave, onClose }: Feedb
   function handleSave() {
     const entry = buildEntry();
     if (!entry) {
-      setValidationError('Please provide a rating (1–5) for all 6 evaluation dimensions.');
+      setValidationError('Please provide a rating (1–6) for all 6 evaluation dimensions.');
       return;
     }
     setValidationError(null);
@@ -266,7 +267,7 @@ export function FeedbackModal({ session, existingEntry, onSave, onClose }: Feedb
         <div className="mt-6 space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold uppercase tracking-[0.15em] text-stone-500">
-              Evaluation Ratings (1–5 Scale)
+              Evaluation Ratings (1–6 Scale)
             </h3>
             <span className="text-xs text-stone-400">
               {Object.keys(ratings).length} of 6 rated
@@ -296,11 +297,11 @@ export function FeedbackModal({ session, existingEntry, onSave, onClose }: Feedb
                   "{dimension.statement}"
                 </p>
 
-                {/* Likert Buttons 1 to 5 */}
+                {/* Likert Buttons 1 to 6 */}
                 <div
                   role="radiogroup"
                   aria-label={dimension.shortLabel}
-                  className="mt-3 grid grid-cols-5 gap-1.5 sm:gap-2"
+                  className="mt-3 grid grid-cols-6 gap-1.5 sm:gap-2"
                 >
                   {LIKERT_OPTIONS.map((opt) => {
                     const isSelected = currentScore === opt.score;

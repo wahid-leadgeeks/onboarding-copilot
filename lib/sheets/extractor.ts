@@ -2,6 +2,8 @@ import type { Activity } from '@/lib/types/activity';
 import type { StoredDiary } from '@/lib/local-records';
 import { parseScheduleFromMatrix, parseDiarySheet } from '@/lib/import/import-schedule';
 import { parseXlsxSheets } from '@/lib/import/xlsx';
+import { formatFeedbackDate, parseLikertScore } from '@/lib/feedback';
+import type { FeedbackEntry, FeedbackRatings } from '@/lib/types/feedback';
 
 export interface ExtractedTimelineItem {
   stageNumber: string;
@@ -21,6 +23,13 @@ export interface ExtractedFeedbackItem {
   pic: string;
   topic?: string;
   department?: string;
+  date?: string;
+  ratings?: Partial<FeedbackRatings>;
+  hasQuestions?: boolean;
+  questionExplanation?: string;
+  questionAddressing?: string;
+  suggestions?: string;
+  isEvaluated?: boolean;
 }
 
 export interface ExtractedSheetSummary {
@@ -67,7 +76,9 @@ export interface ExtractedSpreadsheetContent {
   };
   feedback?: {
     sessions: ExtractedFeedbackItem[];
+    entries?: FeedbackEntry[];
     count: number;
+    evaluatedCount?: number;
   };
   rawMatrices?: Record<string, string[][]>;
 }
@@ -119,34 +130,112 @@ export function parseTimelineMatrix(matrix: string[][]): ExtractedTimelineItem[]
 }
 
 /**
- * Parses Feedback Sheet rows from a 2D matrix (rows 4-16 in HR workbook).
+ * Parses Feedback Sheet rows from a 2D matrix (rows 3-16 in HR workbook).
  */
 export function parseFeedbackMatrix(matrix: string[][]): ExtractedFeedbackItem[] {
   if (matrix.length < 2) return [];
 
   const items: ExtractedFeedbackItem[] = [];
 
+  let picIndex = 1;
+  let topicIndex = 2;
+
+  // Check first few rows for header positions
+  for (let i = 0; i < Math.min(3, matrix.length); i++) {
+    const r = matrix[i];
+    const c1 = (r[1] || '').trim().toLowerCase();
+    const c2 = (r[2] || '').trim().toLowerCase();
+    if (c1.includes('pic') && (c2.includes('topic') || c2.includes('session'))) {
+      picIndex = 1;
+      topicIndex = 2;
+      break;
+    } else if ((c1.includes('topic') || c1.includes('session')) && c2.includes('pic')) {
+      picIndex = 2;
+      topicIndex = 1;
+      break;
+    }
+  }
+
   for (let i = 0; i < matrix.length; i++) {
     const row = matrix[i];
     if (!row.some((c) => c && c.trim())) continue;
 
-    // Detect session rows (usually have a number or title in col A/B and PIC in col C)
-    const col0 = (row[0] || '').trim();
-    const col1 = (row[1] || '').trim();
-    const col2 = (row[2] || '').trim();
+    const rowJoined = row.join(' ').toLowerCase();
+    const c1 = (row[1] || '').trim().toLowerCase();
+    const c2 = (row[2] || '').trim().toLowerCase();
 
-    // Check if col1 looks like a session title
-    const isHeader = col0.toLowerCase().includes('no') || col1.toLowerCase().includes('session') || col1.toLowerCase().includes('topic');
-    if (isHeader) continue;
-
-    if (col1 && col1.length > 3) {
-      items.push({
-        rowNumber: i + 1,
-        sessionTitle: col1,
-        pic: col2 || '',
-        topic: col1,
-      });
+    // Skip header rows (e.g. Row 1, Row 2, or generic No/Session/PIC headers)
+    if (
+      rowJoined.includes('insert date') ||
+      rowJoined.includes('feedback rating') ||
+      rowJoined.includes('key messages') ||
+      rowJoined.includes('content aligned') ||
+      rowJoined.includes('aligned well') ||
+      rowJoined.includes('reviewer') ||
+      (c1.includes('pic') && (c2.includes('topic') || c2.includes('session'))) ||
+      ((c1.includes('topic') || c1.includes('session')) && c2.includes('pic'))
+    ) {
+      continue;
     }
+
+    const dateRaw = (row[0] || '').trim();
+    const pic = (row[picIndex] || '').trim();
+    const topic = (row[topicIndex] || '').trim();
+
+    // Must have topic or pic and not be another header variant
+    if (!topic && !pic) continue;
+    if (pic.toLowerCase() === 'pic' && topic.toLowerCase() === 'topic') continue;
+
+    const rowNumber = i + 1;
+    const sessionTitle = topic || `Session at Row ${rowNumber}`;
+
+    // Extract Likert Ratings from columns D–I (indices 3 to 8)
+    const comm = parseLikertScore(row[3]);
+    const align = parseLikertScore(row[4]);
+    const under = parseLikertScore(row[5]);
+    const ready = parseLikertScore(row[6]);
+    const pace = parseLikertScore(row[7]);
+    const overall = parseLikertScore(row[8]);
+
+    const ratings: Partial<FeedbackRatings> = {};
+    if (comm) ratings.communication = comm;
+    if (align) ratings.alignment = align;
+    if (under) ratings.understanding = under;
+    if (ready) ratings.readiness = ready;
+    if (pace) ratings.pace = pace;
+    if (overall) ratings.overall = overall;
+
+    const hasAllRatings = Boolean(comm && align && under && ready && pace && overall);
+
+    // Qualitative fields:
+    // Col J (index 9): Questions? (YES/NO)
+    const rawQ = (row[9] || '').trim().toUpperCase();
+    const hasQuestions = rawQ === 'YES';
+
+    // Col K (index 10): Explanation
+    const questionExplanation = (row[10] || '').trim() || undefined;
+
+    // Col L (index 11): How addressed
+    const questionAddressing = (row[11] || '').trim() || undefined;
+
+    // Col M (index 12): Suggestions
+    const suggestions = (row[12] || '').trim() || undefined;
+
+    const date = dateRaw && !dateRaw.toLowerCase().includes('dd/mm') ? dateRaw : undefined;
+
+    items.push({
+      rowNumber,
+      sessionTitle,
+      pic: pic || '',
+      topic: sessionTitle,
+      date,
+      ratings: Object.keys(ratings).length > 0 ? ratings : undefined,
+      hasQuestions,
+      questionExplanation,
+      questionAddressing,
+      suggestions,
+      isEvaluated: hasAllRatings,
+    });
   }
 
   return items;
@@ -281,9 +370,37 @@ export function extractContentFromMatrices(
   let feedbackResult: ExtractedSpreadsheetContent['feedback'] | undefined;
   if (feedbackMatrix) {
     const sessions = parseFeedbackMatrix(feedbackMatrix);
+    const entries: FeedbackEntry[] = [];
+    for (const s of sessions) {
+      if (
+        s.isEvaluated &&
+        s.ratings &&
+        s.ratings.communication &&
+        s.ratings.alignment &&
+        s.ratings.understanding &&
+        s.ratings.readiness &&
+        s.ratings.pace &&
+        s.ratings.overall
+      ) {
+        entries.push({
+          sessionId: `row-${s.rowNumber}`,
+          sessionTitle: s.sessionTitle,
+          pic: s.pic,
+          date: s.date || formatFeedbackDate(new Date()),
+          ratings: s.ratings as FeedbackRatings,
+          hasQuestions: Boolean(s.hasQuestions),
+          questionExplanation: s.questionExplanation,
+          questionAddressing: s.questionAddressing,
+          suggestions: s.suggestions,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
     feedbackResult = {
       sessions,
+      entries,
       count: sessions.length,
+      evaluatedCount: entries.length,
     };
   }
 

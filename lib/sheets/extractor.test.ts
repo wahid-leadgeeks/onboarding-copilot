@@ -88,7 +88,19 @@ describe('Google Sheets Extractor', () => {
 
       // Verify Feedback extraction
       expect(result.feedback).toBeDefined();
-      expect(result.feedback?.count).toBeGreaterThanOrEqual(10);
+      expect(result.feedback?.count).toBe(14);
+      expect(result.feedback?.sessions[0].sessionTitle).toBe('Introduction to Company');
+      expect(result.feedback?.sessions[0].pic).toBe('Managing Director');
+      expect(result.feedback?.sessions[0].rowNumber).toBe(3);
+      expect(result.feedback?.sessions[0].isEvaluated).toBe(true);
+      expect(result.feedback?.sessions[0].ratings?.communication).toBe(5);
+      expect(result.feedback?.evaluatedCount).toBe(1);
+      expect(result.feedback?.entries).toHaveLength(1);
+      expect(result.feedback?.entries?.[0].sessionId).toBe('row-3');
+      expect(result.feedback?.entries?.[0].hasQuestions).toBe(false);
+      expect(result.feedback?.entries?.[0].questionExplanation).toBe(
+        'The session gave me a clear overview of the company, its background, and main activities.'
+      );
     });
   });
 
