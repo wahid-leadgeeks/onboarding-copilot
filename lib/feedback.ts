@@ -19,7 +19,9 @@ import type {
   FeedbackSessionStatus,
   LikertLabel,
   LikertScore,
+  QuestionAddressingOption,
 } from '@/lib/types/feedback';
+import { QUESTION_ADDRESSING_OPTIONS } from '@/lib/types/feedback';
 
 export * from '@/lib/types/feedback';
 
@@ -272,6 +274,40 @@ export function parseLikertScore(raw: unknown): LikertScore | undefined {
     }
   }
   return undefined;
+}
+
+/**
+ * Normalizes question addressing value to match official Google Sheets choices if matching.
+ */
+export function normalizeQuestionAddressing(val: unknown): string {
+  if (typeof val !== 'string') return '';
+  const trimmed = val.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === 'chat response is fine' || lower.includes('chat response') || lower === 'chat') {
+    return 'Chat response is fine';
+  }
+  if (
+    lower === "i don't have any questions today" ||
+    lower === 'i dont have any questions today' ||
+    lower.includes("don't have any question") ||
+    lower.includes('dont have any question') ||
+    lower === 'no questions' ||
+    lower === 'no question'
+  ) {
+    return "I don't have any questions today";
+  }
+  if (lower.includes('schedule') && lower.includes('meeting')) {
+    return 'I’d like to schedule aN online live meeting';
+  }
+  return trimmed;
+}
+
+/**
+ * Checks whether a given question addressing string is one of the official Google Sheets options.
+ */
+export function isStandardQuestionAddressing(val: unknown): val is QuestionAddressingOption {
+  if (typeof val !== 'string') return false;
+  return (QUESTION_ADDRESSING_OPTIONS as readonly string[]).includes(val);
 }
 
 /**

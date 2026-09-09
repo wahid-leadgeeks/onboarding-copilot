@@ -101,6 +101,7 @@ describe('Google Sheets Extractor', () => {
       expect(result.feedback?.entries?.[0].questionExplanation).toBe(
         'The session gave me a clear overview of the company, its background, and main activities.'
       );
+      expect(result.feedback?.entries?.[0].questionAddressing).toBe("I don't have any questions today");
     });
   });
 

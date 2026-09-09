@@ -9,6 +9,9 @@ import {
   formatFeedbackDate,
   formatLikertLabel,
   isFeedbackEntry,
+  isStandardQuestionAddressing,
+  normalizeQuestionAddressing,
+  QUESTION_ADDRESSING_OPTIONS,
   readFeedbackEntries,
   removeFeedbackEntry,
   toLikertLabel,
@@ -850,6 +853,53 @@ describe('feedback system (lib/feedback)', () => {
 
       const targetBackward = tabWrapTarget('btn-2', elements, true);
       expect(targetBackward === null).toBe(true);
+    });
+  });
+
+  describe('Question Addressing choices & normalizer', () => {
+    it('defines the 3 official Google Sheets choices in QUESTION_ADDRESSING_OPTIONS', () => {
+      expect(QUESTION_ADDRESSING_OPTIONS).toEqual([
+        'Chat response is fine',
+        "I don't have any questions today",
+        'I’d like to schedule aN online live meeting',
+      ]);
+    });
+
+    it('isStandardQuestionAddressing identifies official choices', () => {
+      expect(isStandardQuestionAddressing('Chat response is fine')).toBe(true);
+      expect(isStandardQuestionAddressing("I don't have any questions today")).toBe(true);
+      expect(isStandardQuestionAddressing('I’d like to schedule aN online live meeting')).toBe(true);
+      expect(isStandardQuestionAddressing('Follow up with Sarah')).toBe(false);
+      expect(isStandardQuestionAddressing('')).toBe(false);
+      expect(isStandardQuestionAddressing(null)).toBe(false);
+    });
+
+    it('normalizeQuestionAddressing standardizes various formats into official choices', () => {
+      // Chat variations
+      expect(normalizeQuestionAddressing('Chat response is fine')).toBe('Chat response is fine');
+      expect(normalizeQuestionAddressing('chat response')).toBe('Chat response is fine');
+      expect(normalizeQuestionAddressing('chat')).toBe('Chat response is fine');
+
+      // No questions variations
+      expect(normalizeQuestionAddressing("I don't have any questions today")).toBe("I don't have any questions today");
+      expect(normalizeQuestionAddressing("i don't have any questions today")).toBe("I don't have any questions today");
+      expect(normalizeQuestionAddressing('i dont have any questions today')).toBe("I don't have any questions today");
+      expect(normalizeQuestionAddressing('no questions')).toBe("I don't have any questions today");
+
+      // Meeting variations (straight quote, lowercase an, etc.)
+      expect(normalizeQuestionAddressing("I'd like to schedule an online live meeting")).toBe(
+        'I’d like to schedule aN online live meeting'
+      );
+      expect(normalizeQuestionAddressing('I’d like to schedule aN online live meeting')).toBe(
+        'I’d like to schedule aN online live meeting'
+      );
+
+      // Custom values are preserved
+      expect(normalizeQuestionAddressing('Sync with HRD via Slack tomorrow')).toBe(
+        'Sync with HRD via Slack tomorrow'
+      );
+      expect(normalizeQuestionAddressing('')).toBe('');
+      expect(normalizeQuestionAddressing(123)).toBe('');
     });
   });
 });

@@ -2,7 +2,7 @@ import type { Activity } from '@/lib/types/activity';
 import type { StoredDiary } from '@/lib/local-records';
 import { parseScheduleFromMatrix, parseDiarySheet } from '@/lib/import/import-schedule';
 import { parseXlsxSheets } from '@/lib/import/xlsx';
-import { formatFeedbackDate, parseLikertScore } from '@/lib/feedback';
+import { formatFeedbackDate, parseLikertScore, normalizeQuestionAddressing } from '@/lib/feedback';
 import type { FeedbackEntry, FeedbackRatings } from '@/lib/types/feedback';
 
 export interface ExtractedTimelineItem {
@@ -216,7 +216,8 @@ export function parseFeedbackMatrix(matrix: string[][]): ExtractedFeedbackItem[]
     const questionExplanation = (row[10] || '').trim() || undefined;
 
     // Col L (index 11): How addressed
-    const questionAddressing = (row[11] || '').trim() || undefined;
+    const rawAddressing = (row[11] || '').trim();
+    const questionAddressing = rawAddressing ? normalizeQuestionAddressing(rawAddressing) : undefined;
 
     // Col M (index 12): Suggestions
     const suggestions = (row[12] || '').trim() || undefined;
