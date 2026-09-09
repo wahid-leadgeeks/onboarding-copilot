@@ -310,6 +310,47 @@ describe('/api/sheets/update-cell route', () => {
       expect(updateRangeSpy.mock.calls.length).toBe(2);
     });
 
+    it('updates Feedback Sheet for batch entries', async () => {
+      jest.spyOn(sessionModule, 'getSessionAccessToken').mockResolvedValue('valid-token');
+      const updateRangeSpy = jest.spyOn(extractorModule, 'updateSheetRange').mockResolvedValue({
+        updatedRange: "'Feedback Sheet'!A3:M3",
+        updatedRows: 1,
+        updatedColumns: 13,
+        updatedCells: 13,
+      });
+
+      const req = new Request('http://localhost/api/sheets/update-cell', {
+        method: 'POST',
+        body: JSON.stringify({
+          sheet: 'Feedback Sheet',
+          entries: [
+            {
+              sessionId: 'row-3',
+              date: '2026-09-10',
+              pic: 'Managing Director',
+              ratings: { communication: 6, alignment: 6, understanding: 6, readiness: 6, pace: 6, overall: 6 },
+              hasQuestions: false,
+            },
+            {
+              sessionId: 'row-5',
+              date: '2026-09-10',
+              pic: 'HRD',
+              ratings: { communication: 5, alignment: 5, understanding: 5, readiness: 5, pace: 5, overall: 5 },
+              hasQuestions: false,
+            },
+          ],
+        }),
+      });
+
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.updatedCount).toBe(2);
+      expect(data.updatedRows).toEqual([3, 5]);
+      expect(updateRangeSpy.mock.calls.length).toBe(2);
+    });
+
     it('rejects invalid Feedback row numbers', async () => {
       jest.spyOn(sessionModule, 'getSessionAccessToken').mockResolvedValue('valid-token');
 
