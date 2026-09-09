@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PrimaryNav } from '@/app/components/PrimaryNav';
 import { ScheduleCard } from '@/app/components/ScheduleCard';
 import { ActivityDetailSheet } from '@/app/components/ActivityDetailSheet';
 import { ScheduleFillModal } from '@/app/components/ScheduleFillModal';
@@ -237,8 +236,6 @@ export default function MasterSchedulePage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
-      <PrimaryNav active="Schedule" />
-
       {/* Header */}
       <header className="animate-fade-up pb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">

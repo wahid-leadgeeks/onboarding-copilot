@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState, type ChangeEvent } from 'react';
-import { PrimaryNav } from '@/app/components/PrimaryNav';
 import { pendingSyncStorageKey, readPendingSyncs, removePendingSync, writePendingSyncs } from '@/lib/sync-queue';
 import { IMPORTED_SCHEDULE_STORAGE_KEY, readImportedSchedule, writeImportedSchedule, type ImportedSchedule } from '@/lib/imported-schedule';
 import { DIARY_STORAGE_KEY, mergeImportedDiary, readDiary, type StoredDiary } from '@/lib/local-records';
@@ -217,7 +216,7 @@ export default function SettingsPage() {
     }
   }, [session?.authenticated, extractResult, extracting, extractError]);
 
-  return <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8"><PrimaryNav active="Settings" />
+  return <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
     <header className="animate-fade-up pb-8"><p className="text-sm font-medium text-stone-500">Preferences</p><h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">Settings</h1><p className="mt-3 text-lg text-stone-600">Your app, your way.</p></header>
     <section className="animate-fade-up stagger-1 mt-10 rounded-card bg-white p-6 shadow-soft sm:p-8">
       <div className="flex items-center justify-between">

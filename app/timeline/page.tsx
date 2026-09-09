@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PrimaryNav } from '@/app/components/PrimaryNav';
 import {
   TIMELINE_STAGES,
   TIMELINE_STORAGE_KEY,
@@ -125,8 +124,6 @@ export default function TimelinePage() {
       data-hydrated={isHydrated}
       className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8"
     >
-      <PrimaryNav active="Timeline" />
-
       {/* Header */}
       <header className="animate-fade-up pb-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
