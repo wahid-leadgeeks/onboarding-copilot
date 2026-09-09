@@ -126,6 +126,14 @@
 - [x] **Milestone 4: Schedule Completion & Clipboard Copy** — Manual time tracking and schedule row export for the `Schedule` worksheet: 1-click completion with custom actual times, duration calculation, and 1-click 4-column (`clipboardRowForSchedule`, columns H–K) and 11-column (`clipboardRowForScheduleFull`, columns A–K) TSV clipboard copy on Today and Learnings.
 - [x] **Zero-defect Verification** — strict TypeScript (`pnpm typecheck`), zero ESLint errors (`pnpm lint`), 28 test suites / 481 tests passing (`pnpm test`), and Next.js production build (`pnpm build`).
 
+### UI/UX Cockpit Simplification & Progressive Disclosure (Now & Next Focus)
+
+- [x] **Separation of Concerns**: Split the cluttered multi-week schedule off of Today (`/`), creating a dedicated Master Schedule page (`/schedule`) for multi-week browsing, search, and day/status filtering.
+- [x] **High-Focus Today Cockpit**: Redesigned `/` around the primary question "What should I do now?", featuring hero timer, daily pulse progress, and clean 1-row task cards with active focus indicators.
+- [x] **Smart Fallback Agenda**: Displays upcoming journey activities when 0 activities are explicitly scheduled on the calendar date (weekends / off-calendar days).
+- [x] **Progressive Disclosure Slide-over Sheet**: Created `ActivityDetailSheet` (right-side drawer on desktop, bottom sheet on mobile) to reveal subtopic outlines, timing, PIC, media, notes, TSV copy, and direct Google Sheets sync on demand.
+- [x] **Navigation & Quality Gates**: Updated `PrimaryNav` with distinct `Today` and `Schedule` tabs; verified 0 errors across `pnpm typecheck`, `pnpm lint`, `pnpm test` (42 suites / 581 tests), and `pnpm build`.
+
 ---
 
 ## Bugs
