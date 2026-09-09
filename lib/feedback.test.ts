@@ -4,6 +4,7 @@ import {
   FEEDBACK_STORAGE_KEY,
   REQUIRED_FEEDBACK_SESSIONS,
   calculateFeedbackProgress,
+  clipboardBlockForFeedback,
   clipboardRowForFeedback,
   findFeedbackSession,
   formatFeedbackDate,
@@ -900,6 +901,43 @@ describe('feedback system (lib/feedback)', () => {
       );
       expect(normalizeQuestionAddressing('')).toBe('');
       expect(normalizeQuestionAddressing(123)).toBe('');
+    });
+  });
+
+  describe('clipboardBlockForFeedback', () => {
+    it('generates exactly 14 rows matching FEEDBACK_SESSIONS', () => {
+      const entries: FeedbackEntry[] = [
+        {
+          id: 'fb-row-3',
+          sessionId: 'row-3',
+          sessionTitle: 'Introduction to Company',
+          pic: 'Managing Director',
+          date: '10/09/2026',
+          ratings: { communication: 5, alignment: 5, understanding: 5, readiness: 5, pace: 5, overall: 5 },
+          hasQuestions: false,
+          createdAt: new Date().toISOString(),
+        },
+      ];
+
+      const block = clipboardBlockForFeedback(entries);
+      const lines = block.split('\n');
+      expect(lines.length).toBe(14);
+
+      // Row 3 should have evaluated data
+      const row3Cells = lines[0].split('\t');
+      expect(row3Cells[0]).toBe('10/09/2026');
+      expect(row3Cells[1]).toBe('Managing Director');
+      expect(row3Cells[2]).toBe('Introduction to Company');
+      expect(row3Cells[3]).toBe('5. Very Good');
+      expect(row3Cells[9]).toBe('NO');
+
+      // Row 4 should be empty evaluation with preserved PIC & title
+      const row4Cells = lines[1].split('\t');
+      expect(row4Cells[0]).toBe('');
+      expect(row4Cells[1]).toBe('Managing Director');
+      expect(row4Cells[2]).toBe('Beyond the Slides: Chat with the MD');
+      expect(row4Cells[3]).toBe('');
+      expect(row4Cells[9]).toBe('');
     });
   });
 });

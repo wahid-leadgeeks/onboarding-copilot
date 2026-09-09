@@ -5,6 +5,7 @@ import {
   FEEDBACK_SESSIONS,
   FEEDBACK_STORAGE_KEY,
   calculateFeedbackProgress,
+  clipboardBlockForFeedback,
   clipboardRowForFeedback,
   readFeedbackEntries,
   upsertFeedbackEntry,
@@ -14,7 +15,7 @@ import {
 } from '@/lib/feedback';
 import { FeedbackDetailSheet } from '@/app/components/FeedbackDetailSheet';
 import { useToast } from '@/app/components/Toast';
-import { IconAlertTriangle, IconCheck } from '@/app/components/Icons';
+import { IconAlertTriangle, IconCheck, IconClipboard, IconRocket } from '@/app/components/Icons';
 
 export default function FeedbackPage() {
   const { toast } = useToast();
@@ -24,6 +25,8 @@ export default function FeedbackPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'evaluated'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
+  const [isCopiedAll, setIsCopiedAll] = useState(false);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -126,6 +129,65 @@ export default function FeedbackPage() {
     }
   }
 
+  async function pushAllToSheets() {
+    if (feedbackEntries.length === 0) {
+      toast.info('No feedback evaluations to push.');
+      return;
+    }
+
+    setIsPushing(true);
+    setSyncError(null);
+
+    try {
+      const res = await fetch('/api/sheets/update-cell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sheet: 'Feedback Sheet',
+          entries: feedbackEntries,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (res.status === 401 || data?.authenticated === false) {
+        setSyncError(
+          'Google OAuth sign-in is required to push to Google Sheets. Sign in via Settings or click "Copy Full Grid (TSV)" to paste directly.'
+        );
+        toast.error('Google OAuth sign-in required. Use "Copy Full Grid (TSV)" or sign in.');
+      } else if (res.ok && data?.success) {
+        const count = data.updatedCount ?? feedbackEntries.length;
+        const msg = `Successfully pushed ${count} evaluation${count === 1 ? '' : 's'} directly to Google Sheets!`;
+        setSyncStatus(msg);
+        toast.success(msg);
+      } else {
+        const msg = data?.error || data?.message || 'Failed to push evaluations to Google Sheets.';
+        setSyncError(msg);
+        toast.error(msg);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Network error while pushing to Google Sheets.';
+      setSyncError(msg);
+      toast.error(msg);
+    } finally {
+      setIsPushing(false);
+    }
+  }
+
+  async function handleCopyAllTsv() {
+    const tsvBlock = clipboardBlockForFeedback(feedbackEntries);
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(tsvBlock);
+        setIsCopiedAll(true);
+        toast.success('Copied all 14 rows TSV! Select cell A3 in Google Sheets and press Ctrl+V.');
+        setTimeout(() => setIsCopiedAll(false), 3000);
+      }
+    } catch {
+      toast.error('Failed to copy to clipboard.');
+    }
+  }
+
   const progress = calculateFeedbackProgress(feedbackEntries);
 
   const filteredSessions = FEEDBACK_SESSIONS.map((session) => ({
@@ -165,17 +227,53 @@ export default function FeedbackPage() {
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
       {/* Header */}
       <header className="animate-fade-up pb-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
             Worksheet: Feedback Sheet (Columns A–M)
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Push to Sheets Action */}
+            <button
+              type="button"
+              onClick={() => void pushAllToSheets()}
+              disabled={isPushing || feedbackEntries.length === 0}
+              aria-label="Push all saved evaluations to Google Sheets"
+              className="inline-flex items-center gap-1.5 rounded-full bg-mint-700 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs transition hover:bg-mint-800 active:scale-95 disabled:opacity-50"
+              title="Push all saved evaluations into your Google Sheet"
+            >
+              <IconRocket className={`size-3.5 ${isPushing ? 'animate-spin' : ''}`} />
+              <span>{isPushing ? 'Pushing…' : `Push All to Sheets (${feedbackEntries.length})`}</span>
+            </button>
+
+            {/* Copy Full Grid TSV Fallback */}
+            <button
+              type="button"
+              onClick={() => void handleCopyAllTsv()}
+              aria-label="Copy all rows TSV for pasting into cell A3"
+              className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs transition hover:bg-stone-50 active:scale-95"
+              title="Copy entire Rows 3–16 block (paste starting at cell A3 in Google Sheets)"
+            >
+              {isCopiedAll ? (
+                <>
+                  <IconCheck className="size-3.5 text-mint-600" />
+                  <span className="text-mint-700 font-bold">Copied All TSV!</span>
+                </>
+              ) : (
+                <>
+                  <IconClipboard className="size-3.5 text-stone-500" />
+                  <span>Copy Full Grid (TSV)</span>
+                </>
+              )}
+            </button>
+
+            {/* Pull from Sheets */}
             <button
               type="button"
               onClick={() => void syncWithSheets(false)}
               disabled={isSyncing}
-              aria-label="Sync feedback from Google Sheets"
-              className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs font-semibold text-stone-700 shadow-2xs transition hover:bg-stone-50 disabled:opacity-60"
+              aria-label="Pull feedback from Google Sheets"
+              className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs transition hover:bg-stone-50 disabled:opacity-60"
+              title="Import feedback rows from Google Sheets into NOVA"
             >
               <svg
                 className={`size-3.5 ${isSyncing ? 'animate-spin text-stone-900' : 'text-stone-500'}`}
@@ -190,8 +288,9 @@ export default function FeedbackPage() {
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
-              <span>{isSyncing ? 'Syncing...' : 'Sync Sheet'}</span>
+              <span>{isSyncing ? 'Pulling…' : 'Pull Sheet'}</span>
             </button>
+
             <span className="rounded-full bg-sun-50 px-3 py-1 text-xs font-semibold text-sun-800">
               {progress.evaluatedCount} / {progress.totalCount} Evaluated
             </span>
@@ -206,18 +305,53 @@ export default function FeedbackPage() {
           </p>
         </div>
 
-        {syncError && (
-          <div className="animate-fade-up mt-3 flex items-center justify-between rounded-2xl border border-peach-200 bg-peach-50 px-4 py-3 text-xs text-peach-900">
+        {syncStatus && (
+          <div className="animate-fade-up mt-3 flex items-center justify-between rounded-2xl border border-mint-200 bg-mint-50 px-4 py-3 text-xs text-mint-900">
             <div className="flex items-center gap-2">
-              <IconAlertTriangle className="size-4 shrink-0 text-peach-600" />
-              <span>{syncError}</span>
+              <IconCheck className="size-4 shrink-0 text-mint-600" />
+              <span>{syncStatus}</span>
             </div>
-            <a
-              href="/settings"
-              className="shrink-0 font-semibold underline hover:text-peach-700 ml-2"
+            <button
+              type="button"
+              onClick={() => setSyncStatus(null)}
+              className="text-mint-700 hover:text-mint-900 font-bold ml-2 text-xs"
             >
-              Open Settings
-            </a>
+              ✕
+            </button>
+          </div>
+        )}
+
+        {syncError && (
+          <div className="animate-fade-up mt-3 rounded-2xl border border-peach-200 bg-peach-50 px-4 py-3 text-xs text-peach-900 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <IconAlertTriangle className="size-4 shrink-0 text-peach-600" />
+                <span>{syncError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSyncError(null)}
+                className="text-peach-700 hover:text-peach-900 font-bold ml-2 text-xs"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-peach-200/60">
+              <a
+                href="/settings"
+                className="inline-flex items-center gap-1 rounded-lg bg-stone-900 px-3 py-1 text-xs font-semibold text-white hover:bg-stone-800 transition"
+              >
+                Connect Google in Settings →
+              </a>
+              <button
+                type="button"
+                onClick={() => void handleCopyAllTsv()}
+                className="inline-flex items-center gap-1 rounded-lg border border-peach-300 bg-white px-3 py-1 text-xs font-semibold text-peach-900 hover:bg-peach-100 transition"
+              >
+                <IconClipboard className="size-3.5" />
+                <span>Copy Full Grid (TSV) &amp; Paste into Cell A3</span>
+              </button>
+            </div>
           </div>
         )}
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSessionAccessToken } from '@/lib/auth/session';
 import { updateSheetCell, updateSheetRange, getSheetRange } from '@/lib/sheets/extractor';
 import {
+  findFeedbackSession,
   formatFeedbackRowValues,
   type FeedbackClipboardInput,
   type FeedbackEntry,
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
     progress?: string;
     spreadsheetId?: string;
     feedback?: FeedbackEntry | FeedbackClipboardInput;
+    entries?: Array<FeedbackEntry | (FeedbackClipboardInput & { rowNumber?: number; sessionId?: string })>;
     date?: string;
     pic?: string;
     topic?: string;
@@ -131,7 +133,44 @@ export async function POST(request: Request) {
       });
     }
 
-    // 2. If updating Feedback Sheet (Cols A–M: Date, PIC, Topic, Likert 1-6, Questions?, Explanation, Addressing, Suggestions)
+    // 2. If updating Feedback Sheet in batch (multiple entries)
+    if (isFeedbackSheet && Array.isArray(body?.entries) && body.entries.length > 0) {
+      const primarySheet = body?.sheet === 'Feedback' ? 'Feedback' : 'Feedback Sheet';
+      const updatedRows: number[] = [];
+
+      for (const item of body.entries) {
+        const session = item.sessionId ? findFeedbackSession(item.sessionId) : undefined;
+        const row =
+          ('rowNumber' in item && typeof item.rowNumber === 'number'
+            ? item.rowNumber
+            : undefined) ||
+          session?.rowNumber ||
+          (item.sessionId ? parseInt(item.sessionId.replace(/\D/g, ''), 10) : undefined);
+
+        if (typeof row === 'number' && row >= 3 && row <= 50) {
+          const rowValues = formatFeedbackRowValues(item);
+          const range = `'${primarySheet}'!A${row}:M${row}`;
+          try {
+            await updateSheetRange(spreadsheetId, range, [rowValues], { accessToken });
+            updatedRows.push(row);
+          } catch {
+            const altSheet = primarySheet === 'Feedback Sheet' ? 'Feedback' : 'Feedback Sheet';
+            const altRange = `'${altSheet}'!A${row}:M${row}`;
+            await updateSheetRange(spreadsheetId, altRange, [rowValues], { accessToken });
+            updatedRows.push(row);
+          }
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        sheet: primarySheet,
+        updatedCount: updatedRows.length,
+        updatedRows,
+      });
+    }
+
+    // 3. If updating Feedback Sheet for a single row (Cols A–M: Date, PIC, Topic, Likert 1-6, Questions?, Explanation, Addressing, Suggestions)
     if (isFeedbackSheet && typeof body?.rowNumber === 'number') {
       const row = body.rowNumber;
       if (row < 3 || row > 50) {

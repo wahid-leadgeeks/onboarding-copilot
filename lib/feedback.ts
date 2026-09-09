@@ -598,3 +598,40 @@ export function formatFeedbackRowValues(entry: FeedbackEntry | FeedbackClipboard
 export function clipboardRowForFeedback(entry: FeedbackEntry | FeedbackClipboardInput): string {
   return formatFeedbackRowValues(entry).map(escapeTsvCell).join('\t');
 }
+
+/**
+ * Serializes all 14 official feedback sessions (rows 3–16) into a complete multi-line TSV block
+ * for columns A–M. Designed for 1-click paste starting at cell A3 in 'Feedback Sheet'.
+ */
+export function clipboardBlockForFeedback(entries: FeedbackEntry[]): string {
+  const lines: string[] = [];
+
+  for (const session of FEEDBACK_SESSIONS) {
+    const entry = entries.find(
+      (e) => e.sessionId === session.id || e.sessionId === `row-${session.rowNumber}`
+    );
+
+    if (entry) {
+      lines.push(clipboardRowForFeedback(entry));
+    } else {
+      const emptyRow = [
+        '',
+        session.pic,
+        session.title,
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+      ];
+      lines.push(emptyRow.map(escapeTsvCell).join('\t'));
+    }
+  }
+
+  return lines.join('\n');
+}
