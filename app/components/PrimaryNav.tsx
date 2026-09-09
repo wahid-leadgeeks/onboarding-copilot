@@ -1,7 +1,8 @@
 import { NovaLogo } from '@/app/components/NovaLogo';
 
 const destinations = [
-  { label: 'Schedule', href: '/' },
+  { label: 'Today', href: '/' },
+  { label: 'Schedule', href: '/schedule' },
   { label: 'Timeline', href: '/timeline' },
   { label: 'Diary', href: '/diary' },
   { label: 'Feedback', href: '/feedback' },
@@ -11,6 +12,7 @@ const destinations = [
 ] as const;
 
 export type NavTab =
+  | 'Today'
   | 'Schedule'
   | 'Timeline'
   | 'Diary'
@@ -18,7 +20,6 @@ export type NavTab =
   | 'Reviews'
   | 'Glossary'
   | 'Settings'
-  | 'Today'
   | 'Journey'
   | 'Learnings';
 
@@ -26,7 +27,8 @@ import { IconSearch } from './Icons';
 
 export function PrimaryNav({ active }: { active: NavTab }) {
   const isTabActive = (label: string) => {
-    if (label === 'Schedule') return active === 'Schedule' || active === 'Today';
+    if (label === 'Today') return active === 'Today';
+    if (label === 'Schedule') return active === 'Schedule';
     if (label === 'Timeline') return active === 'Timeline' || active === 'Journey';
     if (label === 'Diary') return active === 'Diary' || active === 'Learnings';
     return active === label;
