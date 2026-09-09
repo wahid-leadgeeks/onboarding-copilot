@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PrimaryNav } from '@/app/components/PrimaryNav';
 import {
   FEEDBACK_SESSIONS,
   FEEDBACK_STORAGE_KEY,
@@ -164,8 +163,6 @@ export default function FeedbackPage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
-      <PrimaryNav active="Feedback" />
-
       {/* Header */}
       <header className="animate-fade-up pb-5">
         <div className="flex flex-wrap items-center justify-between gap-2">

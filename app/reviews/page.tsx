@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { PrimaryNav } from '@/app/components/PrimaryNav';
 import {
   HARPS_VALUES,
   OFFICIAL_MONTHLY_REVIEWS,
@@ -101,8 +100,6 @@ export default function ReviewsPage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
-      <PrimaryNav active="Reviews" />
-
       {/* Header */}
       <header className="animate-fade-up pb-5">
         <div className="flex flex-wrap items-center justify-between gap-2">

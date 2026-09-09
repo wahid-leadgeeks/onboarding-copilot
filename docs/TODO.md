@@ -133,7 +133,8 @@
 - [x] **Smart Fallback Agenda**: Displays upcoming journey activities when 0 activities are explicitly scheduled on the calendar date (weekends / off-calendar days).
 - [x] **Progressive Disclosure Slide-over Sheet**: Created `ActivityDetailSheet` (right-side drawer on desktop, bottom sheet on mobile) to reveal subtopic outlines, timing, PIC, media, notes, TSV copy, and direct Google Sheets sync on demand.
 - [x] **App-Wide Progressive Disclosure Rollout**: Extended the cockpit + slide-over drawer pattern across Feedback (`/feedback`), Diary (`/diary`), Timeline (`/timeline`), Monthly Reviews (`/reviews`), and Glossary (`/glossary`) with `FeedbackDetailSheet`, `DiaryDetailSheet`, `StageDetailSheet`, `ReviewDetailSheet`, and `GlossaryDetailSheet`, achieving 100% design system consistency with sequential Prev/Next navigation and inline edit toggle without nested modals.
-- [x] **Navigation & Quality Gates**: Updated `PrimaryNav` with distinct `Today` and `Schedule` tabs; verified 0 errors across `pnpm typecheck`, `pnpm lint`, `pnpm test` (42 suites / 581 tests), and `pnpm build`.
+- [x] **Persistent Sidebar Navigation Shell**: Migrated horizontal header navigation into an ergonomic `AppShell` with desktop left sidebar, categorized sections (Daily Execution, Milestones & Growth, Reflections & Input, System & Knowledge), quick `⌘K` search trigger, and mobile slide-out drawer.
+- [x] **Navigation & Quality Gates**: Verified 0 errors across `pnpm typecheck`, `pnpm lint`, `pnpm test` (42 suites / 581 tests), and `pnpm build`.
 
 ---
 

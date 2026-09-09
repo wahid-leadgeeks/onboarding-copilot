@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { isActivityList } from '@/lib/sheets/types';
 import type { Activity } from '@/lib/types/activity';
-import { PrimaryNav } from '@/app/components/PrimaryNav';
 import { QuickNote } from '@/app/components/QuickNote';
 import { GuideTour, todayTourSteps } from '@/app/components/GuideTour';
 import { LearningModal } from '@/app/components/LearningModal';
@@ -773,7 +772,6 @@ export default function TodayPage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
-      <PrimaryNav active="Today" />
       <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2">
         <div role="status" data-tour="status-bar" className={`inline-flex animate-fade-up items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${statusBar.className}`}>
           <span aria-hidden="true" className={`size-2 rounded-full ${statusBar.dotColor}`} />
