@@ -14,6 +14,14 @@ export type LikertLabel =
   | '1. Very Poor'
   | '3. Neutral';
 
+export const QUESTION_ADDRESSING_OPTIONS = [
+  'Chat response is fine',
+  "I don't have any questions today",
+  'I’d like to schedule aN online live meeting',
+] as const;
+
+export type QuestionAddressingOption = (typeof QUESTION_ADDRESSING_OPTIONS)[number];
+
 export type FeedbackRatingDimension =
   | 'communication'
   | 'alignment'

@@ -3,11 +3,14 @@ import {
   FEEDBACK_DIMENSIONS,
   clipboardRowForFeedback,
   formatFeedbackDate,
+  isStandardQuestionAddressing,
+  normalizeQuestionAddressing,
   type FeedbackEntry,
   type FeedbackRatingDimension,
   type FeedbackRatings,
   type FeedbackSession,
   type LikertScore,
+  type QuestionAddressingOption,
 } from '@/lib/feedback';
 import {
   IconUser,
@@ -65,6 +68,38 @@ const LIKERT_OPTIONS: Array<{ score: LikertScore; label: string; short: string }
   { score: 1, label: '1. Very Poor', short: 'Very Poor' },
 ];
 
+interface AddressingChoiceConfig {
+  value: QuestionAddressingOption;
+  label: string;
+  badgeBg: string;
+  badgeText: string;
+  badgeBorder: string;
+}
+
+const ADDRESSING_CHOICES: AddressingChoiceConfig[] = [
+  {
+    value: 'Chat response is fine',
+    label: 'Chat response is fine',
+    badgeBg: 'bg-amber-100',
+    badgeText: 'text-amber-900',
+    badgeBorder: 'border-amber-200',
+  },
+  {
+    value: "I don't have any questions today",
+    label: "I don't have any questions today",
+    badgeBg: 'bg-purple-100',
+    badgeText: 'text-purple-900',
+    badgeBorder: 'border-purple-200',
+  },
+  {
+    value: 'I’d like to schedule aN online live meeting',
+    label: 'I’d like to schedule aN online live meeting',
+    badgeBg: 'bg-sky-100',
+    badgeText: 'text-sky-900',
+    badgeBorder: 'border-sky-200',
+  },
+];
+
 export function FeedbackModal({ session, existingEntry, onSave, onClose }: FeedbackModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFocusRef = useRef<HTMLButtonElement>(null);
@@ -87,9 +122,46 @@ export function FeedbackModal({ session, existingEntry, onSave, onClose }: Feedb
     () => existingEntry?.questionExplanation ?? ''
   );
 
-  const [questionAddressing, setQuestionAddressing] = useState<string>(
-    () => existingEntry?.questionAddressing ?? ''
-  );
+  const initialAddressingNormalized = existingEntry?.questionAddressing
+    ? normalizeQuestionAddressing(existingEntry.questionAddressing)
+    : undefined;
+
+  const isInitialStandardAddressing = initialAddressingNormalized
+    ? isStandardQuestionAddressing(initialAddressingNormalized)
+    : false;
+
+  const [questionAddressing, setQuestionAddressing] = useState<string>(() => {
+    if (existingEntry?.questionAddressing !== undefined) {
+      return initialAddressingNormalized || existingEntry.questionAddressing;
+    }
+    return existingEntry?.hasQuestions ? '' : "I don't have any questions today";
+  });
+
+  const [isCustomAddressing, setIsCustomAddressing] = useState<boolean>(() => {
+    if (!existingEntry?.questionAddressing) return false;
+    return !isInitialStandardAddressing;
+  });
+
+  const [customAddressingText, setCustomAddressingText] = useState<string>(() => {
+    if (existingEntry?.questionAddressing && !isInitialStandardAddressing) {
+      return existingEntry.questionAddressing;
+    }
+    return '';
+  });
+
+  function handleNoQuestions() {
+    setHasQuestions(false);
+    if (!isCustomAddressing) {
+      setQuestionAddressing("I don't have any questions today");
+    }
+  }
+
+  function handleYesQuestions() {
+    setHasQuestions(true);
+    if (!isCustomAddressing && questionAddressing === "I don't have any questions today") {
+      setQuestionAddressing('Chat response is fine');
+    }
+  }
 
   const [suggestions, setSuggestions] = useState<string>(
     () => existingEntry?.suggestions ?? ''
@@ -350,7 +422,7 @@ export function FeedbackModal({ session, existingEntry, onSave, onClose }: Feedb
               <button
                 type="button"
                 aria-pressed={!hasQuestions}
-                onClick={() => setHasQuestions(false)}
+                onClick={handleNoQuestions}
                 className={`flex-1 rounded-xl px-4 py-2.5 text-xs font-semibold transition ${
                   !hasQuestions
                     ? 'border-2 border-mint-500 bg-mint-50 text-mint-900 shadow-xs'
@@ -362,7 +434,7 @@ export function FeedbackModal({ session, existingEntry, onSave, onClose }: Feedb
               <button
                 type="button"
                 aria-pressed={hasQuestions}
-                onClick={() => setHasQuestions(true)}
+                onClick={handleYesQuestions}
                 className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-xs font-semibold transition ${
                   hasQuestions
                     ? 'border-2 border-peach-500 bg-peach-50 text-peach-900 shadow-xs'
@@ -398,23 +470,112 @@ export function FeedbackModal({ session, existingEntry, onSave, onClose }: Feedb
 
           {/* Q3: How Addressed (Col L) */}
           <div>
-            <label
-              htmlFor="feedback-addressing"
-              className="block text-sm font-medium text-stone-900"
-            >
-              How would you like your question to be addressed?
-            </label>
-            <p className="text-xs text-stone-500">
-              Matches column L of Feedback Sheet (e.g. 1-on-1 call, Slack thread, docs, or "No follow-up needed").
+            <div className="flex items-center justify-between">
+              <label
+                id="feedback-addressing-label"
+                className="block text-sm font-medium text-stone-900"
+              >
+                How would you like your question to be addressed?
+              </label>
+              <span className="text-xs text-stone-400">Column L</span>
+            </div>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Select one of the official options from the Feedback Sheet or specify custom instructions.
             </p>
-            <textarea
-              id="feedback-addressing"
-              rows={2}
-              value={questionAddressing}
-              onChange={(e) => setQuestionAddressing(e.target.value)}
-              placeholder="e.g. 15-minute sync with HRD or documentation link via Slack..."
-              className="mt-2 w-full rounded-xl border border-stone-200 p-3 text-sm text-stone-900 placeholder-stone-400 focus:border-stone-400 focus:outline-none"
-            />
+
+            {/* Standard Spreadsheet Choices */}
+            <div
+              role="radiogroup"
+              aria-labelledby="feedback-addressing-label"
+              className="mt-2.5 space-y-2"
+            >
+              {ADDRESSING_CHOICES.map((choice) => {
+                const isSelected = !isCustomAddressing && questionAddressing === choice.value;
+                return (
+                  <button
+                    key={choice.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    onClick={() => {
+                      setIsCustomAddressing(false);
+                      setQuestionAddressing(choice.value);
+                    }}
+                    className={`flex w-full items-center justify-between gap-3 rounded-2xl p-3 text-left transition ${
+                      isSelected
+                        ? 'border-2 border-stone-900 bg-stone-50/80 shadow-2xs'
+                        : 'border border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`flex size-4 shrink-0 items-center justify-center rounded-full border transition ${
+                          isSelected
+                            ? 'border-stone-900 bg-stone-900'
+                            : 'border-stone-300 bg-white'
+                        }`}
+                      >
+                        {isSelected && <span className="size-1.5 rounded-full bg-white" />}
+                      </span>
+                      <span
+                        className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium ${choice.badgeBg} ${choice.badgeText} ${choice.badgeBorder}`}
+                      >
+                        {choice.label}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+
+              {/* Custom / Other Choice */}
+              <button
+                type="button"
+                role="radio"
+                aria-checked={isCustomAddressing}
+                onClick={() => {
+                  setIsCustomAddressing(true);
+                  const textToUse = customAddressingText || (isStandardQuestionAddressing(questionAddressing) ? '' : questionAddressing);
+                  setQuestionAddressing(textToUse);
+                }}
+                className={`flex w-full items-center justify-between gap-3 rounded-2xl p-3 text-left transition ${
+                  isCustomAddressing
+                    ? 'border-2 border-stone-900 bg-stone-50/80 shadow-2xs'
+                    : 'border border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50/50'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span
+                    className={`flex size-4 shrink-0 items-center justify-center rounded-full border transition ${
+                      isCustomAddressing
+                        ? 'border-stone-900 bg-stone-900'
+                        : 'border-stone-300 bg-white'
+                    }`}
+                  >
+                    {isCustomAddressing && <span className="size-1.5 rounded-full bg-white" />}
+                  </span>
+                  <span className="text-xs font-medium text-stone-700">
+                    Other / Custom follow-up instructions...
+                  </span>
+                </div>
+              </button>
+            </div>
+
+            {/* Custom Input Field (shown when Custom is active) */}
+            {isCustomAddressing && (
+              <div className="animate-fade-up mt-2">
+                <textarea
+                  id="feedback-addressing"
+                  rows={2}
+                  value={customAddressingText}
+                  onChange={(e) => {
+                    setCustomAddressingText(e.target.value);
+                    setQuestionAddressing(e.target.value);
+                  }}
+                  placeholder="Specify custom follow-up (e.g. 15-minute sync with HRD or docs via Slack)..."
+                  className="w-full rounded-xl border border-stone-300 p-3 text-sm text-stone-900 placeholder-stone-400 focus:border-stone-900 focus:outline-none"
+                />
+              </div>
+            )}
           </div>
 
           {/* Q4: Suggestions (Col M) */}

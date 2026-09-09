@@ -328,9 +328,27 @@ export default function FeedbackPage() {
                       PIC: {session.pic} {session.department && `· ${session.department}`}
                     </p>
                     {entry && (
-                      <p className="mt-1 text-xs text-stone-500">
-                        Evaluated on {entry.date} · Overall rating: <span className="font-semibold text-mint-700">{entry.ratings.overall}/5</span>
-                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-stone-500">
+                        <span>
+                          Evaluated on {entry.date} · Overall rating:{' '}
+                          <span className="font-semibold text-mint-700">{entry.ratings.overall}/6</span>
+                        </span>
+                        {entry.questionAddressing && (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[11px] font-medium border ${
+                              entry.questionAddressing === 'Chat response is fine'
+                                ? 'bg-amber-50 text-amber-900 border-amber-200'
+                                : entry.questionAddressing === "I don't have any questions today"
+                                  ? 'bg-purple-50 text-purple-900 border-purple-200'
+                                  : entry.questionAddressing.includes('meeting')
+                                    ? 'bg-sky-50 text-sky-900 border-sky-200'
+                                    : 'bg-stone-100 text-stone-700 border-stone-200'
+                            }`}
+                          >
+                            {entry.questionAddressing}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
