@@ -11,8 +11,7 @@ import type { LearningActivityContext, LearningSubmission } from '@/app/componen
 import { ScheduleFillModal } from '@/app/components/ScheduleFillModal';
 import { useToast } from '@/app/components/Toast';
 import { ConfirmDialog } from '@/app/components/ConfirmDialog';
-import { ActivityDetailModal } from '@/app/components/ActivityDetailModal';
-import { ScheduleCard } from '@/app/components/ScheduleCard';
+import { ActivityDetailSheet } from '@/app/components/ActivityDetailSheet';
 import { CommandPalette } from '@/app/components/CommandPalette';
 import { StopwatchCard } from '@/app/components/StopwatchCard';
 import { FloatingTimer } from '@/app/components/FloatingTimer';
@@ -98,31 +97,11 @@ export default function TodayPage() {
   const { toast } = useToast();
   const [activities, setActivities] = useState<Activity[]>(fallback);
   const [scheduleCatalog, setScheduleCatalog] = useState<ScheduleActivity[]>(() => [...OFFICIAL_SCHEDULE_ACTIVITIES]);
-  const [selectedWeek, setSelectedWeek] = useState<string>(() => {
-    const todayTasks = getTodayScheduleActivities(OFFICIAL_SCHEDULE_ACTIVITIES, new Date());
-    return todayTasks.length > 0 ? 'Today' : 'Week 1';
-  });
-  const [selectedDay, setSelectedDay] = useState<string>('All');
-  const [scheduleSearch, setScheduleSearch] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('All');
   const [editingScheduleItem, setEditingScheduleItem] = useState<ScheduleActivity | null>(null);
   const [detailActivity, setDetailActivity] = useState<ScheduleActivity | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [copiedRowToast, setCopiedRowToast] = useState<{ rowNumber: number; type: 'G-K' | 'Full' } | null>(null);
-  const [scheduleTipDismissed, setScheduleTipDismissed] = useState(false);
-  const [syncHelpExpanded, setSyncHelpExpanded] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setScheduleTipDismissed(localStorage.getItem('onboarding-schedule-tip-dismissed') === 'true');
-    }
-  }, []);
-
-  function handleDismissScheduleTip() {
-    setScheduleTipDismissed(true);
-    localStorage.setItem('onboarding-schedule-tip-dismissed', 'true');
-  }
 
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
@@ -785,60 +764,16 @@ export default function TodayPage() {
     ? 'Almost there!'
     : 'You’ve had a pretty productive day.';
 
-  const weekCounts: Record<string, number> = {
-    'Today': todayActivities.length,
-    'Week 1': scheduleCatalog.filter((a) => a.week === 'Week 1').length,
-    'Week 2': scheduleCatalog.filter((a) => a.week === 'Week 2').length,
-    'Week 3': scheduleCatalog.filter((a) => a.week === 'Week 3').length,
-    'Week 4': scheduleCatalog.filter((a) => a.week === 'Week 4').length,
-    'Month 2 & 3': scheduleCatalog.filter((a) => a.week === 'Month 2' || a.week === 'Month 3').length,
-    'All': scheduleCatalog.length,
-  };
+  const upcomingFallbackActivities = scheduleCatalog
+    .filter((a) => !isScheduleItemDone(a))
+    .slice(0, 4);
 
-  const currentWeekActivities = scheduleCatalog.filter((a) => {
-    if (selectedWeek === 'Today') {
-      return isSameDate(a.date, new Date(now));
-    }
-    if (selectedWeek === 'All') return true;
-    if (selectedWeek === 'Month 2 & 3') return a.week === 'Month 2' || a.week === 'Month 3';
-    return a.week === selectedWeek;
-  });
-
-  const standardDaysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const dayCounts: Record<string, number> = {};
-  currentWeekActivities.forEach((a) => {
-    if (a.day && a.day !== 'TBD') {
-      dayCounts[a.day] = (dayCounts[a.day] || 0) + 1;
-    }
-  });
-  const availableDays = standardDaysOrder.filter((d) => (dayCounts[d] || 0) > 0);
-
-  const filteredScheduleActivities = currentWeekActivities.filter((item) => {
-    if (selectedDay !== 'All' && item.day !== selectedDay) return false;
-
-    if (statusFilter !== 'All') {
-      if (statusFilter === 'Done' && item.progress !== 'Done') return false;
-      if (statusFilter === 'In Progress' && item.progress !== 'In Progress') return false;
-      if (statusFilter === 'On-Hold' && item.progress !== 'On-Hold') return false;
-      if (statusFilter === 'Reschedule' && item.progress !== 'Reschedule') return false;
-      if (statusFilter === 'Not Started' && item.progress !== 'Not Started' && item.progress !== '' && item.progress !== undefined) return false;
-    }
-
-    if (scheduleSearch.trim()) {
-      const q = scheduleSearch.toLowerCase().trim();
-      const matchTopic = item.topic.toLowerCase().includes(q);
-      const matchPic = item.pic.toLowerCase().includes(q);
-      const matchMedia = item.mainMedia.toLowerCase().includes(q);
-      const matchRow = `row ${item.rowNumber}`.includes(q) || String(item.rowNumber) === q;
-      if (!matchTopic && !matchPic && !matchMedia && !matchRow) return false;
-    }
-
-    return true;
-  });
+  const displayAgendaActivities = todayActivities.length > 0 ? todayActivities : upcomingFallbackActivities;
+  const isUsingFallbackAgenda = todayActivities.length === 0 && upcomingFallbackActivities.length > 0;
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
-      <PrimaryNav active="Schedule" />
+      <PrimaryNav active="Today" />
       <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2">
         <div role="status" data-tour="status-bar" className={`inline-flex animate-fade-up items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${statusBar.className}`}>
           <span aria-hidden="true" className={`size-2 rounded-full ${statusBar.dotColor}`} />
@@ -1008,260 +943,144 @@ export default function TodayPage() {
         </>
       )}
 
-      {/* Onboarding Schedule Cockpit */}
-      <section data-tour="day-timeline" className="animate-fade-up stagger-2 mt-12">
+      {/* Today's Agenda (Now & Next) */}
+      <section data-tour="day-timeline" className="animate-fade-up stagger-2 mt-10">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <h2 className="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">
-                Onboarding Schedule
+                {isUsingFallbackAgenda ? 'Up Next in Your Journey' : "Today's Agenda"}
               </h2>
-              {scheduleTipDismissed && (
-                <button
-                  type="button"
-                  onClick={() => setScheduleTipDismissed(false)}
-                  className="text-[11px] font-medium text-stone-400 hover:text-stone-700 underline underline-offset-2 transition"
-                >
-                  Show sync guide
-                </button>
-              )}
-            </div>
-            <p className="text-xs text-stone-500 mt-0.5">
-              59 master activities across your 90-day onboarding journey
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700">
-              {filteredScheduleActivities.length}{' '}
-              {selectedWeek === 'Today'
-                ? 'scheduled today'
-                : selectedWeek !== 'All'
-                ? `in ${selectedWeek}`
-                : `of ${scheduleCatalog.length} activities`}
-            </span>
-          </div>
-        </div>
-
-        {/* Quick tip & sync guide (dismissible / collapsible) */}
-        {!scheduleTipDismissed && (
-          <div className="mb-5 rounded-2xl bg-sky-50/70 border border-sky-100/80 p-3.5 text-xs text-sky-900 shadow-2xs transition-all">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-2.5">
-                <IconLightbulb className="h-4 w-4 text-sky-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-sky-950">
-                    Click any activity to view outline details, log time, or sync with Google Sheets.
-                  </p>
-                  <div className="mt-1 flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setSyncHelpExpanded((prev) => !prev)}
-                      className="text-[11px] font-medium text-sky-700 hover:text-sky-950 underline underline-offset-2 transition"
-                    >
-                      {syncHelpExpanded ? 'Hide sync guide ▴' : 'How spreadsheet sync works ▾'}
-                    </button>
-                  </div>
-                  {syncHelpExpanded && (
-                    <div className="mt-2.5 space-y-1.5 rounded-xl bg-white/80 p-3 text-[11px] text-sky-900 border border-sky-100">
-                      <p>
-                        <strong>1-Click Direct Sync:</strong> Click the <code className="bg-sky-100 px-1 py-0.5 rounded font-mono font-semibold">Sync</code> option or open Activity Details to sync Duration, Start Time, End Time, Progress, and Notes straight to your Google Sheet.
-                      </p>
-                      <p>
-                        <strong>Clipboard Fallback:</strong> Click <code className="bg-sky-100 px-1 py-0.5 rounded font-mono font-semibold">Copy G–K</code> to copy tab-separated values, then paste into cell <code className="bg-sky-100 px-1 py-0.5 rounded font-mono font-bold">G&#123;row&#125;</code> in Google Sheets.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleDismissScheduleTip}
-                className="text-stone-400 hover:text-stone-700 p-1 transition rounded-md hover:bg-sky-100/60"
-                aria-label="Dismiss tip"
-                title="Dismiss tip"
-              >
-                <IconX className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Week Filter Tabs */}
-        <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-stone-100 pb-3">
-          {(['Today', 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Month 2 & 3', 'All'] as const).map((w) => {
-            const active = selectedWeek === w;
-            const count = weekCounts[w] || 0;
-            return (
-              <button
-                key={w}
-                type="button"
-                onClick={() => {
-                  setSelectedWeek(w);
-                  setSelectedDay('All');
-                }}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition ${
-                  active
-                    ? 'bg-stone-900 text-white shadow-xs'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900'
-                }`}
-              >
-                {w === 'Today' && <IconZap className="h-3 w-3 text-amber-400" />}
-                <span>{w}</span>
-                <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${active ? 'bg-stone-800 text-stone-200' : 'bg-stone-200 text-stone-700'}`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Why no Monday in Week 1 helper note */}
-        {selectedWeek === 'Week 1' && (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amber-50/90 border border-amber-200/70 p-3 text-xs text-amber-900">
-            <div className="flex items-center gap-2">
-              <IconCalendar className="h-4 w-4 text-amber-700 shrink-0" />
-              <span>
-                <strong>Why is Monday not in Week 1?</strong> Day 1 of onboarding started on <strong>Tuesday, September 1st, 2026</strong>. Monday activities appear in <strong>Week 2 (07/09)</strong>, Week 3, and Week 4!
+              <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-stone-700">
+                {displayAgendaActivities.length} {displayAgendaActivities.length === 1 ? 'task' : 'tasks'}
               </span>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedWeek('Week 2');
-                setSelectedDay('Monday');
-              }}
-              className="shrink-0 rounded-full bg-amber-200/80 px-3 py-1 font-semibold text-amber-950 transition hover:bg-amber-300 active:scale-95"
-            >
-              View Week 2 Monday →
-            </button>
+            <p className="text-xs text-stone-500 mt-0.5">
+              {isUsingFallbackAgenda
+                ? 'No activities scheduled for today’s exact calendar date. Showing upcoming onboarding milestones:'
+                : 'Your scheduled activities for today · Click any item to view details or sync'}
+            </p>
           </div>
-        )}
 
-        {/* Filter Toolbar: Day pills, Status, and Search */}
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          {/* Day filter pills */}
-          {selectedWeek !== 'Today' && availableDays.length > 1 && (
-            <div className="flex flex-wrap items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setSelectedDay('All')}
-                className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                  selectedDay === 'All'
-                    ? 'bg-mint-700 text-white shadow-2xs'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                }`}
-              >
-                All Days ({currentWeekActivities.length})
-              </button>
-              {availableDays.map((day) => {
-                const active = selectedDay === day;
-                const count = dayCounts[day];
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => setSelectedDay(day)}
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                      active
-                        ? 'bg-mint-700 text-white shadow-2xs'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                    }`}
-                  >
-                    {day} ({count})
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Search input & status filter */}
-          <div className="flex flex-wrap items-center gap-2 grow justify-end">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs text-stone-700 focus:outline-hidden"
-              aria-label="Filter by status"
-            >
-              <option value="All">All Statuses</option>
-              <option value="Done">Done</option>
-              <option value="In Progress">In Progress</option>
-              <option value="On-Hold">On-Hold</option>
-              <option value="Reschedule">Reschedule</option>
-              <option value="Not Started">Not Started</option>
-            </select>
-
-            <div className="relative min-w-44 max-w-xs grow">
-              <input
-                type="text"
-                value={scheduleSearch}
-                onChange={(e) => setScheduleSearch(e.target.value)}
-                placeholder="Search topic, PIC, row..."
-                className="w-full rounded-full border border-stone-200 bg-stone-50 px-3.5 py-1.5 text-xs text-stone-800 placeholder-stone-400 focus:border-mint-500 focus:bg-white focus:outline-hidden"
-              />
-              {scheduleSearch && (
-                <button
-                  type="button"
-                  onClick={() => setScheduleSearch('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700"
-                >
-                  <IconX className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          </div>
+          <a
+            href="/schedule"
+            className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 transition active:scale-95"
+          >
+            <span>View Master Schedule (59) →</span>
+          </a>
         </div>
 
-        {/* Schedule Cards */}
-        {filteredScheduleActivities.length === 0 ? (
+        {displayAgendaActivities.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-stone-200 p-8 text-center text-stone-500">
-            <p className="text-sm font-medium">
-              {selectedWeek === 'Today'
-                ? 'No activities scheduled for today.'
-                : 'No schedule topics match your filters.'}
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedWeek('All');
-                setSelectedDay('All');
-                setScheduleSearch('');
-                setStatusFilter('All');
-              }}
-              className="mt-2 text-xs font-semibold text-mint-700 underline underline-offset-4"
+            <p className="text-sm font-medium">All onboarding activities have been completed! 🎉</p>
+            <a
+              href="/schedule"
+              className="mt-2 inline-block text-xs font-semibold text-mint-700 underline underline-offset-4"
             >
-              {selectedWeek === 'Today' ? 'View all activities →' : 'Reset filters'}
-            </button>
+              Browse all activities in Master Schedule →
+            </a>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredScheduleActivities.map((item) => {
-              const isCurrentTimer = activeActivityId === item.id;
-              const isTimerRunning = isCurrentTimer && Boolean(startedAt && !finishedAt && !pausedAt);
-              const isTimerPaused = isCurrentTimer && Boolean(startedAt && !finishedAt && pausedAt);
-              const totalElapsedSecs = calculateElapsedSeconds(startedAt, Date.now(), pausedAt, accumulatedMs);
+          <div className="space-y-2.5">
+            {displayAgendaActivities.map((item) => {
+              const isDone = isScheduleItemDone(item);
+              const isCurrentActive = currentActivity?.id === item.id;
+              const timeDisplay =
+                item.startTime && item.endTime
+                  ? `${item.startTime} - ${item.endTime}`
+                  : item.durationMinutes
+                  ? `${item.durationMinutes}m`
+                  : 'Flexible';
 
               return (
-                <ScheduleCard
+                <div
                   key={item.id}
-                  item={item}
-                  isCurrentTimer={isCurrentTimer}
-                  isTimerRunning={isTimerRunning}
-                  isTimerPaused={isTimerPaused}
-                  elapsedSeconds={totalElapsedSecs}
-                  startedAt={startedAt}
-                  onViewDetails={(act) => setDetailActivity(act)}
-                  onStartTimer={(act) => handleStartTimerForScheduleRow(act)}
-                  onFillRow={(act) => setEditingScheduleItem(act)}
-                  onSyncRow={(act) => void handleDirectSyncScheduleRow(act)}
-                  onCopyGtoK={(act) => void handleCopyGtoK(act)}
-                  onCopyFullRow={(act) => void handleCopyFullRow(act)}
-                  onWriteReflection={(act) => {
-                    const matchAct = activities.find((a) => a.id === act.id) || scheduleActivityToActivity(act);
-                    setSelectedActivityForLearning(matchAct);
-                    setShowLearningCapture(true);
-                  }}
-                  copiedToast={copiedRowToast}
-                />
+                  onClick={() => setDetailActivity(item)}
+                  className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border p-3.5 sm:px-4 sm:py-3 cursor-pointer transition-all ${
+                    isCurrentActive
+                      ? 'border-peach-300 bg-peach-50/60 shadow-2xs'
+                      : isDone
+                      ? 'border-stone-100 bg-white/70 hover:border-stone-200 hover:bg-white'
+                      : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-2xs'
+                  }`}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* Status indicator */}
+                    <span
+                      className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                        isDone
+                          ? 'bg-mint-100 text-mint-700'
+                          : isCurrentActive
+                          ? 'bg-peach-100 text-peach-700 animate-pulse'
+                          : 'bg-stone-100 text-stone-400'
+                      }`}
+                    >
+                      {isDone ? (
+                        <IconCheck className="h-3.5 w-3.5" />
+                      ) : isCurrentActive ? (
+                        <span className="size-2 rounded-full bg-peach-600" />
+                      ) : (
+                        <span className="size-1.5 rounded-full bg-stone-300" />
+                      )}
+                    </span>
+
+                    {/* Row & Time window */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] font-bold text-stone-700">
+                        Row {item.rowNumber}
+                      </span>
+                      <span className="text-xs font-medium text-stone-500">
+                        {timeDisplay}
+                      </span>
+                    </div>
+
+                    {/* Topic Title */}
+                    <h3 className="text-sm font-medium text-stone-900 truncate">
+                      {item.topic.split('\n')[0]}
+                    </h3>
+                  </div>
+
+                  {/* Right side: PIC chip + Action */}
+                  <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pl-9 sm:pl-0">
+                    <span
+                      className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${getPicBadge(
+                        item.pic
+                      )}`}
+                    >
+                      {item.pic}
+                    </span>
+
+                    {isDone ? (
+                      <span className="text-xs font-semibold text-mint-700 px-2 py-0.5">
+                        Done ✓
+                      </span>
+                    ) : isCurrentActive ? (
+                      <span className="rounded-full bg-peach-100 px-2.5 py-1 text-xs font-semibold text-peach-800">
+                        Active Focus
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const matchedAct =
+                            activities.find((a) => a.id === item.id) ||
+                            scheduleActivityToActivity(item);
+                          setActiveActivityId(matchedAct.id);
+                          if (!activities.some((a) => a.id === matchedAct.id)) {
+                            setActivities((prev) => [...prev, matchedAct]);
+                          }
+                          toast.info(
+                            `Switched focus to: ${item.topic.split('\n')[0].slice(0, 30)}...`
+                          );
+                        }}
+                        className="rounded-full bg-stone-100 hover:bg-stone-200 px-3 py-1 text-xs font-medium text-stone-700 transition active:scale-95"
+                      >
+                        Focus / Start
+                      </button>
+                    )}
+                  </div>
+                </div>
               );
             })}
           </div>
@@ -1291,7 +1110,7 @@ export default function TodayPage() {
       )}
       <GuideTour steps={todayTourSteps} open={tourOpen} onFinish={handleTourFinish} />
 
-      <ActivityDetailModal
+      <ActivityDetailSheet
         activity={detailActivity}
         isOpen={Boolean(detailActivity)}
         onClose={() => setDetailActivity(null)}
