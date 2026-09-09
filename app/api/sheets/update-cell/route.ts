@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getSessionAccessToken } from '@/lib/auth/session';
 import { updateSheetCell, updateSheetRange, getSheetRange } from '@/lib/sheets/extractor';
+import {
+  formatFeedbackRowValues,
+  type FeedbackClipboardInput,
+  type FeedbackEntry,
+  type FeedbackRatings,
+} from '@/lib/feedback';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -40,7 +46,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
-    sheet?: 'Schedule' | 'Onboarding Diary' | string;
+    sheet?: 'Schedule' | 'Onboarding Diary' | 'Feedback Sheet' | 'Feedback' | string;
     range?: string;
     value?: string;
     values?: string[][];
@@ -52,6 +58,16 @@ export async function POST(request: Request) {
     endTime?: string;
     progress?: string;
     spreadsheetId?: string;
+    feedback?: FeedbackEntry | FeedbackClipboardInput;
+    date?: string;
+    pic?: string;
+    topic?: string;
+    sessionTitle?: string;
+    ratings?: FeedbackRatings | Record<string, unknown>;
+    hasQuestions?: boolean;
+    questionExplanation?: string;
+    questionAddressing?: string;
+    suggestions?: string;
   } | null;
 
   const spreadsheetId = body?.spreadsheetId || process.env.GOOGLE_SHEETS_ID;
@@ -74,6 +90,11 @@ export async function POST(request: Request) {
   }
 
   try {
+    const isFeedbackSheet =
+      Boolean(body?.sheet && body.sheet.toLowerCase().includes('feedback')) ||
+      Boolean(body?.feedback) ||
+      (typeof body?.rowNumber === 'number' && body?.ratings !== undefined);
+
     // 1. If updating Schedule sheet (G: Duration, H: Start, I: End, J: Progress, K: Notes)
     if (body?.sheet === 'Schedule' && typeof body?.rowNumber === 'number') {
       const row = body.rowNumber;
@@ -110,7 +131,64 @@ export async function POST(request: Request) {
       });
     }
 
-    // 2. If rowNumber is specified for Onboarding Diary (G: Learned, H: Notes)
+    // 2. If updating Feedback Sheet (Cols A–M: Date, PIC, Topic, Likert 1-6, Questions?, Explanation, Addressing, Suggestions)
+    if (isFeedbackSheet && typeof body?.rowNumber === 'number') {
+      const row = body.rowNumber;
+      if (row < 3 || row > 50) {
+        return NextResponse.json({ error: 'Invalid feedback rowNumber (expected 3-50)' }, { status: 400 });
+      }
+
+      let rowValues: string[];
+      if (Array.isArray(body?.values?.[0]) && body.values[0].length > 0) {
+        rowValues = body.values[0];
+      } else {
+        const feedbackInput: FeedbackClipboardInput = body?.feedback || {
+          date: body?.date,
+          pic: body?.pic,
+          topic: body?.topic || body?.sessionTitle,
+          ratings: body?.ratings,
+          hasQuestions: body?.hasQuestions,
+          questionExplanation: body?.questionExplanation,
+          questionAddressing: body?.questionAddressing,
+          suggestions: body?.suggestions,
+        };
+        rowValues = formatFeedbackRowValues(feedbackInput);
+      }
+
+      const primarySheet = body?.sheet === 'Feedback' ? 'Feedback' : 'Feedback Sheet';
+      const range = `'${primarySheet}'!A${row}:M${row}`;
+
+      try {
+        const result = await updateSheetRange(spreadsheetId, range, [rowValues], { accessToken });
+        return NextResponse.json({
+          success: true,
+          sheet: primarySheet,
+          rowNumber: row,
+          range,
+          ...result,
+          values: [rowValues],
+        });
+      } catch (primaryErr: unknown) {
+        // Fallback: If 'Feedback Sheet' failed, try alternative worksheet name 'Feedback'
+        const altSheet = primarySheet === 'Feedback Sheet' ? 'Feedback' : 'Feedback Sheet';
+        const altRange = `'${altSheet}'!A${row}:M${row}`;
+        try {
+          const result = await updateSheetRange(spreadsheetId, altRange, [rowValues], { accessToken });
+          return NextResponse.json({
+            success: true,
+            sheet: altSheet,
+            rowNumber: row,
+            range: altRange,
+            ...result,
+            values: [rowValues],
+          });
+        } catch {
+          throw primaryErr;
+        }
+      }
+    }
+
+    // 3. If rowNumber is specified for Onboarding Diary (G: Learned, H: Notes)
     if (typeof body?.rowNumber === 'number') {
       const row = body.rowNumber;
       if (row < 2 || row > 100) {

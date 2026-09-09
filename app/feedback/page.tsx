@@ -118,7 +118,7 @@ export default function FeedbackPage() {
         setCopiedSessionId(entry.sessionId);
         const match = FEEDBACK_SESSIONS.find((s) => s.id === entry.sessionId);
         const label = match ? `Row ${match.rowNumber}` : entry.sessionTitle;
-        toast.success(`Copied ${label} feedback TSV! Paste into Google Sheets.`);
+        toast.success(`Copied ${label} feedback TSV! Paste into cell A${match?.rowNumber ?? ''} of Feedback Sheet.`);
         setTimeout(() => setCopiedSessionId(null), 2500);
       }
     } catch {
@@ -167,7 +167,7 @@ export default function FeedbackPage() {
       <header className="animate-fade-up pb-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
-            Worksheet: Feedback Sheet (Columns D–M)
+            Worksheet: Feedback Sheet (Columns A–M)
           </p>
           <div className="flex items-center gap-2">
             <button

@@ -90,10 +90,11 @@ export default function MasterSchedulePage() {
   async function handleSyncRowDirectly(item: ScheduleActivity) {
     setIsSyncingRow(true);
     try {
-      const response = await fetch('/api/sheets/schedule', {
+      const response = await fetch('/api/sheets/update-cell', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          sheet: 'Schedule',
           rowNumber: item.rowNumber,
           durationMinutes: item.durationMinutes,
           startTime: item.startTime,
@@ -105,7 +106,7 @@ export default function MasterSchedulePage() {
 
       const data = await response.json();
       if (!response.ok || !data.success) {
-        throw new Error(data.message || 'API sync failed');
+        throw new Error(data.error || data.message || 'API sync failed');
       }
 
       toast.success(`Successfully synced Row ${item.rowNumber} to Google Sheets!`);

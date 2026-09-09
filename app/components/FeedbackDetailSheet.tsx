@@ -18,6 +18,7 @@ import {
   IconClipboard,
   IconEdit,
   IconLightbulb,
+  IconRocket,
   IconUser,
   IconX,
 } from './Icons';
@@ -115,8 +116,18 @@ export function FeedbackDetailSheet({
   const [suggestions, setSuggestions] = useState<string>('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Sheets Sync state
+  const [syncing, setSyncing] = useState<boolean>(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [needsAuth, setNeedsAuth] = useState<boolean>(false);
+
   // Sync state whenever session or existingEntry changes
   useEffect(() => {
+    setSyncMessage(null);
+    setSyncError(null);
+    setNeedsAuth(false);
+
     if (session) {
       if (existingEntry) {
         setDate(existingEntry.date || formatFeedbackDate(new Date()));
@@ -169,6 +180,71 @@ export function FeedbackDetailSheet({
     if (validationError) setValidationError(null);
   };
 
+  const handleSyncToSheets = async (entryToSync?: FeedbackEntry) => {
+    const targetEntry = entryToSync || existingEntry;
+    if (!targetEntry && !isRatingComplete(ratings)) {
+      setValidationError('Please complete all 6 ratings before syncing to Google Sheets.');
+      return;
+    }
+
+    const payloadEntry: FeedbackEntry =
+      targetEntry ?? {
+        id: `fb-${session.id}`,
+        sessionId: session.id,
+        sessionTitle: session.title,
+        pic: session.pic,
+        date: date.trim() || formatFeedbackDate(new Date()),
+        ratings: {
+          communication: ratings.communication!,
+          alignment: ratings.alignment!,
+          understanding: ratings.understanding!,
+          readiness: ratings.readiness!,
+          pace: ratings.pace!,
+          overall: ratings.overall!,
+        },
+        hasQuestions,
+        questionExplanation: questionExplanation.trim() || undefined,
+        questionAddressing: questionAddressing.trim() || undefined,
+        suggestions: suggestions.trim() || undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+    setSyncing(true);
+    setSyncMessage(null);
+    setSyncError(null);
+    setNeedsAuth(false);
+
+    try {
+      const res = await fetch('/api/sheets/update-cell', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sheet: 'Feedback Sheet',
+          rowNumber: session.rowNumber,
+          feedback: payloadEntry,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (res.status === 401 || data?.authenticated === false) {
+        setNeedsAuth(true);
+        setSyncError(
+          'Google OAuth sign-in is required to sync directly to your spreadsheet. Please sign in or use "Copy TSV Row" below.'
+        );
+      } else if (res.ok && data?.success) {
+        setSyncMessage(`Row ${session.rowNumber} successfully synced to Google Sheets!`);
+      } else {
+        setSyncError(data?.error || data?.message || 'Failed to sync to Google Sheets.');
+      }
+    } catch (err: unknown) {
+      setSyncError(err instanceof Error ? err.message : 'Network error while syncing to Google Sheets.');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleSave = () => {
     if (!isRatingComplete(ratings)) {
       setValidationError('Please rate all 6 dimensions (1 to 6) before saving.');
@@ -199,6 +275,7 @@ export function FeedbackDetailSheet({
 
     onSave(entry);
     setIsEditing(false);
+    void handleSyncToSheets(entry);
   };
 
   const averageScore = isEvaluated
@@ -322,6 +399,34 @@ export function FeedbackDetailSheet({
 
           {/* Body */}
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+            {/* Sync Status Banners */}
+            {syncMessage && (
+              <div className="flex items-center gap-2 rounded-xl border border-mint-200 bg-mint-50 p-3 text-xs text-mint-900 font-medium animate-fade-in">
+                <IconCheck className="h-4 w-4 text-mint-600 shrink-0" />
+                <span>{syncMessage}</span>
+              </div>
+            )}
+            {syncError && (
+              <div className="rounded-xl border border-peach-200 bg-peach-50 p-3 text-xs text-peach-900 font-medium space-y-2 animate-fade-in">
+                <p>{syncError}</p>
+                {needsAuth && (
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    <a
+                      href="/api/auth/login"
+                      className="inline-flex items-center gap-1 rounded-md bg-stone-900 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-stone-800 transition"
+                    >
+                      Sign in with Google
+                    </a>
+                    <a
+                      href="/settings"
+                      className="text-[11px] font-medium text-stone-600 underline hover:text-stone-900"
+                    >
+                      Open Settings
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
             {!isEditing && existingEntry ? (
               /* VIEW MODE */
               <>
@@ -606,7 +711,7 @@ export function FeedbackDetailSheet({
             <div className="flex flex-wrap items-center justify-between gap-3">
               {!isEditing ? (
                 <>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => setIsEditing(true)}
@@ -616,11 +721,25 @@ export function FeedbackDetailSheet({
                       <span>{isEvaluated ? 'Edit Evaluation' : 'Fill Evaluation'}</span>
                     </button>
 
+                    {isEvaluated && (
+                      <button
+                        type="button"
+                        disabled={syncing}
+                        onClick={() => void handleSyncToSheets()}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-white border border-stone-200 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 transition active:scale-95 disabled:opacity-50 shadow-2xs"
+                        title="Sync directly to Google Sheets via API"
+                      >
+                        <IconRocket className={`h-3.5 w-3.5 text-stone-600 ${syncing ? 'animate-spin' : ''}`} />
+                        <span>{syncing ? 'Syncing…' : 'Sync to Sheets'}</span>
+                      </button>
+                    )}
+
                     {isEvaluated && onCopyRow && (
                       <button
                         type="button"
                         onClick={() => onCopyRow(existingEntry!)}
                         className="inline-flex items-center gap-1.5 rounded-full bg-white border border-stone-200 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 transition active:scale-95"
+                        title={`Copy Row ${session.rowNumber} TSV (paste into cell A${session.rowNumber} in Google Sheets)`}
                       >
                         {isCopied ? (
                           <>
@@ -630,7 +749,7 @@ export function FeedbackDetailSheet({
                         ) : (
                           <>
                             <IconClipboard className="h-3.5 w-3.5 text-stone-500" />
-                            <span>Copy TSV (Cols D–M)</span>
+                            <span>Copy TSV Row</span>
                           </>
                         )}
                       </button>
@@ -663,11 +782,12 @@ export function FeedbackDetailSheet({
 
                   <button
                     type="button"
+                    disabled={syncing}
                     onClick={handleSave}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-mint-700 px-5 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition active:scale-95 shadow-xs"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-mint-700 px-5 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition active:scale-95 shadow-xs disabled:opacity-60"
                   >
                     <IconCheck className="h-4 w-4" />
-                    <span>Save Evaluation</span>
+                    <span>{syncing ? 'Saving & Syncing…' : 'Save Evaluation'}</span>
                   </button>
                 </>
               )}
