@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { NovaLogo } from '@/app/components/NovaLogo';
 import {
   IconBook,
+  IconBell,
   IconCalendar,
   IconFileText,
   IconMenu,
@@ -17,6 +18,8 @@ import {
   IconTrophy,
   IconX,
 } from '@/app/components/Icons';
+import { NotificationBellTrigger } from '@/app/components/NotificationPanel';
+
 
 import { GuideTour, allPagesTourSteps } from '@/app/components/GuideTour';
 import { GUIDE_TOUR_STORAGE_KEY, readGuideTourState, writeGuideTourState } from '@/lib/guide-tour';
@@ -165,6 +168,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </p>
             </div>
           </Link>
+          <NotificationBellTrigger />
         </div>
 
         {/* Quick Search Trigger */}
@@ -280,6 +284,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <IconSearch className="h-4 w-4" />
           </button>
+          <NotificationBellTrigger />
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
