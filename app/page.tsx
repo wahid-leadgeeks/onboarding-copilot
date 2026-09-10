@@ -13,6 +13,7 @@ import { ActivityDetailSheet } from '@/app/components/ActivityDetailSheet';
 import { CommandPalette } from '@/app/components/CommandPalette';
 import { StopwatchCard } from '@/app/components/StopwatchCard';
 import { FloatingTimer } from '@/app/components/FloatingTimer';
+import { NotificationBell } from '@/app/components/NotificationPanel';
 import {
   IconEdit,
   IconSearch,
@@ -748,51 +749,56 @@ export default function TodayPage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
-      <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div role="status" data-tour="status-bar" className={`inline-flex animate-fade-up items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${statusBar.className}`}>
-          <span aria-hidden="true" className={`size-2 rounded-full ${statusBar.dotColor}`} />
-          {statusBar.label}
-        </div>
-        {(scheduleState === 'demo' || scheduleState === 'error') && (
-          <a href="/settings" className="animate-fade-up text-xs font-medium text-mint-700 underline underline-offset-4 transition hover:text-mint-600">
-            Import your own schedule →
-          </a>
-        )}
-      </div>
+      {/* Notification panel — receives all summary data; bell trigger is in AppShell */}
+      <NotificationBell
+        summary={{
+          syncLabel: statusBar.label,
+          syncDotColor: statusBar.dotColor,
+          syncClassName: statusBar.className,
+          dateLabel: todayLabel,
+          dayNumber,
+          totalDays,
+          overallCompleted: overallCompletedCount,
+          overallTotal: overallTotalCount,
+          overallPercent: overallProgressPercent,
+          greeting,
+          headline,
+          todayCompleted: todayCompletedCount,
+          todayTotal: todayTotalCount,
+          todayRemaining: todayRemainingCount,
+          seedlingLabel: seedling.label,
+          seedlingStage: seedling.stage,
+          todayPercent: todayProgressPercent,
+        }}
+      />
 
-      {/* Header */}
-      <header data-tour="progress-header" className="animate-fade-up">
-        <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-stone-500">
-          <span>{todayLabel} · Day {Math.min(dayNumber, totalDays)} of {totalDays}</span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-stone-700">
-            <span>Overall: {overallCompletedCount} of {overallTotalCount} done</span>
-            <span className="text-stone-400">({overallProgressPercent}%)</span>
-          </span>
-        </div>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">{greeting}, Noah</h1>
-        <p className="mt-3 text-lg text-stone-500">{headline}</p>
+      {/* Slim header — date + greeting only */}
+      <header data-tour="progress-header" className="animate-fade-up mb-8">
+        <p className="text-sm font-medium text-stone-400">{todayLabel} · Day {Math.min(dayNumber, totalDays)} of {totalDays}</p>
+        <h1 className="mt-1 text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">{greeting}, Noah</h1>
+        <p className="mt-2 text-lg text-stone-500">{headline}</p>
 
-        <div className="mt-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-          <div>
-            <p className="text-6xl font-semibold tracking-tight text-stone-900">
-              {todayCompletedCount}<span className="ml-3 align-baseline text-xl font-medium text-stone-500">of {todayTotalCount} today</span>
-            </p>
-            <div className="h-2.5 w-full min-w-56 overflow-hidden rounded-full bg-stone-200" aria-label={`${todayProgressPercent}% of today’s activities complete`}>
-              <div className="bar-gradient progress-shimmer h-full rounded-full transition-all" style={{ width: `${todayProgressPercent}%` }} />
-            </div>
+        {/* Today progress inline — compact */}
+        <div className="mt-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div className="flex items-baseline gap-2">
+            <span className="text-5xl font-semibold tracking-tight text-stone-900">{todayCompletedCount}</span>
+            <span className="text-lg font-medium text-stone-400">of {todayTotalCount} today</span>
           </div>
-          <p className="flex items-center text-lg text-stone-600">
+          <p className="flex items-center text-sm text-stone-500">
             {seedling.stage === 'trophy' ? (
-              <IconTrophy className="mr-2 h-5 w-5 text-sun-500 shrink-0" />
+              <IconTrophy className="mr-1.5 h-4 w-4 text-sun-500 shrink-0" />
             ) : seedling.stage === 'tree' ? (
-              <IconTree className="mr-2 h-5 w-5 text-emerald-600 shrink-0" />
+              <IconTree className="mr-1.5 h-4 w-4 text-emerald-600 shrink-0" />
             ) : (
-              <IconSprout className="mr-2 h-5 w-5 text-mint-600 shrink-0" />
+              <IconSprout className="mr-1.5 h-4 w-4 text-mint-600 shrink-0" />
             )}
-            <span>{seedling.label}</span>
+            {seedling.label}
           </p>
         </div>
-        <p className="mt-3 text-sm text-stone-500">{todayProgressLabel}</p>
+        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-stone-200" aria-label={`${todayProgressPercent}% of today's activities complete`}>
+          <div className="bar-gradient progress-shimmer h-full rounded-full transition-all" style={{ width: `${todayProgressPercent}%` }} />
+        </div>
+        <p className="mt-2 text-sm text-stone-400">{todayProgressLabel}</p>
       </header>
 
       {allDone ? (
