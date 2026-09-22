@@ -29,7 +29,6 @@ export default function ReviewsPage() {
       const list = readReviewAssessments(raw);
       setAssessments(list);
 
-      // Restore saved scores if available
       const savedScores = localStorage.getItem('nova-monthly-reviews-scores');
       if (savedScores) {
         setScores(JSON.parse(savedScores));
@@ -37,6 +36,22 @@ export default function ReviewsPage() {
     } catch {
       /* ignore */
     }
+
+    fetch('/api/reviews')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.reviews && Array.isArray(data.reviews) && data.reviews.length > 0) {
+          const dbAssessments: ReviewSelfAssessment[] = data.reviews.map((r: any) => ({
+            month: r.month,
+            achievements: r.achievements || '',
+            challenges: r.challenges || '',
+            goalsNextMonth: r.goalsNextMonth || '',
+            updatedAt: r.updatedAt || new Date().toISOString(),
+          }));
+          setAssessments(dbAssessments);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   function persistAssessments(next: ReviewSelfAssessment[]) {
@@ -63,6 +78,17 @@ export default function ReviewsPage() {
   function handleSaveAssessment(assessment: ReviewSelfAssessment) {
     const next = upsertReviewAssessment(assessments, assessment);
     persistAssessments(next);
+    fetch('/api/reviews', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        month: assessment.month,
+        achievements: assessment.achievements,
+        challenges: assessment.challenges,
+        goalsNextMonth: assessment.goalsNextMonth,
+        technicalRatings: scores,
+      }),
+    }).catch(() => {});
     toast.success(`Month ${assessment.month} self-assessment saved!`);
   }
 

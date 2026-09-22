@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   OFFICIAL_SHEET_GUIDES,
   OFFICIAL_TRAINING_MODULES,
@@ -29,8 +29,20 @@ export default function GlossaryPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [mediaFilter, setMediaFilter] = useState<'all' | 'Video' | 'Online Meeting'>('all');
   const [selectedModule, setSelectedModule] = useState<TrainingModule | null>(null);
+  const [modules, setModules] = useState<readonly TrainingModule[]>(OFFICIAL_TRAINING_MODULES);
 
-  const filteredModules = OFFICIAL_TRAINING_MODULES.filter((mod) => {
+  useEffect(() => {
+    fetch('/api/glossary')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.modules && Array.isArray(data.modules) && data.modules.length > 0) {
+          setModules(data.modules);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const filteredModules = modules.filter((mod) => {
     if (mediaFilter !== 'all' && !mod.media.toLowerCase().includes(mediaFilter.toLowerCase())) {
       return false;
     }

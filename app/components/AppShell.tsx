@@ -239,15 +239,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2">
               <span className="size-2 rounded-full bg-mint-500 animate-pulse" />
               <span className="text-[11px] font-medium text-stone-600">
-                Local-First Mode
+                PostgreSQL Clone Mode
               </span>
             </div>
             <Link
               href="/settings"
               className="text-[11px] font-semibold text-stone-400 hover:text-stone-700 transition"
-              title="Configure Google Sheets Connection"
+              title="Database Configuration"
             >
-              Sync →
+              DB Status →
             </Link>
           </div>
           <button

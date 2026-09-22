@@ -418,12 +418,24 @@ export default function SettingsPage() {
         </div>
       )}
     </section>
-    <section className="animate-fade-up stagger-2 mt-6 rounded-card bg-white p-6 shadow-soft sm:p-8"><h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900"><span aria-hidden="true" className="inline-block size-2 rounded-full bg-sky-300" />Schedule</h2><p className="mt-3 text-stone-500">Import your onboarding schedule from an Excel or Google Sheets export (.xlsx, .csv, or .tsv). The file is parsed here and kept on this device — nothing is uploaded elsewhere.</p>
-      {imported ? <div><p className="mt-4 text-stone-700">Imported schedule · {imported.activities.length} activities · {new Date(imported.importedAt).toLocaleString()}</p><button onClick={removeImported} className="mt-4 min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50">Remove imported schedule</button></div>
-        : preview ? <div className="animate-pop-in mt-4 rounded-2xl bg-sun-50 p-5"><p className="font-medium text-sun-800">Ready to import</p><p className="mt-1 text-sm text-stone-700">{preview.activities.length} activities{preview.skipped > 0 ? `, ${preview.skipped} skipped` : ''}{preview.diary && preview.diary.length > 0 ? ` · ${preview.diary.length} diary notes` : ''}</p>{preview.skipped > 0 && preview.warnings.length > 0 && <ul className="mt-2 space-y-1 text-xs text-peach-700">{preview.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul>}<ul className="mt-3 space-y-1">{preview.activities.slice(0, 5).map((activity, index) => <li key={`${activity.id}-${index}`} className="text-sm text-stone-700">{activity.name} — {activity.plannedStart === 'TBD' ? 'Flexible / TBD' : `${activity.plannedStart}–${activity.plannedEnd}`}</li>)}</ul><div className="mt-4 flex flex-wrap gap-3"><button onClick={confirmImport} className="min-h-11 rounded-full bg-stone-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-stone-700">Use this schedule</button><button onClick={discardImport} className="min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-white">Discard</button></div></div>
-        : <label className="mt-4 inline-flex min-h-11 cursor-pointer items-center rounded-full bg-stone-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-stone-700">{parsing ? 'Reading file…' : 'Choose file'}<input type="file" accept=".xlsx,.csv,.tsv" disabled={parsing} onChange={event => void importSchedule(event)} style={{ display: 'none' }} /></label>}
-      {importError && <p className="animate-pop-in mt-3 text-sm text-peach-700" role="alert">{importError}</p>}
-      {importMessage && <p className="mt-3 text-sm text-stone-600" role="status">{importMessage}</p>}
+    <section className="animate-fade-up stagger-2 mt-6 rounded-card bg-white p-6 shadow-soft sm:p-8">
+      <div className="flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900">
+          <span aria-hidden="true" className="inline-block size-2 rounded-full bg-mint-400" />
+          Database Storage (Active)
+        </h2>
+        <span className="rounded-full bg-mint-100 px-3 py-1 text-xs font-semibold text-mint-800">
+          PostgreSQL Connected
+        </span>
+      </div>
+      <p className="mt-3 text-stone-500">
+        Data is loaded directly from the remote PostgreSQL database (<code className="rounded bg-stone-100 px-1 py-0.5 font-mono text-xs text-stone-800">nova-clone</code>). Manual spreadsheet or Excel importing is disabled because the database is the primary authoritative source.
+      </p>
+      <div className="mt-4 rounded-xl border border-stone-200/80 bg-stone-50/80 p-4 text-xs text-stone-700 space-y-1.5 font-mono">
+        <p><span className="font-semibold text-stone-900 font-sans">Database Target:</span> nova-clone (Aiven Cloud PostgreSQL)</p>
+        <p><span className="font-semibold text-stone-900 font-sans">Authentication:</span> Disabled (Direct Access without OAuth requirement)</p>
+        <p><span className="font-semibold text-stone-900 font-sans">Data Source:</span> Database-only (Schedule, Diary, Feedback, Timeline, Reviews, Glossary)</p>
+      </div>
     </section>
     <section className="animate-fade-up stagger-3 mt-6 rounded-card bg-white p-6 shadow-soft sm:p-8"><h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900"><span aria-hidden="true" className="inline-block size-2 rounded-full bg-mint-300" />Sync</h2><p className="mt-3 text-stone-500">Completed sessions and learning notes sync after confirmation. Local records remain available if a service is unavailable.</p><button onClick={() => void retryPending()} disabled={!pendingCount} className="mt-4 min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-40 disabled:hover:transform-none">Retry pending sync</button><p className="mt-3 text-sm text-stone-600" role="status">{pendingCount ? <span className="inline-flex items-center gap-1.5 text-peach-700"><IconClock className="h-4 w-4 shrink-0" /> {pendingCount} session{pendingCount === 1 ? '' : 's'} waiting to sync</span> : <span className="inline-flex items-center gap-1.5 text-mint-700"><IconCheck className="h-4 w-4 shrink-0" /> No sessions waiting to sync</span>}</p></section>
     <section className="animate-fade-up stagger-4 mt-6 rounded-card bg-white p-6 shadow-soft sm:p-8"><h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900"><span aria-hidden="true" className="inline-block size-2 rounded-full bg-lavender-300" />Guide tour</h2><p className="mt-3 text-stone-500">New to the cockpit? Take a short walkthrough of Today, the timeline, quick notes, and more.</p><a href="/?tour=start" className="mt-4 inline-flex min-h-11 items-center rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50">Take the tour again</a></section></main>;

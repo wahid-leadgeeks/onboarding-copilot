@@ -53,6 +53,31 @@ export default function TimelinePage() {
     } finally {
       setIsHydrated(true);
     }
+
+    fetch('/api/timeline')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.stages && Array.isArray(data.stages) && data.stages.length > 0) {
+          setTimelineState((prev) => {
+            let next = { ...prev };
+            for (const st of data.stages) {
+              if (st.startDate || st.endDate) {
+                next = updateStageDates(next, st.id, {
+                  startDate: st.startDate,
+                  endDate: st.endDate,
+                });
+              }
+            }
+            try {
+              localStorage.setItem(TIMELINE_STORAGE_KEY, writeTimelineState(next));
+            } catch {
+              /* ignore */
+            }
+            return next;
+          });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   function persist(nextState: TimelineState) {
@@ -67,6 +92,15 @@ export default function TimelinePage() {
   function handleDateChange(stageId: string, field: keyof StageDates, value: string) {
     const nextState = updateStageDates(timelineState, stageId, { [field]: value });
     persist(nextState);
+    fetch('/api/timeline', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        stageId,
+        startDate: field === 'startDate' ? value : undefined,
+        endDate: field === 'endDate' ? value : undefined,
+      }),
+    }).catch(() => {});
   }
 
   function handleToggleEvidence(evidenceId: string) {

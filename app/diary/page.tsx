@@ -32,6 +32,26 @@ export default function DiaryPage() {
     } catch {
       /* ignore */
     }
+
+    fetch('/api/diary')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.entries && Array.isArray(data.entries) && data.entries.length > 0) {
+          setDiaryEntries((prev) => {
+            let merged = [...prev];
+            for (const item of data.entries) {
+              merged = upsertDiaryCockpitEntry(merged, item);
+            }
+            try {
+              localStorage.setItem(DIARY_COCKPIT_STORAGE_KEY, writeDiaryCockpitEntries(merged));
+            } catch {
+              /* ignore */
+            }
+            return merged;
+          });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   function persist(next: DiaryEntryRecord[]) {
@@ -46,6 +66,11 @@ export default function DiaryPage() {
   function handleSaveTopic(entry: DiaryEntryRecord) {
     const next = upsertDiaryCockpitEntry(diaryEntries, entry);
     persist(next);
+    fetch('/api/diary', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(entry),
+    }).catch(() => {});
     toast.success(`Saved notes for Row ${entry.rowNumber}!`);
   }
 
