@@ -11,3 +11,4 @@ coverage/
 .agents/
 graphify-out/
 personaltracker.jpeg
+.vercel/
