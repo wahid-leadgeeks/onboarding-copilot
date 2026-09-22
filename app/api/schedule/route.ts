@@ -10,7 +10,8 @@ export async function GET(request: Request) {
     if (!Array.isArray(activities) || !activities.every(isActivity)) {
       return NextResponse.json({ error: 'Invalid schedule data' }, { status: 502 });
     }
-    const mode = accessToken ? 'connected' : process.env.GOOGLE_SHEETS_ID ? 'configured' : 'demo';
+    const { isDbConfigured } = await import('@/lib/db');
+    const mode = isDbConfigured() ? 'connected' : accessToken ? 'connected' : process.env.GOOGLE_SHEETS_ID ? 'configured' : 'demo';
     return NextResponse.json(activities, {
       headers: {
         'x-schedule-mode': mode,

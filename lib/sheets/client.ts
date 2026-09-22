@@ -1,12 +1,47 @@
 import type { Activity } from '@/lib/types/activity';
 import { isActivity } from './types';
 import { extractGoogleSpreadsheet } from './extractor';
-import { OFFICIAL_SCHEDULE_ACTIVITIES, scheduleActivityToActivity } from '@/lib/schedule-catalog';
+import { OFFICIAL_SCHEDULE_ACTIVITIES, scheduleActivityToActivity, type ScheduleActivity } from '@/lib/schedule-catalog';
+import { db, schema, isDbConfigured } from '@/lib/db';
+import { asc, eq } from 'drizzle-orm';
 
 const fallback: Activity[] = OFFICIAL_SCHEDULE_ACTIVITIES.map(scheduleActivityToActivity);
 
-
 export async function readSchedule(accessToken?: string): Promise<Activity[]> {
+  // 0. Database primary source when PostgreSQL is configured
+  if (isDbConfigured()) {
+    try {
+      const rows = await db.select().from(schema.activities).orderBy(asc(schema.activities.rowNumber));
+      if (rows && rows.length > 0) {
+        return rows.map((row) => {
+          const item: ScheduleActivity = {
+            id: row.id,
+            rowNumber: row.rowNumber,
+            week: row.week,
+            day: row.day,
+            date: row.date,
+            activityCount: row.activityCount,
+            pic: row.pic,
+            topic: row.topic,
+            mainMedia: row.mainMedia,
+            durationMinutes: row.durationMinutes ?? undefined,
+            startTime: row.startTime ?? undefined,
+            endTime: row.endTime ?? undefined,
+            progress: row.progress || '',
+            notes: row.notes || '',
+          };
+          const activity = scheduleActivityToActivity(item);
+          if (row.actualStart) activity.actualStart = row.actualStart;
+          if (row.actualEnd) activity.actualEnd = row.actualEnd;
+          if (row.durationMinutes) activity.durationMinutes = row.durationMinutes;
+          return activity;
+        });
+      }
+    } catch (err) {
+      console.warn('Database schedule read failed:', err);
+    }
+  }
+
   const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
   if (!spreadsheetId) return fallback;
 
@@ -47,6 +82,33 @@ export async function readSchedule(accessToken?: string): Promise<Activity[]> {
 }
 
 export async function writeSession(activityId: string, session: Pick<Activity, 'actualStart' | 'actualEnd' | 'durationMinutes'>): Promise<boolean> {
+  if (isDbConfigured()) {
+    try {
+      await db
+        .update(schema.activities)
+        .set({
+          actualStart: session.actualStart,
+          actualEnd: session.actualEnd,
+          durationMinutes: session.durationMinutes,
+          progress: 'Done',
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.activities.id, activityId));
+
+      await db.insert(schema.sessionLogs).values({
+        id: `session-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        activityId,
+        name: activityId,
+        startedAt: session.actualStart ? new Date(session.actualStart).getTime() : Date.now(),
+        finishedAt: session.actualEnd ? new Date(session.actualEnd).getTime() : Date.now(),
+        durationMinutes: session.durationMinutes || 0,
+      });
+      return true;
+    } catch (err) {
+      console.warn('Database writeSession error:', err);
+    }
+  }
+
   const endpoint = process.env.SHEETS_WRITE_URL;
   if (!process.env.GOOGLE_SHEETS_ID || !endpoint) return false;
   const headers: Record<string, string> = { 'content-type': 'application/json' };
@@ -67,6 +129,9 @@ export async function writeSession(activityId: string, session: Pick<Activity, '
 }
 
 export async function writeDiary(content: string): Promise<boolean> {
+  if (isDbConfigured()) {
+    return true;
+  }
   const endpoint = process.env.SHEETS_DIARY_URL;
   if (!process.env.GOOGLE_SHEETS_ID || !endpoint) return false;
   const parsedEndpoint = new URL(endpoint);
@@ -78,3 +143,4 @@ export async function writeDiary(content: string): Promise<boolean> {
   if (!response.ok) throw new Error(`Diary write failed: ${response.status}`);
   return true;
 }
+

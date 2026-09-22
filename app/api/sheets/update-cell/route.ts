@@ -8,40 +8,65 @@ import {
   type FeedbackEntry,
   type FeedbackRatings,
 } from '@/lib/feedback';
+import { db, schema, isDbConfigured } from '@/lib/db';
+import { eq } from 'drizzle-orm';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const spreadsheetId = url.searchParams.get('id') || process.env.GOOGLE_SHEETS_ID;
   const range = url.searchParams.get('range') || "'Onboarding Diary'!H15";
 
-  if (!spreadsheetId) {
-    return NextResponse.json({ error: 'GOOGLE_SHEETS_ID is not configured' }, { status: 400 });
+  const isDb = isDbConfigured();
+
+  if (!isDb) {
+    if (!spreadsheetId) {
+      return NextResponse.json({ error: 'GOOGLE_SHEETS_ID is not configured' }, { status: 400 });
+    }
+
+    const accessToken = await getSessionAccessToken(request);
+    if (!accessToken) {
+      return NextResponse.json(
+        {
+          success: false,
+          authenticated: false,
+          loginUrl: '/api/auth/login',
+          message: 'Google OAuth authentication is required to read spreadsheet cells.',
+        },
+        { status: 401 }
+      );
+    }
+
+    try {
+      const values = await getSheetRange(spreadsheetId, range, { accessToken });
+      const cellValue = values[0]?.[0] || '';
+      return NextResponse.json({
+        success: true,
+        range,
+        value: cellValue,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to read cell';
+      return NextResponse.json({ success: false, error: message }, { status: 502 });
+    }
   }
 
-  const accessToken = await getSessionAccessToken(request);
-  if (!accessToken) {
-    return NextResponse.json(
-      {
-        success: false,
-        authenticated: false,
-        loginUrl: '/api/auth/login',
-        message: 'Google OAuth authentication is required to read spreadsheet cells.',
-      },
-      { status: 401 }
-    );
-  }
-
+  // Database mode: read cell from PostgreSQL
   try {
-    const values = await getSheetRange(spreadsheetId, range, { accessToken });
-    const cellValue = values[0]?.[0] || '';
-    return NextResponse.json({
-      success: true,
-      range,
-      value: cellValue,
-    });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to read cell';
-    return NextResponse.json({ success: false, error: message }, { status: 502 });
+    const match = range.match(/(?:'([^']+)'|([^!]+))!([A-Z]+)(\d+)/i);
+    if (match) {
+      const sheetName = match[1] || match[2];
+      const col = match[3].toUpperCase();
+      const row = parseInt(match[4], 10);
+      if (sheetName.toLowerCase().includes('diary')) {
+        const entries = await db.select().from(schema.diaryEntries).where(eq(schema.diaryEntries.rowNumber, row));
+        const entry = entries[0];
+        const cellValue = col === 'G' ? entry?.learned || '' : entry?.notes || '';
+        return NextResponse.json({ success: true, range, value: cellValue });
+      }
+    }
+    return NextResponse.json({ success: true, range, value: '' });
+  } catch {
+    return NextResponse.json({ success: true, range, value: '' });
   }
 }
 
@@ -74,12 +99,14 @@ export async function POST(request: Request) {
 
   const spreadsheetId = body?.spreadsheetId || process.env.GOOGLE_SHEETS_ID;
 
-  if (!spreadsheetId) {
+  const isDb = isDbConfigured();
+
+  if (!isDb && !spreadsheetId) {
     return NextResponse.json({ error: 'GOOGLE_SHEETS_ID is not configured' }, { status: 400 });
   }
 
   const accessToken = await getSessionAccessToken(request);
-  if (!accessToken) {
+  if (!isDb && !accessToken) {
     return NextResponse.json(
       {
         success: false,
@@ -96,6 +123,162 @@ export async function POST(request: Request) {
       Boolean(body?.sheet && body.sheet.toLowerCase().includes('feedback')) ||
       Boolean(body?.feedback) ||
       (typeof body?.rowNumber === 'number' && body?.ratings !== undefined);
+
+    // 0. Direct Database Persistence when PostgreSQL is configured
+    if (isDb) {
+      if (body?.sheet === 'Schedule' && typeof body?.rowNumber === 'number') {
+        const row = body.rowNumber;
+        const rawProgress = body.progress !== undefined ? String(body.progress).trim() : 'Done';
+        const progressValue = (rawProgress === 'Not Started' || !rawProgress) ? '' : rawProgress;
+        const duration = body.durationMinutes !== undefined && body.durationMinutes !== '' ? Number(body.durationMinutes) : null;
+        await db
+          .update(schema.activities)
+          .set({
+            durationMinutes: duration,
+            startTime: body.startTime || null,
+            endTime: body.endTime || null,
+            progress: progressValue,
+            notes: body.notes || '',
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.activities.rowNumber, row));
+
+        return NextResponse.json({
+          success: true,
+          sheet: 'Schedule',
+          rowNumber: row,
+          range: `'Schedule'!G${row}:K${row}`,
+          durationMinutes: body.durationMinutes,
+          startTime: body.startTime,
+          endTime: body.endTime,
+          progress: progressValue,
+          notes: body.notes,
+        });
+      }
+
+      if (isFeedbackSheet && Array.isArray(body?.entries) && body.entries.length > 0) {
+        const primarySheet = body?.sheet === 'Feedback' ? 'Feedback' : 'Feedback Sheet';
+        const updatedRows: number[] = [];
+        for (const item of body.entries) {
+          const session = item.sessionId ? findFeedbackSession(item.sessionId) : undefined;
+          const row = ('rowNumber' in item && typeof item.rowNumber === 'number' ? item.rowNumber : undefined) ||
+            session?.rowNumber ||
+            (item.sessionId ? parseInt(item.sessionId.replace(/\D/g, ''), 10) : undefined) || 3;
+          const sessionId = item.sessionId || `row-${row}`;
+          const itemTopic = ('topic' in item ? (item as any).topic : 'sessionTitle' in item ? item.sessionTitle : '') || '';
+          await db
+            .insert(schema.feedbackEntries)
+            .values({
+              id: `fb-${sessionId}`,
+              sessionId,
+              rowNumber: row,
+              date: item.date || new Date().toISOString().slice(0, 10),
+              pic: item.pic || '',
+              topic: itemTopic,
+              ratings: item.ratings as any,
+              hasQuestions: item.hasQuestions ?? false,
+              questionExplanation: item.questionExplanation || '',
+              questionAddressing: item.questionAddressing || '',
+              suggestions: item.suggestions || '',
+              updatedAt: new Date().toISOString(),
+            })
+            .onConflictDoUpdate({
+              target: schema.feedbackEntries.sessionId,
+              set: {
+                date: item.date || undefined,
+                pic: item.pic || undefined,
+                topic: itemTopic || undefined,
+                ratings: item.ratings as any,
+                hasQuestions: item.hasQuestions ?? false,
+                questionExplanation: item.questionExplanation || '',
+                questionAddressing: item.questionAddressing || '',
+                suggestions: item.suggestions || '',
+                updatedAt: new Date().toISOString(),
+              },
+            });
+          updatedRows.push(row);
+        }
+        return NextResponse.json({
+          success: true,
+          sheet: primarySheet,
+          updatedCount: updatedRows.length,
+          updatedRows,
+        });
+      }
+
+      if (isFeedbackSheet && typeof body?.rowNumber === 'number') {
+        const row = body.rowNumber;
+        const sessionId = `row-${row}`;
+        const ratings = body.ratings || (body.feedback?.ratings) || {};
+        const feedbackTopic = ('topic' in (body?.feedback || {}) ? (body?.feedback as any).topic : body?.feedback?.sessionTitle) || body?.topic || body?.sessionTitle || '';
+        await db
+          .insert(schema.feedbackEntries)
+          .values({
+            id: `fb-${sessionId}`,
+            sessionId,
+            rowNumber: row,
+            date: body.date || body.feedback?.date || new Date().toISOString().slice(0, 10),
+            pic: body.pic || body.feedback?.pic || '',
+            topic: feedbackTopic,
+            ratings: ratings as any,
+            hasQuestions: body.hasQuestions ?? body.feedback?.hasQuestions ?? false,
+            questionExplanation: body.questionExplanation || body.feedback?.questionExplanation || '',
+            questionAddressing: body.questionAddressing || body.feedback?.questionAddressing || '',
+            suggestions: body.suggestions || body.feedback?.suggestions || '',
+            updatedAt: new Date().toISOString(),
+          })
+          .onConflictDoUpdate({
+            target: schema.feedbackEntries.sessionId,
+            set: {
+              date: body.date || body.feedback?.date || undefined,
+              pic: body.pic || body.feedback?.pic || undefined,
+              topic: feedbackTopic || undefined,
+              ratings: ratings as any,
+              hasQuestions: body.hasQuestions ?? body.feedback?.hasQuestions ?? false,
+              questionExplanation: body.questionExplanation || body.feedback?.questionExplanation || '',
+              questionAddressing: body.questionAddressing || body.feedback?.questionAddressing || '',
+              suggestions: body.suggestions || body.feedback?.suggestions || '',
+              updatedAt: new Date().toISOString(),
+            },
+          });
+        return NextResponse.json({
+          success: true,
+          sheet: 'Feedback Sheet',
+          rowNumber: row,
+          range: `'Feedback Sheet'!A${row}:M${row}`,
+        });
+      }
+
+      if (typeof body?.rowNumber === 'number' && (body.learned !== undefined || body.notes !== undefined)) {
+        const row = body.rowNumber;
+        await db
+          .insert(schema.diaryEntries)
+          .values({
+            id: `entry-${row}`,
+            rowNumber: row,
+            learned: body.learned ?? '',
+            notes: body.notes ?? '',
+            updatedAt: new Date().toISOString(),
+          })
+          .onConflictDoUpdate({
+            target: schema.diaryEntries.rowNumber,
+            set: {
+              learned: body.learned ?? '',
+              notes: body.notes ?? '',
+              updatedAt: new Date().toISOString(),
+            },
+          });
+
+        return NextResponse.json({
+          success: true,
+          rowNumber: row,
+          learned: body.learned ?? '',
+          notes: body.notes ?? '',
+        });
+      }
+    }
+
+    const targetSpreadsheetId = spreadsheetId as string;
 
     // 1. If updating Schedule sheet (G: Duration, H: Start, I: End, J: Progress, K: Notes)
     if (body?.sheet === 'Schedule' && typeof body?.rowNumber === 'number') {
@@ -118,7 +301,7 @@ export async function POST(request: Request) {
           body.notes ?? '',
         ],
       ];
-      const result = await updateSheetRange(spreadsheetId, range, values, { accessToken });
+      const result = await updateSheetRange(targetSpreadsheetId, range, values, { accessToken });
       return NextResponse.json({
         success: true,
         sheet: 'Schedule',
@@ -151,12 +334,12 @@ export async function POST(request: Request) {
           const rowValues = formatFeedbackRowValues(item);
           const range = `'${primarySheet}'!A${row}:M${row}`;
           try {
-            await updateSheetRange(spreadsheetId, range, [rowValues], { accessToken });
+            await updateSheetRange(targetSpreadsheetId, range, [rowValues], { accessToken });
             updatedRows.push(row);
           } catch {
             const altSheet = primarySheet === 'Feedback Sheet' ? 'Feedback' : 'Feedback Sheet';
             const altRange = `'${altSheet}'!A${row}:M${row}`;
-            await updateSheetRange(spreadsheetId, altRange, [rowValues], { accessToken });
+            await updateSheetRange(targetSpreadsheetId, altRange, [rowValues], { accessToken });
             updatedRows.push(row);
           }
         }
@@ -198,7 +381,7 @@ export async function POST(request: Request) {
       const range = `'${primarySheet}'!A${row}:M${row}`;
 
       try {
-        const result = await updateSheetRange(spreadsheetId, range, [rowValues], { accessToken });
+        const result = await updateSheetRange(targetSpreadsheetId, range, [rowValues], { accessToken });
         return NextResponse.json({
           success: true,
           sheet: primarySheet,
@@ -212,7 +395,7 @@ export async function POST(request: Request) {
         const altSheet = primarySheet === 'Feedback Sheet' ? 'Feedback' : 'Feedback Sheet';
         const altRange = `'${altSheet}'!A${row}:M${row}`;
         try {
-          const result = await updateSheetRange(spreadsheetId, altRange, [rowValues], { accessToken });
+          const result = await updateSheetRange(targetSpreadsheetId, altRange, [rowValues], { accessToken });
           return NextResponse.json({
             success: true,
             sheet: altSheet,
@@ -235,7 +418,7 @@ export async function POST(request: Request) {
       }
       const range = `'Onboarding Diary'!G${row}:H${row}`;
       const values = [[body.learned ?? '', body.notes ?? '']];
-      const result = await updateSheetRange(spreadsheetId, range, values, { accessToken });
+      const result = await updateSheetRange(targetSpreadsheetId, range, values, { accessToken });
       return NextResponse.json({
         success: true,
         rowNumber: row,
@@ -247,7 +430,7 @@ export async function POST(request: Request) {
 
     // 2. If 2D values array is specified
     if (Array.isArray(body?.values) && typeof body?.range === 'string') {
-      const result = await updateSheetRange(spreadsheetId, body.range, body.values, { accessToken });
+      const result = await updateSheetRange(targetSpreadsheetId, body.range, body.values, { accessToken });
       return NextResponse.json({
         success: true,
         ...result,
@@ -258,7 +441,7 @@ export async function POST(request: Request) {
     // 3. If single cell value is specified
     if (typeof body?.value === 'string') {
       const range = body.range || "'Onboarding Diary'!H15";
-      const result = await updateSheetCell(spreadsheetId, range, body.value, { accessToken });
+      const result = await updateSheetCell(targetSpreadsheetId, range, body.value, { accessToken });
       return NextResponse.json({
         success: true,
         ...result,
