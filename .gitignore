@@ -12,3 +12,5 @@ coverage/
 graphify-out/
 personaltracker.jpeg
 .vercel/
+.vercel
+.env*
