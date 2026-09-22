@@ -13,9 +13,11 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.2",
     "fast-xml-parser": "^5.11.1",
     "fflate": "^0.8.3",
     "next": "latest",
+    "postgres": "^3.4.9",
     "react": "latest",
     "react-dom": "latest"
   },
@@ -26,11 +28,13 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "autoprefixer": "latest",
+    "drizzle-kit": "^0.31.10",
     "eslint": "9.39.1",
     "eslint-config-next": "latest",
     "jest": "latest",
     "postcss": "latest",
     "tailwindcss": "latest",
+    "tsx": "^4.23.15",
     "typescript": "5.9.3"
   }
 }
