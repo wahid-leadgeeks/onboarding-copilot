@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { writeDiary } from '@/lib/sheets/client';
 import { db, schema, isDbConfigured } from '@/lib/db';
 import { asc, eq } from 'drizzle-orm';
+import { getSessionAccessToken } from '@/lib/auth/session';
+import { updateSheetRange } from '@/lib/sheets/extractor';
 
 export async function GET() {
   if (isDbConfigured()) {
@@ -69,6 +71,19 @@ export async function POST(request: Request) {
           },
         });
 
+      let syncedToSheets = false;
+      const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+      const accessToken = await getSessionAccessToken(request);
+      if (spreadsheetId && accessToken) {
+        try {
+          const range = `'Onboarding Diary'!G${row}:H${row}`;
+          await updateSheetRange(spreadsheetId, range, [[learned, notes]], { accessToken });
+          syncedToSheets = true;
+        } catch (syncErr) {
+          console.warn('Google Sheets diary sync error:', syncErr);
+        }
+      }
+
       return NextResponse.json(
         {
           success: true,
@@ -76,6 +91,7 @@ export async function POST(request: Request) {
           learned,
           notes,
           syncStatus: 'synced',
+          syncedToSheets,
         },
         { status: 201 }
       );

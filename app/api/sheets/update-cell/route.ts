@@ -124,6 +124,8 @@ export async function POST(request: Request) {
       Boolean(body?.feedback) ||
       (typeof body?.rowNumber === 'number' && body?.ratings !== undefined);
 
+    const targetSpreadsheetId = spreadsheetId as string | undefined;
+
     // 0. Direct Database Persistence when PostgreSQL is configured
     if (isDb) {
       if (body?.sheet === 'Schedule' && typeof body?.rowNumber === 'number') {
@@ -143,6 +145,26 @@ export async function POST(request: Request) {
           })
           .where(eq(schema.activities.rowNumber, row));
 
+        let syncedToSheets = false;
+        if (targetSpreadsheetId && accessToken) {
+          try {
+            const range = `'Schedule'!G${row}:K${row}`;
+            const values = [
+              [
+                body.durationMinutes !== undefined ? String(body.durationMinutes) : '',
+                body.startTime ?? '',
+                body.endTime ?? '',
+                progressValue,
+                body.notes ?? '',
+              ],
+            ];
+            await updateSheetRange(targetSpreadsheetId, range, values, { accessToken });
+            syncedToSheets = true;
+          } catch (syncErr) {
+            console.warn('Google Sheets Schedule sync error:', syncErr);
+          }
+        }
+
         return NextResponse.json({
           success: true,
           sheet: 'Schedule',
@@ -153,6 +175,7 @@ export async function POST(request: Request) {
           endTime: body.endTime,
           progress: progressValue,
           notes: body.notes,
+          syncedToSheets,
         });
       }
 
@@ -197,12 +220,30 @@ export async function POST(request: Request) {
               },
             });
           updatedRows.push(row);
+
+          if (targetSpreadsheetId && accessToken) {
+            try {
+              const rowValues = formatFeedbackRowValues(item);
+              const range = `'${primarySheet}'!A${row}:M${row}`;
+              await updateSheetRange(targetSpreadsheetId, range, [rowValues], { accessToken });
+            } catch {
+              const altSheet = primarySheet === 'Feedback Sheet' ? 'Feedback' : 'Feedback Sheet';
+              const altRange = `'${altSheet}'!A${row}:M${row}`;
+              try {
+                const rowValues = formatFeedbackRowValues(item);
+                await updateSheetRange(targetSpreadsheetId, altRange, [rowValues], { accessToken });
+              } catch (altErr) {
+                console.warn('Google Sheets Feedback batch sync error:', altErr);
+              }
+            }
+          }
         }
         return NextResponse.json({
           success: true,
           sheet: primarySheet,
           updatedCount: updatedRows.length,
           updatedRows,
+          syncedToSheets: Boolean(targetSpreadsheetId && accessToken),
         });
       }
 
@@ -241,11 +282,45 @@ export async function POST(request: Request) {
               updatedAt: new Date().toISOString(),
             },
           });
+
+        let syncedToSheets = false;
+        if (targetSpreadsheetId && accessToken) {
+          const feedbackInput: FeedbackClipboardInput = body?.feedback || {
+            date: body?.date,
+            pic: body?.pic,
+            topic: feedbackTopic,
+            ratings,
+            hasQuestions: body?.hasQuestions,
+            questionExplanation: body?.questionExplanation,
+            questionAddressing: body?.questionAddressing,
+            suggestions: body?.suggestions,
+          };
+          const rowValues = Array.isArray(body?.values?.[0]) && body.values[0].length > 0
+            ? body.values[0]
+            : formatFeedbackRowValues(feedbackInput);
+          const primarySheet = body?.sheet === 'Feedback' ? 'Feedback' : 'Feedback Sheet';
+          const range = `'${primarySheet}'!A${row}:M${row}`;
+          try {
+            await updateSheetRange(targetSpreadsheetId, range, [rowValues], { accessToken });
+            syncedToSheets = true;
+          } catch {
+            const altSheet = primarySheet === 'Feedback Sheet' ? 'Feedback' : 'Feedback Sheet';
+            const altRange = `'${altSheet}'!A${row}:M${row}`;
+            try {
+              await updateSheetRange(targetSpreadsheetId, altRange, [rowValues], { accessToken });
+              syncedToSheets = true;
+            } catch (err) {
+              console.warn('Google Sheets Feedback single sync error:', err);
+            }
+          }
+        }
+
         return NextResponse.json({
           success: true,
           sheet: 'Feedback Sheet',
           rowNumber: row,
           range: `'Feedback Sheet'!A${row}:M${row}`,
+          syncedToSheets,
         });
       }
 
@@ -269,16 +344,29 @@ export async function POST(request: Request) {
             },
           });
 
+        let syncedToSheets = false;
+        if (targetSpreadsheetId && accessToken) {
+          try {
+            const range = `'Onboarding Diary'!G${row}:H${row}`;
+            const values = [[body.learned ?? '', body.notes ?? '']];
+            await updateSheetRange(targetSpreadsheetId, range, values, { accessToken });
+            syncedToSheets = true;
+          } catch (syncErr) {
+            console.warn('Google Sheets Diary sync error:', syncErr);
+          }
+        }
+
         return NextResponse.json({
           success: true,
           rowNumber: row,
           learned: body.learned ?? '',
           notes: body.notes ?? '',
+          syncedToSheets,
         });
       }
     }
 
-    const targetSpreadsheetId = spreadsheetId as string;
+    const nonDbSpreadsheetId = targetSpreadsheetId || '';
 
     // 1. If updating Schedule sheet (G: Duration, H: Start, I: End, J: Progress, K: Notes)
     if (body?.sheet === 'Schedule' && typeof body?.rowNumber === 'number') {
@@ -301,7 +389,7 @@ export async function POST(request: Request) {
           body.notes ?? '',
         ],
       ];
-      const result = await updateSheetRange(targetSpreadsheetId, range, values, { accessToken });
+      const result = await updateSheetRange(nonDbSpreadsheetId, range, values, { accessToken });
       return NextResponse.json({
         success: true,
         sheet: 'Schedule',
@@ -334,12 +422,12 @@ export async function POST(request: Request) {
           const rowValues = formatFeedbackRowValues(item);
           const range = `'${primarySheet}'!A${row}:M${row}`;
           try {
-            await updateSheetRange(targetSpreadsheetId, range, [rowValues], { accessToken });
+            await updateSheetRange(nonDbSpreadsheetId, range, [rowValues], { accessToken });
             updatedRows.push(row);
           } catch {
             const altSheet = primarySheet === 'Feedback Sheet' ? 'Feedback' : 'Feedback Sheet';
             const altRange = `'${altSheet}'!A${row}:M${row}`;
-            await updateSheetRange(targetSpreadsheetId, altRange, [rowValues], { accessToken });
+            await updateSheetRange(nonDbSpreadsheetId, altRange, [rowValues], { accessToken });
             updatedRows.push(row);
           }
         }
@@ -381,7 +469,7 @@ export async function POST(request: Request) {
       const range = `'${primarySheet}'!A${row}:M${row}`;
 
       try {
-        const result = await updateSheetRange(targetSpreadsheetId, range, [rowValues], { accessToken });
+        const result = await updateSheetRange(nonDbSpreadsheetId, range, [rowValues], { accessToken });
         return NextResponse.json({
           success: true,
           sheet: primarySheet,
@@ -395,7 +483,7 @@ export async function POST(request: Request) {
         const altSheet = primarySheet === 'Feedback Sheet' ? 'Feedback' : 'Feedback Sheet';
         const altRange = `'${altSheet}'!A${row}:M${row}`;
         try {
-          const result = await updateSheetRange(targetSpreadsheetId, altRange, [rowValues], { accessToken });
+          const result = await updateSheetRange(nonDbSpreadsheetId, altRange, [rowValues], { accessToken });
           return NextResponse.json({
             success: true,
             sheet: altSheet,
@@ -418,7 +506,7 @@ export async function POST(request: Request) {
       }
       const range = `'Onboarding Diary'!G${row}:H${row}`;
       const values = [[body.learned ?? '', body.notes ?? '']];
-      const result = await updateSheetRange(targetSpreadsheetId, range, values, { accessToken });
+      const result = await updateSheetRange(nonDbSpreadsheetId, range, values, { accessToken });
       return NextResponse.json({
         success: true,
         rowNumber: row,
@@ -430,7 +518,7 @@ export async function POST(request: Request) {
 
     // 2. If 2D values array is specified
     if (Array.isArray(body?.values) && typeof body?.range === 'string') {
-      const result = await updateSheetRange(targetSpreadsheetId, body.range, body.values, { accessToken });
+      const result = await updateSheetRange(nonDbSpreadsheetId, body.range, body.values, { accessToken });
       return NextResponse.json({
         success: true,
         ...result,
@@ -441,7 +529,7 @@ export async function POST(request: Request) {
     // 3. If single cell value is specified
     if (typeof body?.value === 'string') {
       const range = body.range || "'Onboarding Diary'!H15";
-      const result = await updateSheetCell(targetSpreadsheetId, range, body.value, { accessToken });
+      const result = await updateSheetCell(nonDbSpreadsheetId, range, body.value, { accessToken });
       return NextResponse.json({
         success: true,
         ...result,

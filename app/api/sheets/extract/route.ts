@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     }
   }
 
-  if (isDbConfigured()) {
+  if (source !== 'sheets' && isDbConfigured()) {
     const [dbActivities, dbDiaryTopics, dbDiaryEntries, dbFeedbackSessions, dbFeedbackEntries, dbTimelineStages] =
       await Promise.all([
         db.select().from(schema.activities).orderBy(asc(schema.activities.rowNumber)),

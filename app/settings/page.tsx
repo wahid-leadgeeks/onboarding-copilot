@@ -67,7 +67,7 @@ export default function SettingsPage() {
   const [extractResult, setExtractResult] = useState<ExtractedSpreadsheetContent | null>(null);
   const [extractError, setExtractError] = useState<string | null>(null);
 
-  async function handleExtractSheets(source?: 'local') {
+  async function handleExtractSheets(source?: 'local' | 'sheets') {
     setExtracting(true);
     setExtractError(null);
     try {
@@ -344,7 +344,7 @@ export default function SettingsPage() {
             <button
               type="button"
               disabled={extracting}
-              onClick={() => void handleExtractSheets()}
+              onClick={() => void handleExtractSheets('sheets')}
               className="min-h-9 rounded-full bg-stone-900 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-stone-700 disabled:opacity-50"
             >
               {extracting ? 'Extracting…' : 'Extract from Google Sheets'}
@@ -422,19 +422,20 @@ export default function SettingsPage() {
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900">
           <span aria-hidden="true" className="inline-block size-2 rounded-full bg-mint-400" />
-          Database Storage (Active)
+          Database &amp; Spreadsheet Sync
         </h2>
         <span className="rounded-full bg-mint-100 px-3 py-1 text-xs font-semibold text-mint-800">
-          PostgreSQL Connected
+          Dual-Sync Active
         </span>
       </div>
       <p className="mt-3 text-stone-500">
-        Data is loaded directly from the remote PostgreSQL database (<code className="rounded bg-stone-100 px-1 py-0.5 font-mono text-xs text-stone-800">nova-clone</code>). Manual spreadsheet or Excel importing is disabled because the database is the primary authoritative source.
+        NOVA clone loads onboarding data from the PostgreSQL database (<code className="rounded bg-stone-100 px-1 py-0.5 font-mono text-xs text-stone-800">nova-clone</code>) and automatically syncs session timings, diary notes, and feedback evaluations directly into the Google Spreadsheet copy.
       </p>
       <div className="mt-4 rounded-xl border border-stone-200/80 bg-stone-50/80 p-4 text-xs text-stone-700 space-y-1.5 font-mono">
         <p><span className="font-semibold text-stone-900 font-sans">Database Target:</span> nova-clone (Aiven Cloud PostgreSQL)</p>
-        <p><span className="font-semibold text-stone-900 font-sans">Authentication:</span> Disabled (Direct Access without OAuth requirement)</p>
-        <p><span className="font-semibold text-stone-900 font-sans">Data Source:</span> Database-only (Schedule, Diary, Feedback, Timeline, Reviews, Glossary)</p>
+        <p><span className="font-semibold text-stone-900 font-sans">Authentication:</span> Google OAuth (Connected via Google Account)</p>
+        <p><span className="font-semibold text-stone-900 font-sans">Spreadsheet Copy:</span> Connected ({health?.spreadsheetId || 'sample-spreadsheet-id'})</p>
+        <p><span className="font-semibold text-stone-900 font-sans">Sync Mode:</span> Dual-Sync (PostgreSQL + Google Sheets API v4)</p>
       </div>
     </section>
     <section className="animate-fade-up stagger-3 mt-6 rounded-card bg-white p-6 shadow-soft sm:p-8"><h2 className="flex items-center gap-2 text-lg font-semibold text-stone-900"><span aria-hidden="true" className="inline-block size-2 rounded-full bg-mint-300" />Sync</h2><p className="mt-3 text-stone-500">Completed sessions and learning notes sync after confirmation. Local records remain available if a service is unavailable.</p><button onClick={() => void retryPending()} disabled={!pendingCount} className="mt-4 min-h-11 rounded-full border border-stone-200 px-4 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-40 disabled:hover:transform-none">Retry pending sync</button><p className="mt-3 text-sm text-stone-600" role="status">{pendingCount ? <span className="inline-flex items-center gap-1.5 text-peach-700"><IconClock className="h-4 w-4 shrink-0" /> {pendingCount} session{pendingCount === 1 ? '' : 's'} waiting to sync</span> : <span className="inline-flex items-center gap-1.5 text-mint-700"><IconCheck className="h-4 w-4 shrink-0" /> No sessions waiting to sync</span>}</p></section>

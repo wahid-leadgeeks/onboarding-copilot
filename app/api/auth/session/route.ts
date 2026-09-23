@@ -19,9 +19,8 @@ export async function GET(request: Request) {
   const sessionCookie = cookies.get(NOVA_SESSION_COOKIE);
   const { session, refreshed } = await resolveActiveSession(sessionCookie);
 
-  const { isDbConfigured } = await import('@/lib/db');
   const sessionData = toSessionResponse(session);
-  if (!sessionData.authenticated && (process.env.AUTH_DISABLED === 'true' || isDbConfigured())) {
+  if (!sessionData.authenticated && process.env.AUTH_DISABLED === 'true') {
     sessionData.authenticated = true;
     sessionData.user = {
       id: 'leadgeeks-user',
