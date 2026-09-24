@@ -330,12 +330,12 @@ export default function SettingsPage() {
               <p className="font-mono text-[11px] text-stone-500 truncate max-w-xs">{health.spreadsheetId}</p>
             </div>
             <a
-              href={`https://docs.google.com/spreadsheets/d/${health.spreadsheetId}/edit`}
+              href={`https://docs.google.com/spreadsheets/d/${health.spreadsheetId}/edit?gid=592196667#gid=592196667`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-sky-700 shadow-xs transition hover:bg-sky-50"
             >
-              <span>Open Sheet</span>
+              <span>Open Sheet (gid: 592196667)</span>
               <IconExternalLink className="h-3 w-3" />
             </a>
           </div>

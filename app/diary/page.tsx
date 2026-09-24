@@ -16,6 +16,7 @@ import { useToast } from '@/app/components/Toast';
 import {
   IconCheck,
   IconEdit,
+  IconExternalLink,
 } from '@/app/components/Icons';
 
 export default function DiaryPage() {
@@ -131,9 +132,20 @@ export default function DiaryPage() {
       <header className="animate-fade-up pb-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
-              Worksheet: Onboarding Diary (Columns G &amp; H)
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+                Worksheet: Onboarding Diary (Columns G &amp; H)
+              </p>
+              <a
+                href="https://docs.google.com/spreadsheets/d/sample-spreadsheet-id/edit?gid=592196667#gid=592196667"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-full border border-stone-200/90 bg-white px-2.5 py-0.5 text-[11px] font-medium text-sky-700 shadow-2xs hover:bg-sky-50 transition"
+              >
+                <span>Open Google Sheet</span>
+                <IconExternalLink className="h-3 w-3" />
+              </a>
+            </div>
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
               Onboarding Diary
             </h1>
