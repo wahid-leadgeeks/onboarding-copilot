@@ -17,6 +17,7 @@ import {
   IconTree,
   IconTrophy,
   IconX,
+  IconLogOut,
 } from '@/app/components/Icons';
 import { NotificationBellTrigger } from '@/app/components/NotificationPanel';
 
@@ -73,6 +74,43 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
+  const [user, setUser] = useState<{ name: string; email: string; picture?: string } | null>(null);
+
+  const isLoginPage = pathname === '/login';
+
+  // Check auth session
+  useEffect(() => {
+    if (isLoginPage) return;
+    let mounted = true;
+    fetch('/api/auth/session', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: unknown) => {
+        if (!mounted) return;
+        if (data && typeof data === 'object') {
+          const s = data as {
+            authenticated: boolean;
+            user: { name: string; email: string; picture?: string } | null;
+          };
+          if (s.authenticated && s.user) {
+            setUser(s.user);
+          } else if (!s.authenticated) {
+            router.replace('/login');
+          }
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      mounted = false;
+    };
+  }, [pathname, isLoginPage, router]);
+
+  async function handleLogout() {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      window.location.href = '/login?logout=success';
+    }
+  }
 
   // Close mobile drawer on route transition
   useEffect(() => {
@@ -81,6 +119,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Check tour parameter or first-time visit
   useEffect(() => {
+    if (isLoginPage) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('tour') === 'start') {
       params.delete('tour');
@@ -94,16 +133,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     const tourState = readGuideTourState(localStorage.getItem(GUIDE_TOUR_STORAGE_KEY));
     if (!tourState?.completed) setTourOpen(true);
-  }, []);
+  }, [isLoginPage]);
 
   // Listen for open-guide-tour event (e.g. from CommandPalette or buttons)
   useEffect(() => {
+    if (isLoginPage) return;
     function handleOpenTour() {
       setTourOpen(true);
     }
     window.addEventListener('open-guide-tour', handleOpenTour);
     return () => window.removeEventListener('open-guide-tour', handleOpenTour);
-  }, []);
+  }, [isLoginPage]);
 
   function handleTourFinish() {
     localStorage.setItem(
@@ -112,6 +152,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
     setTourOpen(false);
   }
+
 
   // Close mobile drawer on Escape key
   useEffect(() => {
@@ -139,6 +180,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const triggerSearch = () => {
     window.dispatchEvent(new CustomEvent('open-command-palette'));
   };
+
+  if (isLoginPage) {
+    return <main className="min-h-screen bg-[#fafaf7] text-stone-900">{children}</main>;
+  }
 
   return (
     <div className="flex min-h-screen bg-[#fafaf7] text-stone-900">
@@ -233,8 +278,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        {/* Bottom Cockpit Status & Tour */}
+        {/* Bottom Cockpit Status, User Profile & Tour */}
         <div className="border-t border-stone-100 p-4 bg-stone-50/50 space-y-2.5">
+          {user && (
+            <div className="flex items-center justify-between pb-2.5 border-b border-stone-200/60">
+              <div className="flex items-center gap-2 min-w-0">
+                {user.picture ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={user.picture}
+                    alt={user.name}
+                    className="size-7 rounded-full border border-stone-200 shrink-0"
+                  />
+                ) : (
+                  <div className="size-7 rounded-full bg-stone-800 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 truncate">
+                  <p className="text-xs font-semibold text-stone-800 truncate">{user.name}</p>
+                  <p className="text-[10px] text-stone-400 truncate">{user.email}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                title="Sign out"
+                className="text-stone-400 hover:text-stone-700 p-1.5 rounded-lg hover:bg-stone-200/60 transition cursor-pointer"
+              >
+                <IconLogOut className="size-3.5" />
+              </button>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="size-2 rounded-full bg-mint-500 animate-pulse" />
@@ -259,6 +334,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       </aside>
+
 
       {/* ============================================================ */}
       {/* MOBILE STICKY TOP BAR (Visible below md)                       */}
@@ -379,6 +455,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
               {/* Drawer Footer */}
               <div className="border-t border-stone-100 p-4 bg-stone-50/60 space-y-2.5">
+                {user && (
+                  <div className="flex items-center justify-between pb-2.5 border-b border-stone-200/60">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {user.picture ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={user.picture}
+                          alt={user.name}
+                          className="size-7 rounded-full border border-stone-200 shrink-0"
+                        />
+                      ) : (
+                        <div className="size-7 rounded-full bg-stone-800 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                          {user.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0 truncate">
+                        <p className="text-xs font-semibold text-stone-800 truncate">{user.name}</p>
+                        <p className="text-[10px] text-stone-400 truncate">{user.email}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        void handleLogout();
+                      }}
+                      title="Sign out"
+                      className="text-xs font-medium text-stone-500 hover:text-stone-800 px-2 py-1 rounded bg-stone-200/50 transition cursor-pointer"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-xs text-stone-500">
                   <span className="flex items-center gap-1.5">
                     <span className="size-2 rounded-full bg-mint-500" />
@@ -392,6 +501,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     Settings
                   </Link>
                 </div>
+
                 <button
                   type="button"
                   onClick={() => {

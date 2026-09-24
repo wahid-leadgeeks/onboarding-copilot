@@ -118,6 +118,25 @@ export default function TodayPage() {
   const [selectedActivityForLearning, setSelectedActivityForLearning] = useState<Activity | null>(null);
   const [copiedScheduleId, setCopiedScheduleId] = useState<string | null>(null);
   const [isSyncingDirectSheets, setIsSyncingDirectSheets] = useState(false);
+  const [userName, setUserName] = useState<string>('Noah');
+
+  useEffect(() => {
+    fetch('/api/auth/session', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: unknown) => {
+        if (data && typeof data === 'object') {
+          const s = data as {
+            authenticated: boolean;
+            user?: { name?: string } | null;
+          };
+          if (s.authenticated && s.user?.name) {
+            const firstName = s.user.name.trim().split(' ')[0];
+            if (firstName) setUserName(firstName);
+          }
+        }
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     function handleOpenPalette() {
@@ -126,6 +145,7 @@ export default function TodayPage() {
     window.addEventListener('open-command-palette', handleOpenPalette);
     return () => window.removeEventListener('open-command-palette', handleOpenPalette);
   }, []);
+
 
   useEffect(() => {
     const custom = readScheduleCustomizations(localStorage.getItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY));
@@ -775,7 +795,7 @@ export default function TodayPage() {
       {/* Slim header — date + greeting only */}
       <header data-tour="progress-header" className="animate-fade-up mb-8">
         <p className="text-sm font-medium text-stone-400">{todayLabel} · Day {Math.min(dayNumber, totalDays)} of {totalDays}</p>
-        <h1 className="mt-1 text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">{greeting}, Noah</h1>
+        <h1 className="mt-1 text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">{greeting}, {userName}</h1>
         <p className="mt-2 text-lg text-stone-500">{headline}</p>
 
         {/* Today progress inline — compact */}

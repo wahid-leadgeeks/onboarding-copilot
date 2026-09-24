@@ -4,6 +4,7 @@ import type { AuthSession, SessionResponse } from './types';
 
 export const NOVA_SESSION_COOKIE = 'nova_session';
 export const NOVA_STATE_COOKIE = 'nova_oauth_state';
+export const NOVA_RETURN_TO_COOKIE = 'nova_return_to';
 
 export const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,

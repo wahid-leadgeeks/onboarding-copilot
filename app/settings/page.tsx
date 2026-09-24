@@ -132,13 +132,11 @@ export default function SettingsPage() {
   async function handleLogout() {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
-      setSession({ authenticated: false, user: null });
-      setAuthNotice('Signed out successfully.');
-      void refreshHealth();
-    } catch {
-      /* ignore logout error */
+    } finally {
+      window.location.href = '/login?logout=success';
     }
   }
+
 
   async function retryPending() { const pending = readPendingSyncs(localStorage.getItem(pendingSyncStorageKey())); const results = await Promise.all(pending.map(async (item) => { const response = await fetch('/api/session/retry', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(item) }).catch(() => null); const value = response?.ok ? await response.json().catch(() => null) as { synced?: boolean } : null; return value?.synced ? item : null; })); const synced = results.filter((item): item is typeof pending[number] => item !== null); const remaining = synced.reduce((items, item) => removePendingSync(items, item), pending); writePendingSyncs(localStorage, remaining); setPendingCount(remaining.length); setSyncMessage(synced.length ? `${synced.length} session${synced.length === 1 ? '' : 's'} synced` : pending.length ? 'No pending sessions could be synced yet' : 'No sessions are waiting to sync'); }
   async function refreshHealth() {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { IconSparkles, IconX } from './Icons';
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
@@ -15,8 +16,14 @@ function isChatReply(value: unknown): value is { reply: string } {
 }
 
 export function Assistant() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+
+  if (pathname === '/login') {
+    return null;
+  }
+
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
