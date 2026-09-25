@@ -5,7 +5,7 @@ const mockSession: AuthSession = {
   user: {
     id: 'google-user-123',
     email: 'employee@company.test',
-    name: 'Noah',
+    name: 'Employee Onboarding',
     picture: 'https://lh3.googleusercontent.com/a/test',
   },
   tokens: {

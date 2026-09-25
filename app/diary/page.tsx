@@ -26,8 +26,18 @@ export default function DiaryPage() {
   const [copiedRowNumber, setCopiedRowNumber] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'needs-notes' | 'todo' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
 
   useEffect(() => {
+    fetch('/api/health')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.spreadsheetId) {
+          setSpreadsheetId(data.spreadsheetId);
+        }
+      })
+      .catch(() => {});
+
     try {
       setDiaryEntries(readDiaryCockpitEntries(localStorage.getItem(DIARY_COCKPIT_STORAGE_KEY)));
     } catch {
@@ -136,15 +146,17 @@ export default function DiaryPage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
                 Worksheet: Onboarding Diary (Columns G &amp; H)
               </p>
-              <a
-                href="https://docs.google.com/spreadsheets/d/sample-spreadsheet-id/edit?gid=592196667#gid=592196667"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-full border border-stone-200/90 bg-white px-2.5 py-0.5 text-[11px] font-medium text-sky-700 shadow-2xs hover:bg-sky-50 transition"
-              >
-                <span>Open Google Sheet</span>
-                <IconExternalLink className="h-3 w-3" />
-              </a>
+              {spreadsheetId ? (
+                <a
+                  href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit?gid=592196667#gid=592196667`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 rounded-full border border-stone-200/90 bg-white px-2.5 py-0.5 text-[11px] font-medium text-sky-700 shadow-2xs hover:bg-sky-50 transition"
+                >
+                  <span>Open Google Sheet</span>
+                  <IconExternalLink className="h-3 w-3" />
+                </a>
+              ) : null}
             </div>
             <h1 className="mt-1 text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
               Onboarding Diary

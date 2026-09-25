@@ -52,21 +52,15 @@ describe('Google Sheets Extractor', () => {
   });
 
   describe('extractContentFromWorkbookBytes', () => {
-    const filePath = 'fixtures/onboarding-kit.xlsx';
+    const filePath = process.env.TEST_WORKBOOK_PATH || '';
 
     it('extracts all 4 sheets from actual united HR Excel file', () => {
-      if (!fs.existsSync(filePath)) {
+      if (!filePath || !fs.existsSync(filePath)) {
         console.warn('File not found, skipping integration test');
         return;
       }
       const buf = fs.readFileSync(filePath);
       const result = extractContentFromWorkbookBytes(new Uint8Array(buf), 'sample-spreadsheet-id', 'Onboarding Kit Final 2026', true);
-
-      if (result.rawMatrices) {
-        fs.writeFileSync('/home/user/.gemini/antigravity-cli/brain/871dcfc3-4629-4c29-b27a-e30f715229c4/scratch/glossaries.json', JSON.stringify(result.rawMatrices['Glossaries'] || [], null, 2));
-        fs.writeFileSync('/home/user/.gemini/antigravity-cli/brain/871dcfc3-4629-4c29-b27a-e30f715229c4/scratch/guide.json', JSON.stringify(result.rawMatrices['Guide'] || [], null, 2));
-        fs.writeFileSync('/home/user/.gemini/antigravity-cli/brain/871dcfc3-4629-4c29-b27a-e30f715229c4/scratch/reviews.json', JSON.stringify(result.rawMatrices['First Month Review'] || [], null, 2));
-      }
 
       expect(result.spreadsheetId).toBe('sample-spreadsheet-id');
       expect(result.sheets.length).toBeGreaterThanOrEqual(4);

@@ -26,8 +26,8 @@ export async function GET(request: Request) {
 
   // Allow explicit testing against local united file
   if (source === 'local') {
-    const localPath = 'fixtures/onboarding-kit.xlsx';
-    if (fs.existsSync(localPath)) {
+    const localPath = process.env.LOCAL_WORKBOOK_PATH || '';
+    if (localPath && fs.existsSync(localPath)) {
       const buf = fs.readFileSync(localPath);
       const result = extractContentFromWorkbookBytes(
         new Uint8Array(buf),

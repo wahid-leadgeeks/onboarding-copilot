@@ -432,7 +432,7 @@ export default function SettingsPage() {
       <div className="mt-4 rounded-xl border border-stone-200/80 bg-stone-50/80 p-4 text-xs text-stone-700 space-y-1.5 font-mono">
         <p><span className="font-semibold text-stone-900 font-sans">Database Target:</span> nova-clone (Aiven Cloud PostgreSQL)</p>
         <p><span className="font-semibold text-stone-900 font-sans">Authentication:</span> Google OAuth (Connected via Google Account)</p>
-        <p><span className="font-semibold text-stone-900 font-sans">Spreadsheet Copy:</span> Connected ({health?.spreadsheetId || 'sample-spreadsheet-id'})</p>
+        <p><span className="font-semibold text-stone-900 font-sans">Spreadsheet Copy:</span> Connected ({health?.spreadsheetId || 'Configured via environment'})</p>
         <p><span className="font-semibold text-stone-900 font-sans">Sync Mode:</span> Dual-Sync (PostgreSQL + Google Sheets API v4)</p>
       </div>
     </section>

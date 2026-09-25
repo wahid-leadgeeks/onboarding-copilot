@@ -3,10 +3,10 @@ import { importScheduleFromFile } from './import-schedule';
 import { isActivity } from '@/lib/sheets/types';
 
 describe('Onboarding Kit Final 2026 - IT Staff.xlsx', () => {
-  const filePath = 'fixtures/onboarding-kit.xlsx';
+  const filePath = process.env.TEST_WORKBOOK_PATH || '';
 
   it('successfully imports schedule and diary from actual HR Excel file', () => {
-    if (!fs.existsSync(filePath)) {
+    if (!filePath || !fs.existsSync(filePath)) {
       console.warn('File not found, skipping integration test');
       return;
     }
@@ -44,7 +44,7 @@ describe('Onboarding Kit Final 2026 - IT Staff.xlsx', () => {
   });
 
   it('tests POST /api/import route with the real file', async () => {
-    if (!fs.existsSync(filePath)) return;
+    if (!filePath || !fs.existsSync(filePath)) return;
     const { POST } = await import('@/app/api/import/route');
     const buf = fs.readFileSync(filePath);
     const file = new File([buf], 'Onboarding Kit Final 2026 - IT Staff.xlsx', {
