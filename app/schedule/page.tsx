@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ScheduleCard } from '@/app/components/ScheduleCard';
 import { ActivityDetailSheet } from '@/app/components/ActivityDetailSheet';
 import { ScheduleFillModal } from '@/app/components/ScheduleFillModal';
+import { ScheduleSyncAllModal } from '@/app/components/ScheduleSyncAllModal';
 import { LearningModal } from '@/app/components/LearningModal';
 import type { LearningActivityContext, LearningSubmission } from '@/app/components/LearningModal';
 import { useToast } from '@/app/components/Toast';
@@ -13,6 +14,10 @@ import {
   IconCalendar,
   IconX,
   IconZap,
+  IconGoogle,
+  IconRefresh,
+  IconClipboard,
+  IconCheck,
 } from '@/app/components/Icons';
 import {
   OFFICIAL_SCHEDULE_ACTIVITIES,
@@ -22,6 +27,7 @@ import {
   clipboardRowForScheduleGtoL,
   clipboardRowForScheduleGtoK,
   clipboardRowForScheduleFull,
+  clipboardAllScheduleGtoL,
   getMergedScheduleActivities,
   isSameDate,
   type ScheduleActivity,
@@ -32,6 +38,7 @@ import { diarySyncPayload, learningDiaryEntry } from '@/lib/learning-capture';
 export default function MasterSchedulePage() {
   const { toast } = useToast();
   const [scheduleCatalog, setScheduleCatalog] = useState<ScheduleActivity[]>(() => [...OFFICIAL_SCHEDULE_ACTIVITIES]);
+  const [dataSource, setDataSource] = useState<'loading' | 'database' | 'catalog'>('loading');
   const [selectedWeek, setSelectedWeek] = useState<string>('All');
   const [selectedDay, setSelectedDay] = useState<string>('All');
   const [scheduleSearch, setScheduleSearch] = useState<string>('');
@@ -42,15 +49,47 @@ export default function MasterSchedulePage() {
   const [scheduleTipDismissed, setScheduleTipDismissed] = useState(false);
   const [syncHelpExpanded, setSyncHelpExpanded] = useState(false);
   const [isSyncingRow, setIsSyncingRow] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [copiedBulkTSV, setCopiedBulkTSV] = useState(false);
   const [selectedActivityForLearning, setSelectedActivityForLearning] = useState<ScheduleActivity | null>(null);
   const [showLearningCapture, setShowLearningCapture] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setScheduleTipDismissed(localStorage.getItem('onboarding-schedule-tip-dismissed') === 'true');
-      const savedCustoms = readScheduleCustomizations(localStorage.getItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY));
-      setScheduleCatalog(getMergedScheduleActivities(savedCustoms));
+    let isMounted = true;
+
+    async function loadSchedule() {
+      if (typeof window !== 'undefined') {
+        setScheduleTipDismissed(localStorage.getItem('onboarding-schedule-tip-dismissed') === 'true');
+      }
+
+      try {
+        const res = await fetch('/api/schedule?catalog=true', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && Array.isArray(data.activities) && data.activities.length > 0) {
+            setScheduleCatalog(data.activities);
+            setDataSource(data.source === 'database' ? 'database' : 'catalog');
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load live schedule from database, using local catalog:', err);
+      }
+
+      if (isMounted) {
+        if (typeof window !== 'undefined') {
+          const savedCustoms = readScheduleCustomizations(localStorage.getItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY));
+          setScheduleCatalog(getMergedScheduleActivities(savedCustoms));
+        }
+        setDataSource('catalog');
+      }
     }
+
+    loadSchedule();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   function handleDismissScheduleTip() {
@@ -244,12 +283,27 @@ export default function MasterSchedulePage() {
       <header className="animate-fade-up pb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-stone-500">
+            <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-stone-500">
               <span>90-Day Master Roadmap</span>
               <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-stone-700">
                 <span>{overallCompletedCount} of {overallTotalCount} done</span>
                 <span className="text-stone-400">({overallProgressPercent}%)</span>
               </span>
+              {dataSource === 'database' ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Database Synced ({scheduleCatalog.length})</span>
+                </span>
+              ) : dataSource === 'loading' ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] text-stone-500">
+                  <IconRefresh className="h-3 w-3 animate-spin" />
+                  <span>Loading DB...</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] text-stone-600">
+                  <span>Local Catalog ({scheduleCatalog.length})</span>
+                </span>
+              )}
             </div>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
               Onboarding Schedule
@@ -259,12 +313,27 @@ export default function MasterSchedulePage() {
             </p>
           </div>
 
-          <a
-            href="/"
-            className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 shadow-2xs transition hover:bg-stone-50 active:scale-95"
-          >
-            <span>← Back to Today</span>
-          </a>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsSyncModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-stone-800 active:scale-95 transition"
+              title="Sync all database activities to Google Sheets"
+            >
+              <IconGoogle className="h-3.5 w-3.5" />
+              <span>Sync to Spreadsheet</span>
+              <span className="rounded-full bg-stone-800 px-1.5 py-0.2 text-[10px] text-stone-300">
+                {scheduleCatalog.length}
+              </span>
+            </button>
+
+            <a
+              href="/"
+              className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 shadow-2xs transition hover:bg-stone-50 active:scale-95"
+            >
+              <span>← Back to Today</span>
+            </a>
+          </div>
         </div>
 
         {/* Progress Bar */}
@@ -412,6 +481,17 @@ export default function MasterSchedulePage() {
             <option value="Not Started">Not Started</option>
           </select>
 
+          {/* Quick Sync Button */}
+          <button
+            type="button"
+            onClick={() => setIsSyncModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 active:scale-95 transition"
+            title="Open Schedule Sync modal"
+          >
+            <IconGoogle className="h-3.5 w-3.5 text-sky-600" />
+            <span>Sync ({filteredScheduleActivities.length})</span>
+          </button>
+
           {/* Search box */}
           <div className="relative min-w-44 max-w-xs grow">
             <input
@@ -514,6 +594,17 @@ export default function MasterSchedulePage() {
         onSkip={() => {
           setShowLearningCapture(false);
           setSelectedActivityForLearning(null);
+        }}
+      />
+
+      {/* Sync All to Spreadsheet Modal */}
+      <ScheduleSyncAllModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        activities={scheduleCatalog}
+        selectedWeek={selectedWeek}
+        onSyncSuccess={({ totalUpdatedRows }) => {
+          toast.success(`Successfully synced ${totalUpdatedRows} activities to Google Sheets!`);
         }}
       />
     </main>

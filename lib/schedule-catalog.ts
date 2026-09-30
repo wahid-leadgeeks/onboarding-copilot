@@ -935,6 +935,68 @@ export function clipboardRowForScheduleFull(activity: ScheduleActivity): string 
     .join("\t");
 }
 
+export interface ScheduleSheetRangeChunk {
+  range: string;
+  startRow: number;
+  endRow: number;
+  rowCount: number;
+  values: string[][];
+}
+
+/**
+ * Groups schedule activities into contiguous row chunks for efficient
+ * batch updating to sheet 'Schedule' (Columns G–L: Duration, Start, End, Progress, Link, Notes).
+ * Automatically preserves title/header rows between weeks and milestones.
+ */
+export function groupScheduleActivitiesIntoChunks(
+  activities: readonly ScheduleActivity[]
+): ScheduleSheetRangeChunk[] {
+  const sorted = [...activities].sort((a, b) => a.rowNumber - b.rowNumber);
+  const chunks: Array<{ startRow: number; endRow: number; values: string[][] }> = [];
+  let currentChunk: { startRow: number; endRow: number; values: string[][] } | null = null;
+
+  for (const act of sorted) {
+    const rawProgress = act.progress && act.progress !== 'Not Started' ? act.progress : '';
+    const rowVals = [
+      act.durationMinutes !== undefined && act.durationMinutes !== null ? String(act.durationMinutes) : '',
+      act.startTime || '',
+      act.endTime || '',
+      rawProgress,
+      act.materialsLink || '',
+      act.notes || '',
+    ];
+
+    if (!currentChunk || act.rowNumber !== currentChunk.endRow + 1) {
+      if (currentChunk) chunks.push(currentChunk);
+      currentChunk = {
+        startRow: act.rowNumber,
+        endRow: act.rowNumber,
+        values: [rowVals],
+      };
+    } else {
+      currentChunk.endRow = act.rowNumber;
+      currentChunk.values.push(rowVals);
+    }
+  }
+  if (currentChunk) chunks.push(currentChunk);
+
+  return chunks.map((c) => ({
+    range: `'Schedule'!G${c.startRow}:L${c.endRow}`,
+    startRow: c.startRow,
+    endRow: c.endRow,
+    rowCount: c.values.length,
+    values: c.values,
+  }));
+}
+
+/**
+ * Generates TSV text for all schedule activities (Columns G–L) for clipboard pasting.
+ */
+export function clipboardAllScheduleGtoL(activities: readonly ScheduleActivity[]): string {
+  const sorted = [...activities].sort((a, b) => a.rowNumber - b.rowNumber);
+  return sorted.map((act) => clipboardRowForScheduleGtoL(act)).join('\n');
+}
+
 export function calculateDurationFromTimes(start: string, end: string): number | undefined {
   if (!start || !end) return undefined;
   const [sh, sm] = start.split(":").map(Number);

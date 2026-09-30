@@ -3,6 +3,8 @@ import {
   calculateDurationFromTimes,
   clipboardRowForScheduleGtoK,
   clipboardRowForScheduleFull,
+  groupScheduleActivitiesIntoChunks,
+  clipboardAllScheduleGtoL,
   readScheduleCustomizations,
   writeScheduleCustomizations,
   getProgressBadge,
@@ -202,6 +204,59 @@ describe('Official Schedule Catalog', () => {
       const todayTasks = getTodayScheduleActivities(OFFICIAL_SCHEDULE_ACTIVITIES, targetDate);
       expect(todayTasks.some((t) => t.day === 'Monday')).toBe(false);
       expect(todayTasks.every((t) => t.day === 'Tuesday')).toBe(true);
+    });
+  });
+
+  describe('groupScheduleActivitiesIntoChunks and clipboardAllScheduleGtoL', () => {
+    it('groups 53 activities into 8 contiguous range chunks skipping title rows', () => {
+      const chunks = groupScheduleActivitiesIntoChunks(OFFICIAL_SCHEDULE_ACTIVITIES);
+      expect(chunks).toHaveLength(8);
+
+      expect(chunks[0].range).toBe("'Schedule'!G3:L23");
+      expect(chunks[0].rowCount).toBe(21);
+
+      expect(chunks[1].range).toBe("'Schedule'!G25:L34");
+      expect(chunks[1].rowCount).toBe(10);
+
+      expect(chunks[2].range).toBe("'Schedule'!G36:L42");
+      expect(chunks[2].rowCount).toBe(7);
+
+      expect(chunks[3].range).toBe("'Schedule'!G44:L51");
+      expect(chunks[3].rowCount).toBe(8);
+
+      expect(chunks[4].range).toBe("'Schedule'!G53:L56");
+      expect(chunks[4].rowCount).toBe(4);
+
+      expect(chunks[5].range).toBe("'Schedule'!G58:L58");
+      expect(chunks[5].rowCount).toBe(1);
+
+      expect(chunks[6].range).toBe("'Schedule'!G81:L81");
+      expect(chunks[6].rowCount).toBe(1);
+
+      expect(chunks[7].range).toBe("'Schedule'!G85:L85");
+      expect(chunks[7].rowCount).toBe(1);
+
+      const totalRows = chunks.reduce((sum, c) => sum + c.rowCount, 0);
+      expect(totalRows).toBe(53);
+
+      for (const chunk of chunks) {
+        for (const row of chunk.values) {
+          expect(row).toHaveLength(6);
+        }
+      }
+    });
+
+    it('exports all 53 schedule activities as TSV lines for clipboard paste', () => {
+      const allTsv = clipboardAllScheduleGtoL(OFFICIAL_SCHEDULE_ACTIVITIES);
+      const lines = allTsv.split('\n');
+      expect(lines).toHaveLength(53);
+
+      const firstLine = lines[0].split('\t');
+      expect(firstLine).toHaveLength(6);
+      expect(firstLine[0]).toBe('30');
+      expect(firstLine[1]).toBe('08:30');
+      expect(firstLine[2]).toBe('09:00');
+      expect(firstLine[3]).toBe('Done');
     });
   });
 });

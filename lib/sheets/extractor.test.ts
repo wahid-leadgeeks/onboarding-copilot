@@ -8,6 +8,7 @@ import {
   extractGoogleSpreadsheet,
   updateSheetCell,
   updateSheetRange,
+  batchUpdateSheetRanges,
   getSheetRange,
 } from './extractor';
 
@@ -290,6 +291,40 @@ describe('Google Sheets Extractor', () => {
       });
 
       expect(values).toEqual([['My notes content']]);
+    });
+
+    it('successfully updates multiple ranges using batchUpdateSheetRanges', async () => {
+      global.fetch = jest.fn((url: string | URL | Request, init?: RequestInit) => {
+        expect(init?.method).toBe('POST');
+        expect(url.toString()).toContain('values:batchUpdate');
+        const body = JSON.parse(init?.body as string);
+        expect(body.valueInputOption).toBe('USER_ENTERED');
+        expect(body.data).toHaveLength(2);
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            Promise.resolve({
+              spreadsheetId: 'sheet-123',
+              totalUpdatedRows: 31,
+              totalUpdatedColumns: 6,
+              totalUpdatedCells: 186,
+              totalUpdatedSheets: 1,
+            }),
+        } as Response);
+      }) as unknown as typeof fetch;
+
+      const result = await batchUpdateSheetRanges(
+        'sheet-123',
+        [
+          { range: "'Schedule'!G3:L23", values: [['30', '08:30', '09:00', 'Done', '', 'https://notes...']] },
+          { range: "'Schedule'!G25:L34", values: [['105', '10:00', '11:45', 'Done', '', 'https://notes...']] },
+        ],
+        { accessToken: 'mock-token' }
+      );
+
+      expect(result.totalUpdatedRows).toBe(31);
+      expect(result.totalUpdatedCells).toBe(186);
     });
   });
 });

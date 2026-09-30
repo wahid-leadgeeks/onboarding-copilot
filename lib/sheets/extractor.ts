@@ -611,6 +611,87 @@ export async function updateSheetCell(
   return updateSheetRange(spreadsheetId, range, [[value]], auth);
 }
 
+export interface BatchRangeUpdate {
+  range: string;
+  values: (string | number | boolean | null)[][];
+}
+
+export interface BatchUpdateResult {
+  totalUpdatedRows: number;
+  totalUpdatedColumns: number;
+  totalUpdatedCells: number;
+  totalUpdatedSheets: number;
+  responses?: Array<{ updatedRange?: string; updatedRows?: number; updatedCells?: number }>;
+}
+
+/**
+ * Updates multiple ranges in a Google Spreadsheet in a single atomic request via Google Sheets API v4 batchUpdate.
+ */
+export async function batchUpdateSheetRanges(
+  spreadsheetId: string,
+  data: BatchRangeUpdate[],
+  auth: GoogleSheetsAuth
+): Promise<BatchUpdateResult> {
+  if (!auth.accessToken && !auth.apiKey) {
+    throw new Error('Google authentication is required to update spreadsheet cells');
+  }
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  let keyQuery = '';
+
+  if (auth.accessToken) {
+    headers.Authorization = `Bearer ${auth.accessToken}`;
+  } else if (auth.apiKey) {
+    keyQuery = `?key=${encodeURIComponent(auth.apiKey)}`;
+  }
+
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(spreadsheetId)}/values:batchUpdate${keyQuery}`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      valueInputOption: 'USER_ENTERED',
+      data: data.map((d) => ({
+        range: d.range,
+        majorDimension: 'ROWS',
+        values: d.values,
+      })),
+    }),
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    let detail = errText;
+    try {
+      const parsed = JSON.parse(errText);
+      if (parsed?.error?.message) detail = parsed.error.message;
+    } catch { /* use raw */ }
+    throw new Error(`Google Sheets API batchUpdate failed (${res.status}): ${detail}`);
+  }
+
+  interface GoogleBatchUpdateResponse {
+    spreadsheetId?: string;
+    totalUpdatedRows?: number;
+    totalUpdatedColumns?: number;
+    totalUpdatedCells?: number;
+    totalUpdatedSheets?: number;
+    responses?: Array<{ updatedRange?: string; updatedRows?: number; updatedCells?: number }>;
+  }
+
+  const resData = (await res.json()) as GoogleBatchUpdateResponse;
+  return {
+    totalUpdatedRows: resData.totalUpdatedRows ?? 0,
+    totalUpdatedColumns: resData.totalUpdatedColumns ?? 0,
+    totalUpdatedCells: resData.totalUpdatedCells ?? 0,
+    totalUpdatedSheets: resData.totalUpdatedSheets ?? 1,
+    responses: resData.responses,
+  };
+}
+
 /**
  * Reads a specific cell or range from a Google Spreadsheet via Google Sheets API v4.
  */
