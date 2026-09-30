@@ -41,7 +41,8 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 30,
     "startTime": "08:30",
     "endTime": "09:00",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/xbCm2pWUee9PyF14kcaJC2h_Fow9DhfJ"
   },
   {
     "id": "sched-row-4",
@@ -56,7 +57,8 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 3,
     "startTime": "09:15",
     "endTime": "09:18",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/h_x_eE38WAMnyMY4-vmrlHfVMXtCXGNT"
   },
   {
     "id": "sched-row-5",
@@ -71,7 +73,8 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 3,
     "startTime": "09:19",
     "endTime": "09:22",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/1g706J0_49ya8Q4MEf9viu3WMxHgkneA"
   },
   {
     "id": "sched-row-6",
@@ -86,7 +89,8 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 30,
     "startTime": "09:23",
     "endTime": "09:53",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/2DcfN8RVSaAlRXLsu-vSI2I2pdS2S8t_"
   },
   {
     "id": "sched-row-7",
@@ -101,7 +105,8 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 20,
     "startTime": "10:00",
     "endTime": "10:20",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/0aOv74MkBVD6qiYqc9XN7WBP7EjtlLjZ"
   },
   {
     "id": "sched-row-8",
@@ -116,7 +121,8 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 60,
     "startTime": "10:30",
     "endTime": "11:30",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/NdrHDZ-xD-o_FtwvY9lBrjmfdLmC2Sb1"
   },
   {
     "id": "sched-row-9",
@@ -131,7 +137,8 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 40,
     "startTime": "13:00",
     "endTime": "13:40",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/FkQ7gvMDTrpRYD-pW7jA-qgHdDYA20ZQ"
   },
   {
     "id": "sched-row-10",
@@ -146,7 +153,8 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 20,
     "startTime": "12:30",
     "endTime": "12:50",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/ej3rUeN_SYL9Tw2PKs1ghuAuQA-7eiLm"
   },
   {
     "id": "sched-row-11",
@@ -158,7 +166,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "Managing Director",
     "topic": "Team Introduction",
     "mainMedia": "Online Meeting",
-    "progress": "Reschedule"
+    "durationMinutes": 20,
+    "startTime": "12:50",
+    "endTime": "13:10",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/iC4iNEPF3SQghLhe9Hw0RI48m798jfgX"
   },
   {
     "id": "sched-row-12",
@@ -167,13 +179,14 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "day": "Tuesday",
     "date": "01/09/2026",
     "activityCount": 10,
-    "pic": "Managing Director & Executive Assistant",
+    "pic": "Managing Director & EA",
     "topic": "Introduction to Management Office Department",
     "mainMedia": "Video",
     "durationMinutes": 40,
     "startTime": "19:30",
     "endTime": "20:10",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/-noLau4R9rHikYOAXl7-xq43rLRJnXhg"
   },
   {
     "id": "sched-row-13",
@@ -188,7 +201,8 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 90,
     "startTime": "15:00",
     "endTime": "16:30",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/3JL8ue96aZKFtd97mbCEjVQQh3_A-z63"
   },
   {
     "id": "sched-row-14",
@@ -199,11 +213,12 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "activityCount": 12,
     "pic": "HRD Staff",
     "topic": "Filling Time and Task Tracking (Practice)",
-    "mainMedia": "Online Meeting",
+    "mainMedia": "Personal Task",
     "durationMinutes": 40,
     "startTime": "16:30",
     "endTime": "17:10",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/eTJ27w3u6RHXZ0cKOYQ5IPAk7EIA-xzf"
   },
   {
     "id": "sched-row-15",
@@ -213,12 +228,13 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "date": "02/09/2026",
     "activityCount": 13,
     "pic": "IT Manager",
-    "topic": "Introduction to the IT Department\n- Structure of IT Department\n- Roles and Responsibilites\n- IT Department Values\n- IT Department Functions",
-    "mainMedia": "Knowledge Sharing",
+    "topic": "Introduction to the IT Department\n- Structure & Scope\n- Culture & Collaboration\n- Communication Channels\n- IT Department Tools",
+    "mainMedia": "Knowledge Sharing & Discussion",
     "durationMinutes": 125,
     "startTime": "09:00",
     "endTime": "11:05",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/utpaM50XPvBszFXLxfBXlWYpgOgl8ZlW"
   },
   {
     "id": "sched-row-16",
@@ -228,12 +244,13 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "date": "02/09/2026",
     "activityCount": 14,
     "pic": "IT Staff",
-    "topic": "Independent Learning",
-    "mainMedia": "Independent Learning",
+    "topic": "Independent Learning\n- Setting up personal IT environment (Hardware, Workspace, and other basic equipment needed)\n- Explore and install common applications and platforms across department used at LeadGeeks\n- Explore and set up accounts across platforms used in IT Department",
+    "mainMedia": "Personal Learning",
     "durationMinutes": 210,
     "startTime": "13:30",
     "endTime": "17:00",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/NF4SMkJbCqtut5M8VJhNPfwBv0ZhF-rI"
   },
   {
     "id": "sched-row-17",
@@ -244,11 +261,12 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "activityCount": 15,
     "pic": "Growth Manager",
     "topic": "Growth Department Introduction",
-    "mainMedia": "Video",
+    "mainMedia": "Online Meeting",
     "durationMinutes": 25,
     "startTime": "11:05",
     "endTime": "11:30",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/8zDBwvT_4Y-92lZrTvBL8MAX3o4xFJWc"
   },
   {
     "id": "sched-row-18",
@@ -259,11 +277,12 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "activityCount": 16,
     "pic": "Operations Manager",
     "topic": "Operations Department Introduction",
-    "mainMedia": "Video",
+    "mainMedia": "Online Meeting",
     "durationMinutes": 30,
     "startTime": "11:30",
     "endTime": "12:00",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/CDnlswoG3K2mcThfRpEAPZsbnmU1ReBW"
   },
   {
     "id": "sched-row-19",
@@ -272,13 +291,14 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "day": "Wednesday",
     "date": "02/09/2026",
     "activityCount": 17,
-    "pic": "Executive Assistant & Accounting & Tax Staff",
+    "pic": "EA & Tax Staff",
     "topic": "Introduction to Finance & Accounting Department",
-    "mainMedia": "Video",
+    "mainMedia": "Online Meeting",
     "durationMinutes": 30,
     "startTime": "14:00",
     "endTime": "14:30",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/0NEG5FiHxuf68BDdnWTv-SWKGc8NANoG"
   },
   {
     "id": "sched-row-20",
@@ -288,13 +308,14 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "date": "03/09/2026",
     "activityCount": 18,
     "pic": "IT Manager",
-    "topic": "How IT Works at LeadGeeks\n- IT Workflow & Working Approach\n- Cross-Department Collaboration\n- Current IT Priorities & Ongoing Initiatives\n- IT Guidelines & SOP",
-    "mainMedia": "Knowledge Sharing",
+    "topic": "How IT Works at LeadGeeks\n- IT Workflow & Request Handling\n- Incident Handling & Escalation\n- Documentation & Knowledge Management\n- Cross-Department Collaboration\n- IT SOPs and Best Practices\n- Basic Cybersecurity & Access Management Practices\n- Business Impact of IT Tasks",
+    "mainMedia": "Knowledge Sharing & Discussion",
     "durationMinutes": 155,
     "startTime": "10:00",
     "endTime": "12:35",
     "progress": "Done",
-    "materialsLink": "https://drive.google.com/drive/folders/1vqgl2skPDySh-IEBajNKyRVXkOh2RQrH?usp=sharing"
+    "materialsLink": "https://drive.google.com/drive/folders/1vqgl2skPDySh-IEBajNKyRVXkOh2RQrH?usp=sharing",
+    "notes": "https://notes.noahisme.web.id/share/UsRp8VSkh5KodRY4TsRxqV29FZ5A6Drv"
   },
   {
     "id": "sched-row-21",
@@ -304,13 +325,14 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "date": "03/09/2026",
     "activityCount": 19,
     "pic": "IT Staff",
-    "topic": "Independent Learning",
-    "mainMedia": "Independent Learning",
+    "topic": "Independent Learning\n- Learn and apply the Identify-Understand-Evaluate-Decide-Implement (I-U-E-D-I) approach.",
+    "mainMedia": "Personal Learning",
     "durationMinutes": 325,
     "startTime": "14:05",
     "endTime": "18:00",
     "progress": "Done",
-    "materialsLink": "https://drive.google.com/drive/folders/1H3Far06NyOVsLKn_0v1_1ko044n6QUGF?usp=sharing"
+    "materialsLink": "https://drive.google.com/drive/folders/1H3Far06NyOVsLKn_0v1_1ko044n6QUGF?usp=sharing",
+    "notes": "https://notes.noahisme.web.id/share/nSUFeRZJY-la36joMGRMxeXBFSKMCWz6"
   },
   {
     "id": "sched-row-22",
@@ -320,10 +342,13 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "date": "04/09/2026",
     "activityCount": 20,
     "pic": "IT Manager",
-    "topic": "Understanding the Current IT Ecosystem\n- Main Tools & Platforms\n- Systems & Services\n- Key Dependencies\n- Basic IT Environment",
-    "mainMedia": "Knowledge Sharing & Demonstration",
+    "topic": "Understanding the Current IT Ecosystem\n- Ecosystem Overview & Architecture\n- Cross-Departmental Systems & Integration\n- Tool & Platform Deep Dive\n- Infrastructure & Access Setup",
+    "mainMedia": "Knowledge Sharing & Discussion",
     "durationMinutes": 175,
-    "progress": "Done"
+    "startTime": "08:30",
+    "endTime": "11:25",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/rkaAZbAlbIwK6A2sJ39mlVre84FfaZDR"
   },
   {
     "id": "sched-row-23",
@@ -333,9 +358,13 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "date": "04/09/2026",
     "activityCount": 21,
     "pic": "IT Staff",
-    "topic": "Independent Learning",
-    "mainMedia": "Independent Learning",
-    "progress": "Done"
+    "topic": "Independent Learning\n- Review list of tools, platforms, and IT environments currently used at LeadGeeks.\n- Map which tools are used by which department, and how they relate to the IT Department.",
+    "mainMedia": "Personal Learning",
+    "durationMinutes": 165,
+    "startTime": "13:35",
+    "endTime": "16:20",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/YXjmCAbvrzpWtDR8fDEv9Ih5lV6OzkCo"
   },
   {
     "id": "sched-row-25",
@@ -345,12 +374,13 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "date": "07/09/2026",
     "activityCount": 22,
     "pic": "IT Manager",
-    "topic": "Understanding LeadGeeks IT Department Functions\n- Infrastructure Management\n- Website Management\n- Technology Optimization & Innovation\n- Cybersecurity\n- Relationships & Dependencies Between Functions",
+    "topic": "Understanding LeadGeeks IT Department Functions\n- IT Department Functions\n- Main Systems & Tools per Function\n- Cross-Department Dependencies\n- Documentation & Tracking Methods",
     "mainMedia": "Knowledge Sharing & Discussion",
     "durationMinutes": 105,
     "startTime": "10:00",
     "endTime": "11:45",
-    "progress": "Done"
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/Fo-udjXS1z99fDnBE3POEqp9rLsbNl0O"
   },
   {
     "id": "sched-row-26",
@@ -362,10 +392,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Independent Learning and Task\n- Identify and map each IT function, its responsibilities, main systems/tools, and dependencies.",
     "mainMedia": "Personal Learning and Task",
-    "durationMinutes": 50,
-    "startTime": "23:44",
-    "endTime": "00:34",
-    "progress": "Done"
+    "durationMinutes": 240,
+    "startTime": "14:00",
+    "endTime": "18:00",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/Fo-udjXS1z99fDnBE3POEqp9rLsbNl0O"
   },
   {
     "id": "sched-row-27",
@@ -375,9 +406,13 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "date": "08/09/2026",
     "activityCount": 24,
     "pic": "IT Manager",
-    "topic": "Infrastructure Management at LeadGeeks\n- Current Environment\n- Core Services (Google Workspace)\n- User & Device Management\n- Standards & Operational Scope",
+    "topic": "Infrastructure Management at LeadGeeks\n- Hardware & Device Management\n- Account & Access Management\n- Network, Server, & Hosting\n- IT Inventory & Asset Tracking",
     "mainMedia": "Knowledge Sharing & Discussion",
-    "progress": "Done"
+    "durationMinutes": 120,
+    "startTime": "08:00",
+    "endTime": "10:00",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/EXBtYk3k4jR4SaSfVDxt4eGv7eawHNns"
   },
   {
     "id": "sched-row-28",
@@ -387,9 +422,13 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "date": "08/09/2026",
     "activityCount": 25,
     "pic": "IT Staff",
-    "topic": "Independent Learning and Task\n- Create a simple web app based on data from user account management, hardware device management, and software management.",
+    "topic": "Independent Learning and Task\n- Create a simple web app dashboard for tracking employee accounts and company devices.",
     "mainMedia": "Personal Learning and Task",
-    "progress": "Done"
+    "durationMinutes": 360,
+    "startTime": "10:00",
+    "endTime": "18:00",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/z1BvurfE5SvQSalecatZeXEBmvw-gNxX"
   },
   {
     "id": "sched-row-29",
@@ -401,7 +440,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Manager",
     "topic": "Technology Optimization & Innovation at LeadGeeks\n- AI & Automation\n- Google Apps Script & Workflow Automation\n- System Development & Process Improvement\n- Existing Initiatives & Future Direction",
     "mainMedia": "Knowledge Sharing & Discussion",
-    "progress": "Done"
+    "durationMinutes": 145,
+    "startTime": "10:00",
+    "endTime": "12:25",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/TzggJKHv_Ss-SkXI6jxdHumVlfeeblEL"
   },
   {
     "id": "sched-row-30",
@@ -413,7 +456,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Independent Learning and Task\n- Create a simple web app to optimize and automate workflows/processes for time and task tracking.",
     "mainMedia": "Personal Learning and Task",
-    "progress": "Done"
+    "durationMinutes": 335,
+    "startTime": "13:00",
+    "endTime": "18:35",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/6RypoLjJnbSPSXHoi7TLJTgCyDzZ7K7R"
   },
   {
     "id": "sched-row-31",
@@ -425,7 +472,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Manager",
     "topic": "Cybersecurity at LeadGeeks\n- Current Security Practices\n- Data Protection & GDPR\n- Security Risks & Priorities\n- Security Assessment & Basic Response",
     "mainMedia": "Knowledge Sharing & Discussion",
-    "progress": "Done"
+    "durationMinutes": 120,
+    "startTime": "13:00",
+    "endTime": "15:00",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/ewhJ0s78SB7EJAdT8e2Ph2yOwpht62Pg"
   },
   {
     "id": "sched-row-32",
@@ -437,7 +488,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Independent Learning and Task\n- Review security recommendation tools and identify potential security tools for implementation this year.",
     "mainMedia": "Personal Learning and Task",
-    "progress": "Done"
+    "durationMinutes": 270,
+    "startTime": "10:30",
+    "endTime": "18:00",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/AhqRnT8WPnWO1tzcs-msiVRdQJSbFpOU"
   },
   {
     "id": "sched-row-33",
@@ -449,7 +504,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Manager",
     "topic": "Website Management at LeadGeeks\n- Website Ecosystem & Dependencies\n- CMS / WordPress\n- Website Structure & Content Management\n- Technical SEO & Digital Presence",
     "mainMedia": "Knowledge Sharing & Discussion",
-    "progress": "Done"
+    "durationMinutes": 145,
+    "startTime": "09:00",
+    "endTime": "11:25",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/V5XKY-VmJhiF73Ub98frOjFAWyS4Nlu7"
   },
   {
     "id": "sched-row-34",
@@ -461,7 +520,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Independent Learning and Task\n- Identify and explore processes and features in the website CMS (Wordpress) that can be optimized using AI.",
     "mainMedia": "Personal Learning and Task",
-    "progress": "Done"
+    "durationMinutes": 335,
+    "startTime": "08:00",
+    "endTime": "17:30",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/-3rCs3lTFwGa8BCaJ9jlZ5_X9H9lRm2J"
   },
   {
     "id": "sched-row-36",
@@ -473,7 +536,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Contact and conduct meetings with 3 relevant other department members (Operations and Growth) to understand Lead Generation processes and AI Optimization efforts in 2025 and 2026",
     "mainMedia": "Personal Task",
-    "progress": "Done"
+    "durationMinutes": 130,
+    "startTime": "14:00",
+    "endTime": "16:40",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/EBHoGZvK6LgmxI8Ko3ITz4HeQJIa5h7G"
   },
   {
     "id": "sched-row-37",
@@ -485,7 +552,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Observe the processes and identify potential opportunities for AI optimization, then develop solution proposals for discussion in the Technology Optimization meeting",
     "mainMedia": "Personal Task",
-    "progress": "Done"
+    "durationMinutes": 305,
+    "startTime": "13:00",
+    "endTime": "18:05",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/A_RRC6Bl_a9pyV0VMtQ0Ubnlk_fSXjAw"
   },
   {
     "id": "sched-row-38",
@@ -497,7 +568,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Prepare the presentation for proposed technology optimization using AI",
     "mainMedia": "Personal Task",
-    "progress": "Done"
+    "durationMinutes": 135,
+    "startTime": "10:00",
+    "endTime": "14:00",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/jY5z7bQ_cwQZRS40xTI_JIJQcbgV6Gmy"
   },
   {
     "id": "sched-row-39",
@@ -509,7 +584,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Identify and explore proposed solutions for the optimization and automation of the AI Email Template Creation process",
     "mainMedia": "Personal Task",
-    "progress": ""
+    "durationMinutes": 290,
+    "startTime": "12:30",
+    "endTime": "19:00",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/l0iFF2qXCFUV7tFFxYYhRddNAZIKfTOB"
   },
   {
     "id": "sched-row-40",
@@ -521,7 +600,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Explore Beanstalk application to check the functionality",
     "mainMedia": "Personal Task",
-    "progress": ""
+    "durationMinutes": 95,
+    "startTime": "17:00",
+    "endTime": "18:35",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/Li_dNuTIVYdUT13u4S0w4ub6wV8A784W"
   },
   {
     "id": "sched-row-41",
@@ -533,7 +616,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Manager",
     "topic": "Introduction to IT Department 2026 SMART Goals and Understanding How IT Support LeadGeeks Business Objectives",
     "mainMedia": "Knowledge Sharing & Discussion",
-    "progress": "Done"
+    "durationMinutes": 145,
+    "startTime": "09:00",
+    "endTime": "11:25",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/gurGlQA0mWyE42UhF6f4lOzdARtbyb8Q"
   },
   {
     "id": "sched-row-42",
@@ -545,7 +632,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Independent Learning\n- Read all SMART goals in IT Department including the current progress and next action items.",
     "mainMedia": "Personal Learning",
-    "progress": ""
+    "durationMinutes": 240,
+    "startTime": "13:00",
+    "endTime": "17:00",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/Ch2s8ayogSqOwF_a3vmlNALbihgnqF_Z"
   },
   {
     "id": "sched-row-44",
@@ -557,7 +648,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "Managing Director",
     "topic": "Beyond the Slides: Chat with the Managing Director",
     "mainMedia": "Offline",
-    "progress": "Done"
+    "durationMinutes": 60,
+    "startTime": "11:30",
+    "endTime": "12:30",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/iYCeTToWf0y66vtOpcyf2WznmHlxMqXS"
   },
   {
     "id": "sched-row-45",
@@ -569,7 +664,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "Experience Manager",
     "topic": "Business English Training",
     "mainMedia": "Online",
-    "progress": "Done"
+    "durationMinutes": 105,
+    "startTime": "10:30",
+    "endTime": "15:30",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/pyfMFHiocri8otnRyBvGaWg7h5FYJK-3"
   },
   {
     "id": "sched-row-46",
@@ -581,7 +680,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Develop and make the NOVA Onboarding, TETRA Time and Task Tracking, CORE IT Dashboard, and SMART Goals dashboard web app accessible to the public, including a clone database",
     "mainMedia": "Personal Task",
-    "progress": ""
+    "durationMinutes": 90,
+    "startTime": "11:00",
+    "endTime": "12:30",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/iJ93xyqZ4Ra0H8ZQvIaUzSAtncXtsPIt"
   },
   {
     "id": "sched-row-47",
@@ -593,7 +696,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Integrate the web apps with Google authentication and spreadsheet synchronization",
     "mainMedia": "Personal Task",
-    "progress": ""
+    "durationMinutes": 145,
+    "startTime": "15:05",
+    "endTime": "17:30",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/KxdTwijx2HYConvxg5uzIszGsKUY4nwS"
   },
   {
     "id": "sched-row-48",
@@ -605,7 +712,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Develop a solution for creating and quality-checking email templates using ChatGPT, based on custom instructions and agent guidance",
     "mainMedia": "Personal Task",
-    "progress": ""
+    "durationMinutes": 240,
+    "startTime": "09:00",
+    "endTime": "14:00",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/-teGQK-CMTY3EZxXA_ijFDbN5HnHPeq2"
   },
   {
     "id": "sched-row-49",
@@ -617,7 +728,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Explore other solutions including workflow automation and ChatGPT alternatives that do not require a subscription, for email template creation and quality checking",
     "mainMedia": "Personal Task",
-    "progress": ""
+    "durationMinutes": 180,
+    "startTime": "15:00",
+    "endTime": "18:00",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/2BCOlC9-ra4Mq6iKmNwo0eW0BWEX6JHF"
   },
   {
     "id": "sched-row-50",
@@ -629,7 +744,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Explore ways to connect the spreadsheet with ChatGPT for email template creation and quality checking",
     "mainMedia": "Personal Task",
-    "progress": ""
+    "durationMinutes": 300,
+    "startTime": "09:00",
+    "endTime": "16:00",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/IxCClKikwwnCP6QZ1FuuxAl5wc-MG7vw"
   },
   {
     "id": "sched-row-51",
@@ -641,7 +760,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Adjust the layout and design of the NOVA Onboarding, TETRA Time and Task Tracking, CORE IT Dashboard, and SMART Goals Dashboard web apps",
     "mainMedia": "Personal Task",
-    "progress": ""
+    "durationMinutes": 270,
+    "startTime": "15:00",
+    "endTime": "19:30",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/H3UuWFpqJeyCJqU4hlzkuaKJSD-Jh1gJ"
   },
   {
     "id": "sched-row-53",
@@ -653,7 +776,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "Experience Manager",
     "topic": "Business English Training",
     "mainMedia": "Online",
-    "progress": "Done"
+    "durationMinutes": 75,
+    "startTime": "14:30",
+    "endTime": "15:45",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/UDagugqPpSAIBwkOXB3M8HF8FhRAFUj5"
   },
   {
     "id": "sched-row-54",
@@ -665,7 +792,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Explore AI Agent to support the automation process",
     "mainMedia": "Personal Task",
-    "progress": ""
+    "durationMinutes": 180,
+    "startTime": "11:30",
+    "endTime": "14:30",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/yoeH3wk5J9piNNzO3jpH0nVVafS990wi"
   },
   {
     "id": "sched-row-55",
@@ -677,7 +808,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Develop an automation process to connect the spreadsheet with ChatGPT for email template creation and quality checking",
     "mainMedia": "Personal Task",
-    "progress": ""
+    "durationMinutes": 305,
+    "startTime": "16:00",
+    "endTime": "21:05",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/qFABQQSOXGpCiN7A4qaDRKQ8inTVlotI"
   },
   {
     "id": "sched-row-56",
@@ -689,7 +824,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Revise and develop an automation process for email template creation and quality checking using ChatGPT",
     "mainMedia": "Personal Task",
-    "progress": ""
+    "durationMinutes": 120,
+    "startTime": "15:30",
+    "endTime": "17:30",
+    "progress": "Done",
+    "notes": "https://notes.noahisme.web.id/share/6ZJax8eTKqaItkQekznPCmOxVaImpERE"
   },
   {
     "id": "sched-row-58",
@@ -700,7 +839,11 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT & HRD & MD",
     "topic": "Month 1 Performance Review & Feedback and Month 2 Expectations",
     "mainMedia": "Monthly Review",
-    "progress": ""
+    "durationMinutes": 60,
+    "startTime": "09:00",
+    "endTime": "10:00",
+    "progress": "Done",
+    "notes": "First Month Review"
   },
   {
     "id": "sched-row-81",
@@ -723,7 +866,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "topic": "Month 3 Performance Review & Feedback",
     "mainMedia": "Monthly Review",
     "progress": ""
-  },
+  }
 ];
 
 export function escapeTsv(val: unknown): string {

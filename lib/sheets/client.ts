@@ -20,7 +20,7 @@ export async function readSchedule(accessToken?: string): Promise<Activity[]> {
             week: row.week,
             day: row.day,
             date: row.date,
-            activityCount: row.activityCount,
+            activityCount: row.activityCount ?? undefined,
             pic: row.pic,
             topic: row.topic,
             mainMedia: row.mainMedia,
@@ -28,6 +28,7 @@ export async function readSchedule(accessToken?: string): Promise<Activity[]> {
             startTime: row.startTime ?? undefined,
             endTime: row.endTime ?? undefined,
             progress: row.progress || '',
+            materialsLink: row.materialsLink || '',
             notes: row.notes || '',
           };
           const activity = scheduleActivityToActivity(item);

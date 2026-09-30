@@ -60,7 +60,7 @@ export async function GET(request: Request) {
         week: row.week,
         day: row.day,
         date: row.date,
-        activityCount: row.activityCount,
+        activityCount: row.activityCount ?? undefined,
         pic: row.pic,
         topic: row.topic,
         mainMedia: row.mainMedia,
@@ -68,6 +68,7 @@ export async function GET(request: Request) {
         startTime: row.startTime ?? undefined,
         endTime: row.endTime ?? undefined,
         progress: row.progress || '',
+        materialsLink: row.materialsLink || '',
         notes: row.notes || '',
       };
       const act = scheduleActivityToActivity(item);
