@@ -8,15 +8,19 @@ import {
   readDiaryCockpitEntries,
   upsertDiaryCockpitEntry,
   writeDiaryCockpitEntries,
+  OFFICIAL_DIARY_TOPICS,
   type DiaryEntryRecord,
   type DiaryTopicItem,
 } from '@/lib/diary-cockpit';
 import { DiaryDetailSheet } from '@/app/components/DiaryDetailSheet';
+import { DiarySyncAllModal } from '@/app/components/DiarySyncAllModal';
 import { useToast } from '@/app/components/Toast';
 import {
   IconCheck,
   IconEdit,
   IconExternalLink,
+  IconGoogle,
+  IconRefresh,
 } from '@/app/components/Icons';
 
 export default function DiaryPage() {
@@ -27,6 +31,8 @@ export default function DiaryPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'needs-notes' | 'todo' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [dataSource, setDataSource] = useState<'database' | 'local' | 'loading'>('loading');
 
   useEffect(() => {
     fetch('/api/health')
@@ -39,7 +45,9 @@ export default function DiaryPage() {
       .catch(() => {});
 
     try {
-      setDiaryEntries(readDiaryCockpitEntries(localStorage.getItem(DIARY_COCKPIT_STORAGE_KEY)));
+      const local = readDiaryCockpitEntries(localStorage.getItem(DIARY_COCKPIT_STORAGE_KEY));
+      setDiaryEntries(local);
+      if (local.length > 0) setDataSource('local');
     } catch {
       /* ignore */
     }
@@ -48,6 +56,7 @@ export default function DiaryPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data?.entries && Array.isArray(data.entries) && data.entries.length > 0) {
+          setDataSource('database');
           setDiaryEntries((prev) => {
             let merged = [...prev];
             for (const item of data.entries) {
@@ -60,9 +69,13 @@ export default function DiaryPage() {
             }
             return merged;
           });
+        } else {
+          setDataSource((prev) => (prev === 'loading' ? 'local' : prev));
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setDataSource((prev) => (prev === 'loading' ? 'local' : prev));
+      });
   }, []);
 
   function persist(next: DiaryEntryRecord[]) {
@@ -146,6 +159,21 @@ export default function DiaryPage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
                 Worksheet: Onboarding Diary (Columns G &amp; H)
               </p>
+              {dataSource === 'database' ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Database Synced ({diaryEntries.length || 28})</span>
+                </span>
+              ) : dataSource === 'loading' ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] text-stone-500">
+                  <IconRefresh className="h-3 w-3 animate-spin" />
+                  <span>Loading DB...</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] text-stone-600">
+                  <span>Local Storage</span>
+                </span>
+              )}
               {spreadsheetId ? (
                 <a
                   href={`https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit?gid=592196667#gid=592196667`}
@@ -165,9 +193,25 @@ export default function DiaryPage() {
               28 syllabus topics · Document 3 things you learned (Col G) &amp; personal notes (Col H).
             </p>
           </div>
-          <span className="rounded-full bg-lavender-50 px-3.5 py-1 text-xs font-semibold text-lavender-800">
-            {progress.completedCount} / {progress.totalCount} Documented
-          </span>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setIsSyncModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition"
+              title="Sync all database diary entries directly to Google Sheets"
+            >
+              <IconGoogle className="h-3.5 w-3.5" />
+              <span>Sync to Spreadsheet</span>
+              <span className="rounded-full bg-emerald-800/60 px-1.5 py-0.2 text-[10px] text-emerald-100">
+                {progress.totalCount}
+              </span>
+            </button>
+
+            <span className="rounded-full bg-lavender-50 px-3.5 py-1 text-xs font-semibold text-lavender-800">
+              {progress.completedCount} / {progress.totalCount} Documented
+            </span>
+          </div>
         </div>
       </header>
 
@@ -250,53 +294,64 @@ export default function DiaryPage() {
           />
         </div>
 
-        {/* Filter Pills */}
-        <div className="mt-4 flex flex-wrap gap-1.5 border-b border-stone-100 pb-3">
+        {/* Filter Pills and Quick Bulk Sync */}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-b border-stone-100 pb-3">
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                statusFilter === 'all'
+                  ? 'bg-stone-900 text-white shadow-xs'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              All ({progress.totalCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('needs-notes')}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                statusFilter === 'needs-notes'
+                  ? 'bg-peach-500 text-white shadow-xs'
+                  : progress.needsNotesCount > 0
+                  ? 'bg-peach-50 text-peach-800 font-semibold hover:bg-peach-100'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              Needs Notes ({progress.needsNotesCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('todo')}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                statusFilter === 'todo'
+                  ? 'bg-stone-900 text-white shadow-xs'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              To Do ({progress.todoCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('completed')}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                statusFilter === 'completed'
+                  ? 'bg-mint-700 text-white shadow-xs'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              Completed ({progress.completedCount})
+            </button>
+          </div>
           <button
             type="button"
-            onClick={() => setStatusFilter('all')}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              statusFilter === 'all'
-                ? 'bg-stone-900 text-white shadow-xs'
-                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            }`}
+            onClick={() => setIsSyncModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 active:scale-95 transition shadow-2xs"
+            title="Bulk sync all topics & notes directly to Google Sheets"
           >
-            All ({progress.totalCount})
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('needs-notes')}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              statusFilter === 'needs-notes'
-                ? 'bg-peach-500 text-white shadow-xs'
-                : progress.needsNotesCount > 0
-                ? 'bg-peach-50 text-peach-800 font-semibold hover:bg-peach-100'
-                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            }`}
-          >
-            Needs Notes ({progress.needsNotesCount})
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('todo')}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              statusFilter === 'todo'
-                ? 'bg-stone-900 text-white shadow-xs'
-                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            }`}
-          >
-            To Do ({progress.todoCount})
-          </button>
-          <button
-            type="button"
-            onClick={() => setStatusFilter('completed')}
-            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-              statusFilter === 'completed'
-                ? 'bg-mint-700 text-white shadow-xs'
-                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            }`}
-          >
-            Completed ({progress.completedCount})
+            <IconGoogle className="h-3 w-3" />
+            <span>Sync to Sheets</span>
           </button>
         </div>
 
@@ -394,6 +449,18 @@ export default function DiaryPage() {
         hasPrev={hasPrev}
         hasNext={hasNext}
         isCopied={Boolean(activeTopic && copiedRowNumber === activeTopic.rowNumber)}
+      />
+
+      {/* Bulk Sync & TSV Clipboard Modal */}
+      <DiarySyncAllModal
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        entries={diaryEntries}
+        topics={OFFICIAL_DIARY_TOPICS}
+        spreadsheetId={spreadsheetId}
+        onSyncSuccess={({ totalUpdatedRows }) => {
+          toast.success(`Successfully synced ${totalUpdatedRows} rows to Google Sheets!`);
+        }}
       />
     </main>
   );

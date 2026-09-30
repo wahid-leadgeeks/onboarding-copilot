@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "rows": [
+    {
+      "id": "sched-row-190",
+      "rowNumber": 190,
+      "week": "Week 0",
+      "day": "Exampleday",
+      "date": "01/01/2000",
+      "activityCount": 1,
+      "pic": "Example Person",
+      "topic": "Example topic 1",
+      "mainMedia": "Example media",
+      "durationMinutes": 30,
+      "startTime": "09:00",
+      "endTime": "09:30",
+      "progress": "Done",
+      "materialsLink": "https://example.invalid/materials",
+      "notes": "Example note."
+    },
+    {
+      "id": "sched-row-191",
+      "rowNumber": 191,
+      "week": "Week 0",
+      "day": "Exampleday",
+      "date": "01/02/2000",
+      "activityCount": 2,
+      "pic": "Example Person",
+      "topic": "Example topic 2",
+      "mainMedia": "Example media",
+      "durationMinutes": 60,
+      "startTime": "10:00",
+      "endTime": "10:30",
+      "progress": "",
+      "materialsLink": "",
+      "notes": ""
+    },
+    {
+      "id": "sched-row-192",
+      "rowNumber": 192,
+      "week": "Week 0",
+      "day": "Exampleday",
+      "date": "01/03/2000",
+      "activityCount": null,
+      "pic": "Example Person",
+      "topic": "Example topic 3",
+      "mainMedia": "Example media",
+      "durationMinutes": null,
+      "startTime": "",
+      "endTime": "",
+      "progress": "",
+      "materialsLink": "",
+      "notes": ""
+    }
+  ]
+}

@@ -17,3 +17,6 @@ personaltracker.jpeg
 .claude/
 .codex/
 CLAUDE.md
+
+# private onboarding data (never commit)
+data/private/

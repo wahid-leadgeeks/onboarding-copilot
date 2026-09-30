@@ -183,29 +183,29 @@ export const OFFICIAL_DIARY_TOPICS: readonly DiaryTopicItem[] = [
     week: '1.0',
     date: 'Day 1',
     activityCount: '11.0',
-    pic: 'Executive Assistant & Accounting & Tax Staff',
-    topic: 'Introduction to Finance & Accounting Department',
-    defaultLearned: '1. Comprehensive Financial Planning & Analysis (FP&A)\n2.  General Ledger, Taxation & Treasury Management\n3.  Financial Controls & Values (`BE4-WE WIN`)',
-    defaultNotes: '1. F&A leads multi-year revenue and cash flow forecasting, monitors budget versus actual performance variances, and delivers semi-annual executive reviews to optimize capital allocation and project profitability.\n2. The department ensures systematic daily transaction bookkeeping, generates audited financial statements (P&L, Balance Sheet, Cash Flow), manages multi-currency liquidity, and oversees full corporate/withholding tax compliance.\n3. Operating under SOP Financial Transactions and SOP Expense Tracking, F&A prevents fraud and enforces fiscal discipline guided by BE4-WE WIN (Being Analytical, Breadth-thinking, Compliant, Dignified, We do improvement, Win-win outcomes).',
-  },
-  {
-    id: 'row-13',
-    rowNumber: 13,
-    day: 'Tuesday',
-    week: '1.0',
-    date: 'Day 1',
-    activityCount: '12.0',
     pic: 'Experience Manager',
     topic: 'Experience Department Introduction',
     defaultLearned: '1. The Experience Department connects clients, employees, and other departments\n2. Client and employee relationships are managed through structured programs\n3. PrEACH values guide the department\'s professional behavior',
     defaultNotes: '1. The Experience Department acts as a bridge between the company and clients while focusing on client relations, management development, employee relations, and employer branding.\n2. Client relationships are strengthened through project supervision, client satisfaction surveys, customer loyalty programs, contract management, and project retention, while employee relations include individual calls, feedback, reviews, exit calls, and special events.\n3. The PrEACH values emphasize a positive and receptive mindset, effective communication, agile working ethics, convergent thinking, and accountability in working with colleagues and clients.',
   },
   {
+    id: 'row-13',
+    rowNumber: 13,
+    day: 'Wednesday',
+    week: '1.0',
+    date: 'Day 2',
+    activityCount: '12.0',
+    pic: 'IT Manager',
+    topic: 'Intoduction to the IT Department\n- Structure of IT Department\n- Roles and Responsibilites\n- IT Department Values\n- IT Department Functions',
+    defaultLearned: '',
+    defaultNotes: '',
+  },
+  {
     id: 'row-14',
     rowNumber: 14,
-    day: 'Tuesday',
+    day: 'Wednesday',
     week: '1.0',
-    date: 'Day 1',
+    date: 'Day 2',
     activityCount: '13.0',
     pic: 'Operations Manager',
     topic: 'Operations Department Introduction',
@@ -215,9 +215,9 @@ export const OFFICIAL_DIARY_TOPICS: readonly DiaryTopicItem[] = [
   {
     id: 'row-15',
     rowNumber: 15,
-    day: 'Tuesday',
+    day: 'Wednesday',
     week: '1.0',
-    date: 'Day 1',
+    date: 'Day 2',
     activityCount: '14.0',
     pic: 'Growth Manager',
     topic: 'Growth Department Introduction',
@@ -227,96 +227,96 @@ export const OFFICIAL_DIARY_TOPICS: readonly DiaryTopicItem[] = [
   {
     id: 'row-16',
     rowNumber: 16,
-    day: 'Tuesday',
+    day: 'Wednesday',
     week: '1.0',
-    date: 'Day 1',
+    date: 'Day 2',
     activityCount: '15.0',
-    pic: 'Managing Director',
-    topic: 'Beyond the Slides: Chat with the Managing Director',
-    defaultLearned: '',
-    defaultNotes: '',
+    pic: 'Executive Assistant & Accounting & Tax Staff',
+    topic: 'Introduction to Finance & Accounting Department',
+    defaultLearned: '1. Comprehensive Financial Planning & Analysis (FP&A)\n2.  General Ledger, Taxation & Treasury Management\n3.  Financial Controls & Values (`BE4-WE WIN`)',
+    defaultNotes: '1. F&A leads multi-year revenue and cash flow forecasting, monitors budget versus actual performance variances, and delivers semi-annual executive reviews to optimize capital allocation and project profitability.\n2. The department ensures systematic daily transaction bookkeeping, generates audited financial statements (P&L, Balance Sheet, Cash Flow), manages multi-currency liquidity, and oversees full corporate/withholding tax compliance.\n3. Operating under SOP Financial Transactions and SOP Expense Tracking, F&A prevents fraud and enforces fiscal discipline guided by BE4-WE WIN (Being Analytical, Breadth-thinking, Compliant, Dignified, We do improvement, Win-win outcomes).',
   },
   {
     id: 'row-17',
     rowNumber: 17,
-    day: 'Wednesday',
-    week: '1.0',
-    date: 'Day 2',
-    activityCount: '16.0',
-    pic: 'IT Manager',
-    topic: 'Introduction to the IT Department\n- Structure of IT Department\n- Roles and Responsibilities\n- IT Department Values\n- IT Department Functions',
-    defaultLearned: '',
-    defaultNotes: '',
-  },
-  {
-    id: 'row-18',
-    rowNumber: 18,
     day: 'Thursday',
     week: '1.0',
     date: 'Day 3',
-    activityCount: '17.0',
+    activityCount: '16.0',
     pic: 'IT Manager',
     topic: 'How IT Works at LeadGeeks\n- IT Workflow & Working Approach\n- Cross-Department Collaboration\n- Current IT Priorities & Ongoing Initiatives\n- IT Guidelines & SOP',
     defaultLearned: '',
     defaultNotes: '',
   },
   {
-    id: 'row-19',
-    rowNumber: 19,
+    id: 'row-18',
+    rowNumber: 18,
     day: 'Friday',
     week: '1.0',
     date: 'Day 4',
-    activityCount: '18.0',
+    activityCount: '17.0',
     pic: 'IT Manager',
     topic: 'Understanding the Current IT Ecosystem\n- Main Tools & Platforms\n- Systems & Services\n- Key Dependencies\n- Basic IT Environment',
     defaultLearned: '',
     defaultNotes: '',
   },
   {
-    id: 'row-20',
-    rowNumber: 20,
+    id: 'row-19',
+    rowNumber: 19,
     day: 'Monday',
     week: '2.0',
     date: 'Day 5',
-    activityCount: '19.0',
+    activityCount: '18.0',
     pic: 'IT Manager',
     topic: 'Understanding LeadGeeks IT Department Functions\n- Infrastructure Management\n- Website Management\n- Technology Optimization & Innovation\n- Cybersecurity\n- Relationships & Dependencies Between Functions',
     defaultLearned: '',
     defaultNotes: '',
   },
   {
-    id: 'row-21',
-    rowNumber: 21,
+    id: 'row-20',
+    rowNumber: 20,
     day: 'Tuesday',
     week: '2.0',
     date: 'Day 6',
-    activityCount: '20.0',
+    activityCount: '19.0',
     pic: 'IT Manager',
     topic: 'Infrastructure Management at LeadGeeks\n- Current Environment\n- Core Services (Google Workspace)\n- User & Device Management\n- Standards & Operational Scope',
     defaultLearned: '',
     defaultNotes: '',
   },
   {
-    id: 'row-22',
-    rowNumber: 22,
+    id: 'row-21',
+    rowNumber: 21,
     day: 'Wednesday',
     week: '2.0',
     date: 'Day 7',
-    activityCount: '21.0',
+    activityCount: '20.0',
     pic: 'IT Manager',
     topic: 'Technology Optimization & Innovation at LeadGeeks\n- AI & Automation\n- Google Apps Script & Workflow Automation\n- System Development & Process Improvement\n- Existing Initiatives & Future Direction',
     defaultLearned: '',
     defaultNotes: '',
   },
   {
-    id: 'row-23',
-    rowNumber: 23,
+    id: 'row-22',
+    rowNumber: 22,
     day: 'Thursday',
     week: '2.0',
     date: 'Day 8',
-    activityCount: '22.0',
+    activityCount: '21.0',
     pic: 'IT Manager',
     topic: 'Cybersecurity at LeadGeeks\n- Current Security Practices\n- Data Protection & GDPR\n- Security Risks & Priorities\n- Security Assessment & Basic Response',
+    defaultLearned: '',
+    defaultNotes: '',
+  },
+  {
+    id: 'row-23',
+    rowNumber: 23,
+    day: 'Friday',
+    week: '2.0',
+    date: 'Day 9',
+    activityCount: '22.0',
+    pic: 'IT Manager',
+    topic: 'Website Management at LeadGeeks\n- Website Ecosystem & Dependencies\n- CMS / WordPress\n- Website Structure & Content Management\n- Technical SEO & Digital Presence',
     defaultLearned: '',
     defaultNotes: '',
   },
@@ -324,11 +324,11 @@ export const OFFICIAL_DIARY_TOPICS: readonly DiaryTopicItem[] = [
     id: 'row-24',
     rowNumber: 24,
     day: 'Friday',
-    week: '2.0',
-    date: 'Day 9',
+    week: '3.0',
+    date: 'Day 10',
     activityCount: '23.0',
     pic: 'IT Manager',
-    topic: 'Website Management at LeadGeeks\n- Website Ecosystem & Dependencies\n- CMS / WordPress\n- Website Structure & Content Management\n- Technical SEO & Digital Presence',
+    topic: 'Introduction to IT Department 2026 SMART Goals and Understanding How IT Support LeadGeeks Business Objectives',
     defaultLearned: '',
     defaultNotes: '',
   },
@@ -336,11 +336,11 @@ export const OFFICIAL_DIARY_TOPICS: readonly DiaryTopicItem[] = [
     id: 'row-25',
     rowNumber: 25,
     day: 'Monday',
-    week: '3.0',
-    date: 'Day 10',
+    week: '4.0',
+    date: 'Day 11',
     activityCount: '24.0',
-    pic: 'IT Manager',
-    topic: 'Introduction to IT Department 2026 SMART Goals and Understanding How IT Support LeadGeeks Business Objectives',
+    pic: 'Managing Director',
+    topic: 'Beyond the Slides: Chat with the Managing Director',
     defaultLearned: '',
     defaultNotes: '',
   },
@@ -348,8 +348,8 @@ export const OFFICIAL_DIARY_TOPICS: readonly DiaryTopicItem[] = [
     id: 'row-26',
     rowNumber: 26,
     day: 'Tuesday',
-    week: '3.0',
-    date: 'Day 11',
+    week: '4.0',
+    date: 'Day 12',
     activityCount: '25.0',
     pic: 'IT Manager',
     topic: 'Infrastructure Management Goals and Initiatives\n- Google Workspace Assessment and Enhancement\n- Google Cloud Exploration\n- Email Domain Migration',
@@ -360,8 +360,8 @@ export const OFFICIAL_DIARY_TOPICS: readonly DiaryTopicItem[] = [
     id: 'row-27',
     rowNumber: 27,
     day: 'Wednesday',
-    week: '3.0',
-    date: 'Day 12',
+    week: '4.0',
+    date: 'Day 13',
     activityCount: '26.0',
     pic: 'IT Manager',
     topic: 'Technology Optimization & Innovation Goals and Initiatives\n- Existing Automation Evaluation and Optimization\n- New Automation Implementation\n- Integrated Database Implementation\n- Technology Support for Service Development and Innovation',
@@ -372,8 +372,8 @@ export const OFFICIAL_DIARY_TOPICS: readonly DiaryTopicItem[] = [
     id: 'row-28',
     rowNumber: 28,
     day: 'Thursday',
-    week: '3.0',
-    date: 'Day 13',
+    week: '4.0',
+    date: 'Day 14',
     activityCount: '27.0',
     pic: 'IT Manager',
     topic: 'Cybersecurity Goals and Initiatives\n- Security Assessment & Optimization\n- Company Account Implementation\n- Data Security Enhancement',
@@ -384,8 +384,8 @@ export const OFFICIAL_DIARY_TOPICS: readonly DiaryTopicItem[] = [
     id: 'row-29',
     rowNumber: 29,
     day: 'Friday',
-    week: '3.0',
-    date: 'Day 14',
+    week: '4.0',
+    date: 'Day 15',
     activityCount: '28.0',
     pic: 'IT Manager',
     topic: 'Website Management Goals and Initiatives\n- Website Enhancement\n- Technical SEO & Digital Presence',
@@ -512,6 +512,65 @@ export function clipboardRowForDiary(
     return val;
   };
   return `${escapeTsv(learned.trim())}\t${escapeTsv(notes.trim())}`;
+}
+
+/**
+ * Generates TSV text for all diary entries (Columns G & H: List 3 things learned & Your Notes).
+ * Can be pasted directly starting at Column G of row 2 in Google Sheets ('Onboarding Diary'!G2:H...).
+ */
+export function clipboardAllDiaryGtoH(
+  entries: DiaryEntryRecord[],
+  topics: readonly DiaryTopicItem[] = OFFICIAL_DIARY_TOPICS,
+  maxRow?: number
+): string {
+  const targetTopics = maxRow ? topics.filter((t) => t.rowNumber <= maxRow) : topics;
+  const sorted = [...targetTopics].sort((a, b) => a.rowNumber - b.rowNumber);
+
+  return sorted
+    .map((topic) => {
+      const entry = entries.find((e) => e.rowNumber === topic.rowNumber);
+      const learned = entry ? entry.learned : (topic.defaultLearned || '');
+      const notes = entry ? entry.notes : (topic.defaultNotes || '');
+      return clipboardRowForDiary(topic.rowNumber, learned, notes);
+    })
+    .join('\n');
+}
+
+/**
+ * Generates complete TSV text for all diary rows (Columns A to H).
+ */
+export function clipboardAllDiaryFullTable(
+  entries: DiaryEntryRecord[],
+  topics: readonly DiaryTopicItem[] = OFFICIAL_DIARY_TOPICS,
+  maxRow?: number
+): string {
+  const targetTopics = maxRow ? topics.filter((t) => t.rowNumber <= maxRow) : topics;
+  const sorted = [...targetTopics].sort((a, b) => a.rowNumber - b.rowNumber);
+
+  const escapeTsv = (val: string) => {
+    if (val.includes('\n') || val.includes('\t') || val.includes('"')) {
+      return `"${val.replace(/"/g, '""')}"`;
+    }
+    return val;
+  };
+
+  return sorted
+    .map((topic) => {
+      const entry = entries.find((e) => e.rowNumber === topic.rowNumber);
+      const learned = entry ? entry.learned : (topic.defaultLearned || '');
+      const notes = entry ? entry.notes : (topic.defaultNotes || '');
+      return [
+        topic.day,
+        topic.week,
+        topic.date,
+        topic.activityCount || '',
+        topic.pic,
+        escapeTsv(topic.topic),
+        escapeTsv(learned),
+        escapeTsv(notes),
+      ].join('\t');
+    })
+    .join('\n');
 }
 
 /**

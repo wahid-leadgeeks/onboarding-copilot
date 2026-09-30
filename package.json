@@ -10,7 +10,9 @@
     "start": "next start -p 4000",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "sync:diary": "tsx scripts/sync-diary-to-remote-db.ts",
+    "sync:schedule": "tsx scripts/sync-schedule-to-remote-db.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",

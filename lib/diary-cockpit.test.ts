@@ -2,6 +2,8 @@ import {
   OFFICIAL_DIARY_TOPICS,
   calculateDiaryCockpitProgress,
   clipboardRowForDiary,
+  clipboardAllDiaryGtoH,
+  clipboardAllDiaryFullTable,
   readDiaryCockpitEntries,
   writeDiaryCockpitEntries,
   upsertDiaryCockpitEntry,
@@ -19,37 +21,75 @@ describe('Onboarding Diary Cockpit', () => {
     expect(OFFICIAL_DIARY_TOPICS[27].topic).toContain('Website Management Goals');
   });
 
-  it('correctly categorizes Row 15 (Growth Department Introduction) as needs-notes by default', () => {
+  it('calculates progress for all official syllabus topics from the catalog defaults', () => {
+    const withLearned = OFFICIAL_DIARY_TOPICS.filter((t) => (t.defaultLearned ?? '').trim());
+    const completed = withLearned.filter((t) => (t.defaultNotes ?? '').trim());
+    const needsNotes = withLearned.length - completed.length;
+
     const progress = calculateDiaryCockpitProgress([]);
-    expect(progress.totalCount).toBe(28);
+    expect(progress.totalCount).toBe(OFFICIAL_DIARY_TOPICS.length);
+    expect(progress.completedCount).toBe(completed.length);
+    expect(progress.needsNotesCount).toBe(needsNotes);
+    expect(progress.todoCount).toBe(OFFICIAL_DIARY_TOPICS.length - withLearned.length);
+    expect(progress.completedCount + progress.needsNotesCount + progress.todoCount).toBe(
+      progress.totalCount
+    );
+    expect(progress.isComplete).toBe(progress.completedCount === progress.totalCount);
+
+    // Same number of topics with defaults as origin/main (10 of 28, 9 with both fields).
+    expect(withLearned.length).toBe(10);
+    expect(completed.length).toBe(9);
+
+    const byId = (id: string) => OFFICIAL_DIARY_TOPICS.find((t) => t.id === id);
+    expect(byId('row-12')?.defaultLearned).toContain('The Experience Department connects');
+    expect(byId('row-16')?.defaultLearned).toContain('Comprehensive Financial Planning');
+    expect(byId('row-13')?.defaultLearned).toBe('');
+    expect(byId('row-13')?.defaultNotes).toBe('');
+
+    const nonEmptyLearned = withLearned.map((t) => t.defaultLearned);
+    expect(new Set(nonEmptyLearned).size).toBe(nonEmptyLearned.length);
+
     const row15 = progress.rowStatuses.find((r) => r.topic.rowNumber === 15);
     expect(row15).toBeDefined();
-    expect(row15?.status).toBe('needs-notes');
     expect(row15?.topic.topic).toBe('Growth Department Introduction');
     expect(row15?.topic.pic).toBe('Growth Manager');
-    expect(progress.needsNotesCount).toBe(1);
-    expect(progress.completedCount).toBe(9); // rows 2, 5-8, 11-14 have default learnings & notes
-    expect(progress.todoCount).toBe(18);
   });
 
-  it('updates Row 15 to completed when user provides notes', () => {
+  it('marks a topic as needs-notes when user notes are empty', () => {
+    const before = calculateDiaryCockpitProgress([]);
+    const beforeRow = before.rowStatuses.find((r) => r.topic.rowNumber === 14);
+    expect(beforeRow?.status).toBe('completed');
+
     const userEntry: DiaryEntryRecord = {
-      rowNumber: 15,
-      learned: '1. Dual-Track Revenue Engine\n2. Targeted ICP\n3. 8 WEs',
-      notes: '1. My detailed notes about growth operations and ICP scoring.',
+      rowNumber: 14,
+      learned: 'Learned point',
+      notes: '',
       updatedAt: new Date().toISOString(),
     };
     const progress = calculateDiaryCockpitProgress([userEntry]);
-    const row15 = progress.rowStatuses.find((r) => r.topic.rowNumber === 15);
-    expect(row15?.status).toBe('completed');
-    expect(progress.completedCount).toBe(10);
-    expect(progress.needsNotesCount).toBe(0);
+    const row = progress.rowStatuses.find((r) => r.topic.rowNumber === 14);
+    expect(row?.status).toBe('needs-notes');
+    expect(progress.needsNotesCount).toBe(before.needsNotesCount + 1);
+    expect(progress.completedCount).toBe(before.completedCount - 1);
   });
 
   it('formats TSV rows for clipboard copy accurately', () => {
     const tsv = clipboardRowForDiary(15, 'Learning A\nLearning B', 'Note 1\tNote 2');
     expect(tsv).toContain('Learning A\nLearning B');
     expect(tsv).toContain('\t');
+
+    const maxRow = 25;
+    const rowsInRange = OFFICIAL_DIARY_TOPICS.filter((t) => t.rowNumber <= maxRow);
+    const bulkGtoH = clipboardAllDiaryGtoH([], OFFICIAL_DIARY_TOPICS, maxRow);
+    expect(bulkGtoH.match(/\t/g)).toHaveLength(rowsInRange.length);
+    const withDefaults = rowsInRange.find((t) => t.defaultLearned);
+    expect(withDefaults).toBeDefined();
+    expect(bulkGtoH).toContain(withDefaults!.defaultLearned!);
+
+    const fullTable = clipboardAllDiaryFullTable([], OFFICIAL_DIARY_TOPICS, maxRow);
+    for (const t of rowsInRange) {
+      expect(fullTable).toContain(t.topic);
+    }
   });
 
   it('serializes and deserializes local storage records reliably', () => {

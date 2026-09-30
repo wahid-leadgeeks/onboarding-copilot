@@ -1,6 +1,9 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
+import { resolveSslOption } from './ssl';
+
+export { resolveSslOption };
 
 export type NovaDatabase = ReturnType<typeof drizzle<typeof schema>>;
 
@@ -32,11 +35,7 @@ export function getClient(): postgres.Sql {
     max: isServerless ? 2 : 10,
     idle_timeout: 20,
     connect_timeout: 15,
-    ssl: connectionString.includes('sslmode=disable')
-      ? false
-      : connectionString.includes('localhost') || connectionString.includes('127.0.0.1')
-      ? false
-      : 'require',
+    ssl: resolveSslOption(connectionString),
   });
 
   if (process.env.NODE_ENV !== 'production') {
