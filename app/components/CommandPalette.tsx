@@ -105,6 +105,20 @@ export function CommandPalette({
       onSelect: () => router.push('/reviews'),
     },
     {
+      id: 'page-first-month-review',
+      title: 'First Month Review (30-Day Evaluation & Reflections)',
+      category: 'Pages',
+      keywords: 'first month review evaluation technical values hrd assessment',
+      onSelect: () => router.push('/first-month-review'),
+    },
+    {
+      id: 'page-monthly-review-score',
+      title: 'Monthly Review Score (Standard Scoring Rubric)',
+      category: 'Pages',
+      keywords: 'monthly review score rubric standard indicators levels satisfactory good very competent excellent outstanding',
+      onSelect: () => router.push('/monthly-review-score'),
+    },
+    {
       id: 'page-diary',
       title: 'Diary (Personal Learning Notes)',
       category: 'Pages',

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   HARPS_VALUES,
   OFFICIAL_MONTHLY_REVIEWS,
@@ -14,7 +15,7 @@ import {
 } from '@/lib/reviews';
 import { ReviewDetailSheet } from '@/app/components/ReviewDetailSheet';
 import { useToast } from '@/app/components/Toast';
-import { IconCheck, IconClipboard } from '@/app/components/Icons';
+import { IconCheck, IconClipboard, IconTrophy, IconTarget } from '@/app/components/Icons';
 
 export default function ReviewsPage() {
   const { toast } = useToast();
@@ -143,6 +144,45 @@ export default function ReviewsPage() {
           <p className="mt-1 text-sm text-stone-600">
             Self-evaluations across Month 1, Month 2, and Month 3 probation milestones, plus HARPS Core Values alignment.
           </p>
+        </div>
+
+        {/* Quick Action Banners for New Sheets */}
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Link
+            href="/first-month-review"
+            className="group flex items-start gap-3 rounded-2xl border border-peach-200/90 bg-peach-50/40 p-4 transition-all hover:bg-peach-50/70 hover:shadow-xs active:scale-98"
+          >
+            <div className="rounded-xl bg-peach-500/10 p-2 text-peach-700">
+              <IconTrophy className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5 font-bold text-stone-900 group-hover:text-peach-900">
+                <span>First Month Review</span>
+                <span className="text-xs text-stone-400 group-hover:translate-x-0.5 transition-transform">→</span>
+              </div>
+              <p className="mt-0.5 text-xs text-stone-600 leading-snug">
+                Complete 30-day review: 11 technical competencies, 8 values, ratings, supervisor comments & HRD reflections.
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            href="/monthly-review-score"
+            className="group flex items-start gap-3 rounded-2xl border border-sky-200/90 bg-sky-50/40 p-4 transition-all hover:bg-sky-50/70 hover:shadow-xs active:scale-98"
+          >
+            <div className="rounded-xl bg-sky-500/10 p-2 text-sky-700">
+              <IconTarget className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5 font-bold text-stone-900 group-hover:text-sky-900">
+                <span>Monthly Review Score Rubric</span>
+                <span className="text-xs text-stone-400 group-hover:translate-x-0.5 transition-transform">→</span>
+              </div>
+              <p className="mt-0.5 text-xs text-stone-600 leading-snug">
+                Official scoring rubric defining expectations for 60, 70, 80, 90, and 100 score levels.
+              </p>
+            </div>
+          </Link>
         </div>
       </header>
 

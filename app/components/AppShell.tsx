@@ -16,6 +16,8 @@ import {
   IconSun,
   IconTree,
   IconTrophy,
+  IconTarget,
+  IconSparkles,
   IconX,
   IconLogOut,
 } from '@/app/components/Icons';
@@ -50,7 +52,9 @@ const NAV_SECTIONS: readonly NavSection[] = [
     title: 'Milestones & Growth',
     items: [
       { label: 'Timeline', href: '/timeline', icon: IconTree, tourId: 'nav-timeline' },
-      { label: 'Reviews', href: '/reviews', icon: IconTrophy, tourId: 'nav-reviews' },
+      { label: 'Reviews', href: '/reviews', icon: IconSparkles, tourId: 'nav-reviews' },
+      { label: 'First Month Review', href: '/first-month-review', icon: IconTrophy, tourId: 'nav-first-month-review' },
+      { label: 'Monthly Review Score', href: '/monthly-review-score', icon: IconTarget, tourId: 'nav-monthly-review-score' },
     ],
   },
   {
