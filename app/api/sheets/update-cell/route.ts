@@ -83,6 +83,7 @@ export async function POST(request: Request) {
     startTime?: string;
     endTime?: string;
     progress?: string;
+    materialsLink?: string;
     spreadsheetId?: string;
     feedback?: FeedbackEntry | FeedbackClipboardInput;
     entries?: Array<FeedbackEntry | (FeedbackClipboardInput & { rowNumber?: number; sessionId?: string })>;
@@ -148,13 +149,14 @@ export async function POST(request: Request) {
         let syncedToSheets = false;
         if (targetSpreadsheetId && accessToken) {
           try {
-            const range = `'Schedule'!G${row}:K${row}`;
+            const range = `'Schedule'!G${row}:L${row}`;
             const values = [
               [
                 body.durationMinutes !== undefined ? String(body.durationMinutes) : '',
                 body.startTime ?? '',
                 body.endTime ?? '',
                 progressValue,
+                body.materialsLink ?? '',
                 body.notes ?? '',
               ],
             ];
@@ -169,11 +171,12 @@ export async function POST(request: Request) {
           success: true,
           sheet: 'Schedule',
           rowNumber: row,
-          range: `'Schedule'!G${row}:K${row}`,
+          range: `'Schedule'!G${row}:L${row}`,
           durationMinutes: body.durationMinutes,
           startTime: body.startTime,
           endTime: body.endTime,
           progress: progressValue,
+          materialsLink: body.materialsLink,
           notes: body.notes,
           syncedToSheets,
         });
@@ -379,13 +382,14 @@ export async function POST(request: Request) {
       const rawProgress = body.progress !== undefined ? String(body.progress).trim() : 'Done';
       const progressValue = (rawProgress === 'Not Started' || !rawProgress) ? '' : rawProgress;
 
-      const range = `'Schedule'!G${row}:K${row}`;
+      const range = `'Schedule'!G${row}:L${row}`;
       const values = [
         [
           body.durationMinutes !== undefined ? String(body.durationMinutes) : '',
           body.startTime ?? '',
           body.endTime ?? '',
           progressValue,
+          body.materialsLink ?? '',
           body.notes ?? '',
         ],
       ];
@@ -400,6 +404,7 @@ export async function POST(request: Request) {
         startTime: body.startTime,
         endTime: body.endTime,
         progress: progressValue,
+        materialsLink: body.materialsLink,
         notes: body.notes,
       });
     }

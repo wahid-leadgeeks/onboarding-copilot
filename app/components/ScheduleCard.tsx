@@ -13,6 +13,7 @@ import {
   IconRocket,
   IconDotsHorizontal,
   IconPause,
+  IconExternalLink,
 } from './Icons';
 
 export interface ScheduleCardProps {
@@ -29,7 +30,7 @@ export interface ScheduleCardProps {
   onCopyGtoK: (item: ScheduleActivity) => void;
   onCopyFullRow: (item: ScheduleActivity) => void;
   onWriteReflection: (item: ScheduleActivity) => void;
-  copiedToast?: { rowNumber: number; type: 'G-K' | 'Full' } | null;
+  copiedToast?: { rowNumber: number; type: 'G-K' | 'G-L' | 'Full' } | null;
 }
 
 export function ScheduleCard({
@@ -99,6 +100,19 @@ export function ScheduleCard({
           <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[11px] font-medium text-stone-600">
             {item.mainMedia}
           </span>
+          {item.materialsLink && (
+            <a
+              href={item.materialsLink.startsWith('http') ? item.materialsLink : `https://${item.materialsLink}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700 hover:bg-sky-100 transition"
+              title={`Open Materials or Recording: ${item.materialsLink}`}
+            >
+              <IconExternalLink className="h-3 w-3 text-sky-600" />
+              <span>Materials</span>
+            </a>
+          )}
           <span
             className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${getProgressBadge(
               isTimerRunning || isTimerPaused ? 'In Progress' : item.progress
@@ -237,9 +251,9 @@ export function ScheduleCard({
                 >
                   <IconClipboard className="h-3.5 w-3.5 text-stone-500 shrink-0" />
                   <span>
-                    {copiedToast?.rowNumber === item.rowNumber && copiedToast.type === 'G-K'
-                      ? 'Copied G–K TSV! ✓'
-                      : 'Copy Cols G–K TSV'}
+                    {copiedToast?.rowNumber === item.rowNumber && (copiedToast.type === 'G-K' || copiedToast.type === 'G-L')
+                      ? 'Copied G–L TSV! ✓'
+                      : 'Copy Cols G–L TSV'}
                   </span>
                 </button>
 
@@ -254,8 +268,8 @@ export function ScheduleCard({
                   <IconClipboard className="h-3.5 w-3.5 text-stone-500 shrink-0" />
                   <span>
                     {copiedToast?.rowNumber === item.rowNumber && copiedToast.type === 'Full'
-                      ? 'Copied Row A–K! ✓'
-                      : 'Copy Full Row A–K'}
+                      ? 'Copied Row A–L! ✓'
+                      : 'Copy Full Row A–L'}
                   </span>
                 </button>
 

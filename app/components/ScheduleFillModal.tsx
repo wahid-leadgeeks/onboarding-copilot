@@ -16,6 +16,7 @@ import {
   IconNote,
   IconClipboard,
   IconRocket,
+  IconLink,
 } from './Icons';
 
 interface ScheduleFillModalProps {
@@ -34,6 +35,7 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
   const [startTime, setStartTime] = useState<string>('');
   const [endTime, setEndTime] = useState<string>('');
   const [progress, setProgress] = useState<string>('Done');
+  const [materialsLink, setMaterialsLink] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
 
   const [isSyncing, setIsSyncing] = useState(false);
@@ -50,6 +52,7 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
         ? activity.progress
         : (activity.durationMinutes || activity.startTime ? 'Done' : '');
       setProgress(initialProgress);
+      setMaterialsLink(activity.materialsLink || '');
       setNotes(activity.notes || '');
       setSyncStatus(null);
     }
@@ -91,6 +94,7 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
       startTime: startTime.trim(),
       endTime: endTime.trim(),
       progress: cleanProgress,
+      materialsLink: materialsLink.trim(),
       notes: notes.trim(),
     };
   }
@@ -111,6 +115,7 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
           startTime: updated.startTime,
           endTime: updated.endTime,
           progress: updated.progress,
+          materialsLink: updated.materialsLink,
           notes: updated.notes,
         }),
       });
@@ -302,18 +307,34 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
             </div>
           </div>
 
-          {/* Notes (Column K) */}
+          {/* Link to Materials or Recording (Column K) */}
+          <div>
+            <label htmlFor="sched-link" className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 mb-1">
+              <IconLink className="h-3.5 w-3.5 text-stone-500" />
+              Link to Materials or Recording (Col K)
+            </label>
+            <input
+              id="sched-link"
+              type="url"
+              value={materialsLink}
+              onChange={(e) => setMaterialsLink(e.target.value)}
+              placeholder="https://drive.google.com/... or recording link"
+              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs sm:text-sm text-stone-900 placeholder:text-stone-400 focus:border-stone-900 focus:bg-white focus:outline-none"
+            />
+          </div>
+
+          {/* Notes (Column L) */}
           <div>
             <label htmlFor="sched-notes" className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-700 mb-1">
               <IconNote className="h-3.5 w-3.5 text-stone-500" />
-              Notes / Drive Link (Col K)
+              Notes (Col L)
             </label>
             <textarea
               id="sched-notes"
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Session takeaways, folder link, blockers, or discussion notes..."
+              placeholder="Session takeaways, blockers, discussion notes..."
               className="w-full rounded-xl border border-stone-200 bg-stone-50 p-3 text-xs sm:text-sm text-stone-900 placeholder:text-stone-400 focus:border-stone-900 focus:bg-white focus:outline-none"
             />
           </div>
@@ -346,12 +367,12 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
               {copiedGtoK ? (
                 <>
                   <IconCheck className="h-3.5 w-3.5 text-mint-600" />
-                  <span>Copied G–K!</span>
+                  <span>Copied G–L!</span>
                 </>
               ) : (
                 <>
                   <IconClipboard className="h-3.5 w-3.5" />
-                  <span>Copy Cols G–K TSV</span>
+                  <span>Copy Cols G–L TSV</span>
                 </>
               )}
             </button>
@@ -368,7 +389,7 @@ export function ScheduleFillModal({ activity, onSave, onClose }: ScheduleFillMod
               ) : (
                 <>
                   <IconClipboard className="h-3.5 w-3.5" />
-                  <span>Copy Row A–K</span>
+                  <span>Copy Row A–L</span>
                 </>
               )}
             </button>

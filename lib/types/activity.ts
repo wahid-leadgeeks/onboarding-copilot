@@ -14,5 +14,6 @@ export interface Activity {
   day?: string;
   activityCount?: number;
   pic?: string;
+  materialsLink?: string;
   notes?: string;
 }

@@ -10,10 +10,10 @@ export type ScheduleProgress = 'Done' | 'In Progress' | 'On-Hold' | 'Reschedule'
 export interface ScheduleActivity {
   readonly id: string;
   readonly rowNumber: number; // Row number in sheet 'Schedule' (e.g. 3, 4, 20...)
-  readonly week: string; // 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Month 2', 'Month 3'
+  readonly week: string; // 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Month 1 Review', etc.
   readonly day: string; // 'Tuesday', 'Wednesday', etc.
   readonly date: string; // DD/MM/YYYY
-  readonly activityCount: number; // 1, 2, 3...
+  readonly activityCount?: number; // 1, 2, 3...
   readonly pic: string; // HRD, CEO, MD, IT Manager, IT Staff, Experience...
   readonly topic: string;
   readonly mainMedia: string; // Online Meeting, Video, Knowledge Sharing...
@@ -21,7 +21,8 @@ export interface ScheduleActivity {
   readonly startTime?: string; // Column H (HH:MM)
   readonly endTime?: string; // Column I (HH:MM)
   readonly progress: ScheduleProgress | string; // Column J: 'Done' | 'In Progress' | 'On-Hold' | 'Reschedule' | ''
-  readonly notes?: string; // Column K
+  readonly materialsLink?: string; // Column K: Link to the Materials or Recording
+  readonly notes?: string; // Column L: Notes
 }
 
 export const SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY = 'nova-schedule-customizations';
@@ -40,8 +41,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 30,
     "startTime": "08:30",
     "endTime": "09:00",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-4",
@@ -56,8 +56,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 3,
     "startTime": "09:15",
     "endTime": "09:18",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-5",
@@ -72,8 +71,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 3,
     "startTime": "09:19",
     "endTime": "09:22",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-6",
@@ -88,8 +86,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 30,
     "startTime": "09:23",
     "endTime": "09:53",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-7",
@@ -104,8 +101,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 20,
     "startTime": "10:00",
     "endTime": "10:20",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-8",
@@ -120,8 +116,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 60,
     "startTime": "10:30",
     "endTime": "11:30",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-9",
@@ -136,8 +131,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 40,
     "startTime": "13:00",
     "endTime": "13:40",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-10",
@@ -152,8 +146,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 20,
     "startTime": "12:30",
     "endTime": "12:50",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-11",
@@ -165,10 +158,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "Managing Director",
     "topic": "Team Introduction",
     "mainMedia": "Online Meeting",
-    "startTime": "",
-    "endTime": "",
-    "progress": "Reschedule",
-    "notes": ""
+    "progress": "Reschedule"
   },
   {
     "id": "sched-row-12",
@@ -183,8 +173,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 40,
     "startTime": "19:30",
     "endTime": "20:10",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-13",
@@ -199,8 +188,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 90,
     "startTime": "15:00",
     "endTime": "16:30",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-14",
@@ -215,8 +203,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 40,
     "startTime": "16:30",
     "endTime": "17:10",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-15",
@@ -226,13 +213,12 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "date": "02/09/2026",
     "activityCount": 13,
     "pic": "IT Manager",
-    "topic": "Intoduction to the IT Department\n- Structure of IT Department\n- Roles and Responsibilites\n- IT Department Values\n- IT Department Functions",
+    "topic": "Introduction to the IT Department\n- Structure of IT Department\n- Roles and Responsibilites\n- IT Department Values\n- IT Department Functions",
     "mainMedia": "Knowledge Sharing",
     "durationMinutes": 125,
     "startTime": "09:00",
     "endTime": "11:05",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-16",
@@ -247,8 +233,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 210,
     "startTime": "13:30",
     "endTime": "17:00",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-17",
@@ -263,8 +248,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 25,
     "startTime": "11:05",
     "endTime": "11:30",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-18",
@@ -279,8 +263,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 30,
     "startTime": "11:30",
     "endTime": "12:00",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-19",
@@ -295,8 +278,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "durationMinutes": 30,
     "startTime": "14:00",
     "endTime": "14:30",
-    "progress": "Done",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-20",
@@ -312,7 +294,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "startTime": "10:00",
     "endTime": "12:35",
     "progress": "Done",
-    "notes": "https://drive.google.com/drive/folders/1vqgl2skPDySh-IEBajNKyRVXkOh2RQrH?usp=sharing"
+    "materialsLink": "https://drive.google.com/drive/folders/1vqgl2skPDySh-IEBajNKyRVXkOh2RQrH?usp=sharing"
   },
   {
     "id": "sched-row-21",
@@ -328,7 +310,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "startTime": "14:05",
     "endTime": "18:00",
     "progress": "Done",
-    "notes": "https://drive.google.com/drive/folders/1H3Far06NyOVsLKn_0v1_1ko044n6QUGF?usp=sharing"
+    "materialsLink": "https://drive.google.com/drive/folders/1H3Far06NyOVsLKn_0v1_1ko044n6QUGF?usp=sharing"
   },
   {
     "id": "sched-row-22",
@@ -341,10 +323,7 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "topic": "Understanding the Current IT Ecosystem\n- Main Tools & Platforms\n- Systems & Services\n- Key Dependencies\n- Basic IT Environment",
     "mainMedia": "Knowledge Sharing & Demonstration",
     "durationMinutes": 175,
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-23",
@@ -356,25 +335,22 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "pic": "IT Staff",
     "topic": "Independent Learning",
     "mainMedia": "Independent Learning",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "progress": "Done"
   },
   {
-    "id": "sched-row-24",
-    "rowNumber": 24,
-    "week": "Week 1",
-    "day": "Friday",
-    "date": "04/09/2026",
+    "id": "sched-row-25",
+    "rowNumber": 25,
+    "week": "Week 2",
+    "day": "Monday",
+    "date": "07/09/2026",
     "activityCount": 22,
     "pic": "IT Manager",
-    "topic": "Weekly Check-in (Reflection, Knowledge Alignment & Week 2 Preview)",
-    "mainMedia": "Weekly Check-in",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "topic": "Understanding LeadGeeks IT Department Functions\n- Infrastructure Management\n- Website Management\n- Technology Optimization & Innovation\n- Cybersecurity\n- Relationships & Dependencies Between Functions",
+    "mainMedia": "Knowledge Sharing & Discussion",
+    "durationMinutes": 105,
+    "startTime": "10:00",
+    "endTime": "11:45",
+    "progress": "Done"
   },
   {
     "id": "sched-row-26",
@@ -383,28 +359,25 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "day": "Monday",
     "date": "07/09/2026",
     "activityCount": 23,
-    "pic": "IT Manager",
-    "topic": "Understanding LeadGeeks IT Department Functions\n- Infrastructure Management\n- Website Management\n- Technology Optimization & Innovation\n- Cybersecurity\n- Relationships & Dependencies Between Functions",
-    "mainMedia": "Knowledge Sharing & Discussion",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "pic": "IT Staff",
+    "topic": "Independent Learning and Task\n- Identify and map each IT function, its responsibilities, main systems/tools, and dependencies.",
+    "mainMedia": "Personal Learning and Task",
+    "durationMinutes": 50,
+    "startTime": "23:44",
+    "endTime": "00:34",
+    "progress": "Done"
   },
   {
     "id": "sched-row-27",
     "rowNumber": 27,
     "week": "Week 2",
-    "day": "Monday",
-    "date": "07/09/2026",
+    "day": "Tuesday",
+    "date": "08/09/2026",
     "activityCount": 24,
-    "pic": "IT Staff",
-    "topic": "Independent Learning and Task\n- Identify and map each IT function, its responsibilities, main systems/tools, and dependencies.",
-    "mainMedia": "Personal Learning and Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "pic": "IT Manager",
+    "topic": "Infrastructure Management at LeadGeeks\n- Current Environment\n- Core Services (Google Workspace)\n- User & Device Management\n- Standards & Operational Scope",
+    "mainMedia": "Knowledge Sharing & Discussion",
+    "progress": "Done"
   },
   {
     "id": "sched-row-28",
@@ -413,28 +386,22 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "day": "Tuesday",
     "date": "08/09/2026",
     "activityCount": 25,
-    "pic": "IT Manager",
-    "topic": "Infrastructure Management at LeadGeeks\n- Current Environment\n- Core Services (Google Workspace)\n- User & Device Management\n- Standards & Operational Scope",
-    "mainMedia": "Knowledge Sharing & Discussion",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "pic": "IT Staff",
+    "topic": "Independent Learning and Task\n- Create a simple web app based on data from user account management, hardware device management, and software management.",
+    "mainMedia": "Personal Learning and Task",
+    "progress": "Done"
   },
   {
     "id": "sched-row-29",
     "rowNumber": 29,
     "week": "Week 2",
-    "day": "Tuesday",
-    "date": "08/09/2026",
+    "day": "Wednesday",
+    "date": "09/09/2026",
     "activityCount": 26,
-    "pic": "IT Staff",
-    "topic": "Independent Learning and Task\n- Identify and document selected tools, platforms, and services, including their purpose, users, owner, and dependencies.",
-    "mainMedia": "Personal Learning and Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "pic": "IT Manager",
+    "topic": "Technology Optimization & Innovation at LeadGeeks\n- AI & Automation\n- Google Apps Script & Workflow Automation\n- System Development & Process Improvement\n- Existing Initiatives & Future Direction",
+    "mainMedia": "Knowledge Sharing & Discussion",
+    "progress": "Done"
   },
   {
     "id": "sched-row-30",
@@ -443,28 +410,22 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "day": "Wednesday",
     "date": "09/09/2026",
     "activityCount": 27,
-    "pic": "IT Manager",
-    "topic": "Technology Optimization & Innovation at LeadGeeks\n- AI & Automation\n- Google Apps Script & Workflow Automation\n- System Development & Process Improvement\n- Existing Initiatives & Future Direction",
-    "mainMedia": "Knowledge Sharing & Discussion",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "pic": "IT Staff",
+    "topic": "Independent Learning and Task\n- Create a simple web app to optimize and automate workflows/processes for time and task tracking.",
+    "mainMedia": "Personal Learning and Task",
+    "progress": "Done"
   },
   {
     "id": "sched-row-31",
     "rowNumber": 31,
     "week": "Week 2",
-    "day": "Wednesday",
-    "date": "09/09/2026",
+    "day": "Thursday",
+    "date": "10/09/2026",
     "activityCount": 28,
-    "pic": "IT Staff",
-    "topic": "Independent Learning and Task\n- Review one existing automation and identify its purpose, trigger, input, process, output, and dependencies.",
-    "mainMedia": "Personal Learning and Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "pic": "IT Manager",
+    "topic": "Cybersecurity at LeadGeeks\n- Current Security Practices\n- Data Protection & GDPR\n- Security Risks & Priorities\n- Security Assessment & Basic Response",
+    "mainMedia": "Knowledge Sharing & Discussion",
+    "progress": "Done"
   },
   {
     "id": "sched-row-32",
@@ -473,28 +434,22 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "day": "Thursday",
     "date": "10/09/2026",
     "activityCount": 29,
-    "pic": "IT Manager",
-    "topic": "Cybersecurity at LeadGeeks\n- Current Security Practices\n- Data Protection & GDPR\n- Security Risks & Priorities\n- Security Assessment & Basic Response",
-    "mainMedia": "Knowledge Sharing & Discussion",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "pic": "IT Staff",
+    "topic": "Independent Learning and Task\n- Review security recommendation tools and identify potential security tools for implementation this year.",
+    "mainMedia": "Personal Learning and Task",
+    "progress": "Done"
   },
   {
     "id": "sched-row-33",
     "rowNumber": 33,
     "week": "Week 2",
-    "day": "Thursday",
-    "date": "10/09/2026",
+    "day": "Friday",
+    "date": "11/09/2026",
     "activityCount": 30,
-    "pic": "IT Staff",
-    "topic": "Independent Learning and Task\n- Review the existing security checklist and identify potential security risks.",
-    "mainMedia": "Personal Learning and Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "pic": "IT Manager",
+    "topic": "Website Management at LeadGeeks\n- Website Ecosystem & Dependencies\n- CMS / WordPress\n- Website Structure & Content Management\n- Technical SEO & Digital Presence",
+    "mainMedia": "Knowledge Sharing & Discussion",
+    "progress": "Done"
   },
   {
     "id": "sched-row-34",
@@ -503,434 +458,272 @@ export const OFFICIAL_SCHEDULE_ACTIVITIES: readonly ScheduleActivity[] = [
     "day": "Friday",
     "date": "11/09/2026",
     "activityCount": 31,
-    "pic": "IT Manager",
-    "topic": "Website Management at LeadGeeks\n- Website Ecosystem & Dependencies\n- CMS / WordPress\n- Website Structure & Content Management\n- Technical SEO & Digital Presence",
-    "mainMedia": "Knowledge Sharing & Discussion",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
-  },
-  {
-    "id": "sched-row-35",
-    "rowNumber": 35,
-    "week": "Week 2",
-    "day": "Friday",
-    "date": "11/09/2026",
-    "activityCount": 32,
     "pic": "IT Staff",
-    "topic": "Independent Learning and Task\n- Create a basic draft/test page containing a heading, text, image, link/button, and basic formatting.",
+    "topic": "Independent Learning and Task\n- Identify and explore processes and features in the website CMS (Wordpress) that can be optimized using AI.",
     "mainMedia": "Personal Learning and Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-36",
     "rowNumber": 36,
-    "week": "Week 2",
-    "day": "Friday",
-    "date": "11/09/2026",
+    "week": "Week 3",
+    "day": "Monday",
+    "date": "14/09/2026",
+    "activityCount": 32,
+    "pic": "IT Staff",
+    "topic": "Contact and conduct meetings with 3 relevant other department members (Operations and Growth) to understand Lead Generation processes and AI Optimization efforts in 2025 and 2026",
+    "mainMedia": "Personal Task",
+    "progress": "Done"
+  },
+  {
+    "id": "sched-row-37",
+    "rowNumber": 37,
+    "week": "Week 3",
+    "day": "Tuesday",
+    "date": "15/09/2026",
     "activityCount": 33,
-    "pic": "IT Manager",
-    "topic": "Weekly Check-in (Reflection, Knowledge Alignment & Week 3 Preview)",
-    "mainMedia": "Weekly Check-in",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "pic": "IT Staff",
+    "topic": "Observe the processes and identify potential opportunities for AI optimization, then develop solution proposals for discussion in the Technology Optimization meeting",
+    "mainMedia": "Personal Task",
+    "progress": "Done"
   },
   {
     "id": "sched-row-38",
     "rowNumber": 38,
     "week": "Week 3",
-    "day": "Monday",
-    "date": "14/09/2026",
-    "activityCount": 34,
-    "pic": "IT Manager",
-    "topic": "Introduction to IT Department 2026 SMART Goals and Understanding How IT Support LeadGeeks Business Objectives",
-    "mainMedia": "Knowledge Sharing & Discussion",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "day": "Wednesday",
+    "date": "16/09/2026",
+    "activityCount": 33,
+    "pic": "IT Staff",
+    "topic": "Prepare the presentation for proposed technology optimization using AI",
+    "mainMedia": "Personal Task",
+    "progress": "Done"
   },
   {
     "id": "sched-row-39",
     "rowNumber": 39,
     "week": "Week 3",
-    "day": "Monday",
-    "date": "14/09/2026",
-    "activityCount": 35,
+    "day": "Thursday",
+    "date": "17/09/2026",
+    "activityCount": 34,
     "pic": "IT Staff",
-    "topic": "Independent Learning and Task\n- Connect IT goals with key initiatives, expected outputs, and business impact.",
-    "mainMedia": "Personal Learning and Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "topic": "Identify and explore proposed solutions for the optimization and automation of the AI Email Template Creation process",
+    "mainMedia": "Personal Task",
+    "progress": ""
   },
   {
     "id": "sched-row-40",
     "rowNumber": 40,
     "week": "Week 3",
-    "day": "Tuesday",
-    "date": "15/09/2026",
-    "activityCount": 36,
-    "pic": "Managing Director",
-    "topic": "Beyond the Slides: Chat with the Managing Director",
-    "mainMedia": "Online Meeting",
-    "startTime": "",
-    "endTime": "",
-    "progress": "Reschedule",
-    "notes": ""
+    "day": "Thursday",
+    "date": "17/09/2026",
+    "activityCount": 35,
+    "pic": "IT Staff",
+    "topic": "Explore Beanstalk application to check the functionality",
+    "mainMedia": "Personal Task",
+    "progress": ""
   },
   {
     "id": "sched-row-41",
     "rowNumber": 41,
     "week": "Week 3",
-    "day": "Tuesday",
-    "date": "15/09/2026",
-    "activityCount": 37,
+    "day": "Friday",
+    "date": "18/09/2026",
+    "activityCount": 36,
     "pic": "IT Manager",
-    "topic": "Infrastructure Management Goals and Initiatives\n- Google Workspace Assessment and Enhancement\n- Google Cloud Exploration\n- Email Domain Migration",
+    "topic": "Introduction to IT Department 2026 SMART Goals and Understanding How IT Support LeadGeeks Business Objectives",
     "mainMedia": "Knowledge Sharing & Discussion",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "progress": "Done"
   },
   {
     "id": "sched-row-42",
     "rowNumber": 42,
     "week": "Week 3",
-    "day": "Tuesday",
-    "date": "15/09/2026",
-    "activityCount": 38,
+    "day": "Friday",
+    "date": "18/09/2026",
+    "activityCount": 37,
     "pic": "IT Staff",
-    "topic": "Independent Learning and Task\n- Review one infrastructure initiative and identify its current condition, expected improvement, dependencies, and potential risks.",
-    "mainMedia": "Personal Learning and Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
-  },
-  {
-    "id": "sched-row-43",
-    "rowNumber": 43,
-    "week": "Week 3",
-    "day": "Wednesday",
-    "date": "16/09/2026",
-    "activityCount": 39,
-    "pic": "IT Manager",
-    "topic": "Technology Optimization & Innovation Goals and Initiatives\n- Existing Automation Evaluation and Optimization\n- New Automation Implementation\n- Integrated Database Implementation\n- Technology Support for Service Development and Innovation",
-    "mainMedia": "Knowledge Sharing & Discussion",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "topic": "Independent Learning\n- Read all SMART goals in IT Department including the current progress and next action items.",
+    "mainMedia": "Personal Learning",
+    "progress": ""
   },
   {
     "id": "sched-row-44",
     "rowNumber": 44,
-    "week": "Week 3",
-    "day": "Wednesday",
-    "date": "16/09/2026",
-    "activityCount": 40,
-    "pic": "IT Staff",
-    "topic": "Independent Learning and Task\n- Identify one improvement opportunity from an existing automation or repetitive workflow and propose a simple solution.",
-    "mainMedia": "Personal Learning and Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "week": "Week 4",
+    "day": "Monday",
+    "date": "21/09/2026",
+    "activityCount": 38,
+    "pic": "Managing Director",
+    "topic": "Beyond the Slides: Chat with the Managing Director",
+    "mainMedia": "Offline",
+    "progress": "Done"
   },
   {
     "id": "sched-row-45",
     "rowNumber": 45,
-    "week": "Week 3",
-    "day": "Thursday",
-    "date": "17/09/2026",
-    "activityCount": 41,
-    "pic": "IT Manager",
-    "topic": "Cybersecurity Goals and Initiatives\n- Security Assessment & Optimization\n- Company Account Implementation\n- Data Security Enhancement",
-    "mainMedia": "Knowledge Sharing & Discussion",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "week": "Week 4",
+    "day": "Monday",
+    "date": "21/09/2026",
+    "activityCount": 39,
+    "pic": "Experience Manager",
+    "topic": "Business English Training",
+    "mainMedia": "Online",
+    "progress": "Done"
   },
   {
     "id": "sched-row-46",
     "rowNumber": 46,
-    "week": "Week 3",
-    "day": "Thursday",
-    "date": "17/09/2026",
-    "activityCount": 42,
+    "week": "Week 4",
+    "day": "Tuesday",
+    "date": "22/09/2026",
+    "activityCount": 40,
     "pic": "IT Staff",
-    "topic": "Independent Learning and Task\n- Review a predefined scenario and recommend appropriate preventive and corrective actions.",
-    "mainMedia": "Personal Learning and Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "topic": "Develop and make the NOVA Onboarding, TETRA Time and Task Tracking, CORE IT Dashboard, and SMART Goals dashboard web app accessible to the public, including a clone database",
+    "mainMedia": "Personal Task",
+    "progress": ""
   },
   {
     "id": "sched-row-47",
     "rowNumber": 47,
-    "week": "Week 3",
-    "day": "Friday",
-    "date": "18/09/2026",
-    "activityCount": 43,
-    "pic": "IT Manager",
-    "topic": "Website Management Goals and Initiatives\n- Website Enhancement\n- Technical SEO & Digital Presence",
-    "mainMedia": "Knowledge Sharing & Discussion",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "week": "Week 4",
+    "day": "Tuesday",
+    "date": "22/09/2026",
+    "activityCount": 41,
+    "pic": "IT Staff",
+    "topic": "Integrate the web apps with Google authentication and spreadsheet synchronization",
+    "mainMedia": "Personal Task",
+    "progress": ""
   },
   {
     "id": "sched-row-48",
     "rowNumber": 48,
-    "week": "Week 3",
-    "day": "Friday",
-    "date": "18/09/2026",
-    "activityCount": 44,
+    "week": "Week 4",
+    "day": "Wednesday",
+    "date": "23/09/2026",
+    "activityCount": 42,
     "pic": "IT Staff",
-    "topic": "Independent Learning and Task\n- Improve the Week 2 test page using basic structure, internal linking, image alt text, and basic SEO practices.",
-    "mainMedia": "Personal Learning and Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "topic": "Develop a solution for creating and quality-checking email templates using ChatGPT, based on custom instructions and agent guidance",
+    "mainMedia": "Personal Task",
+    "progress": ""
   },
   {
     "id": "sched-row-49",
     "rowNumber": 49,
-    "week": "Week 3",
-    "day": "Friday",
-    "date": "18/09/2026",
-    "activityCount": 45,
-    "pic": "IT Manager",
-    "topic": "Weekly Check-in (Reflection, Knowledge Alignment & Week 4 Preview)",
-    "mainMedia": "Weekly Check-in",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "week": "Week 4",
+    "day": "Wednesday",
+    "date": "23/09/2026",
+    "activityCount": 43,
+    "pic": "IT Staff",
+    "topic": "Explore other solutions including workflow automation and ChatGPT alternatives that do not require a subscription, for email template creation and quality checking",
+    "mainMedia": "Personal Task",
+    "progress": ""
+  },
+  {
+    "id": "sched-row-50",
+    "rowNumber": 50,
+    "week": "Week 4",
+    "day": "Thursday",
+    "date": "24/09/2026",
+    "activityCount": 44,
+    "pic": "IT Staff",
+    "topic": "Explore ways to connect the spreadsheet with ChatGPT for email template creation and quality checking",
+    "mainMedia": "Personal Task",
+    "progress": ""
   },
   {
     "id": "sched-row-51",
     "rowNumber": 51,
     "week": "Week 4",
-    "day": "Monday",
-    "date": "21/09/2026",
-    "activityCount": 46,
-    "pic": "IT Manager",
-    "topic": "Task Alignment\n- Daily IT Responsibilities\n- Task Priorities\n- Work Documentation\n- Escalation & Communication Expectations",
-    "mainMedia": "Discussion",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
-  },
-  {
-    "id": "sched-row-52",
-    "rowNumber": 52,
-    "week": "Week 4",
-    "day": "Monday",
-    "date": "21/09/2026",
-    "activityCount": 47,
+    "day": "Friday",
+    "date": "25/09/2026",
+    "activityCount": 45,
     "pic": "IT Staff",
-    "topic": "IT Infrastructure & Daily Operations Tasks",
+    "topic": "Adjust the layout and design of the NOVA Onboarding, TETRA Time and Task Tracking, CORE IT Dashboard, and SMART Goals Dashboard web apps",
     "mainMedia": "Personal Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "progress": ""
   },
   {
     "id": "sched-row-53",
     "rowNumber": 53,
-    "week": "Week 4",
+    "week": "Week 5",
     "day": "Monday",
-    "date": "21/09/2026",
-    "activityCount": 48,
-    "pic": "IT Manager",
-    "topic": "Daily Check-in",
-    "mainMedia": "Daily Check-in",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "date": "28/09/2026",
+    "activityCount": 46,
+    "pic": "Experience Manager",
+    "topic": "Business English Training",
+    "mainMedia": "Online",
+    "progress": "Done"
   },
   {
     "id": "sched-row-54",
     "rowNumber": 54,
-    "week": "Week 4",
-    "day": "Tuesday",
-    "date": "22/09/2026",
-    "activityCount": 49,
+    "week": "Week 5",
+    "day": "Monday",
+    "date": "28/09/2026",
+    "activityCount": 47,
     "pic": "IT Staff",
-    "topic": "Workflow Automation & System Development Tasks",
+    "topic": "Explore AI Agent to support the automation process",
     "mainMedia": "Personal Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "progress": ""
   },
   {
     "id": "sched-row-55",
     "rowNumber": 55,
-    "week": "Week 4",
+    "week": "Week 5",
     "day": "Tuesday",
-    "date": "22/09/2026",
-    "activityCount": 50,
-    "pic": "IT Manager",
-    "topic": "Daily Check-in",
-    "mainMedia": "Daily Check-in",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "date": "29/09/2026",
+    "activityCount": 48,
+    "pic": "IT Staff",
+    "topic": "Develop an automation process to connect the spreadsheet with ChatGPT for email template creation and quality checking",
+    "mainMedia": "Personal Task",
+    "progress": ""
   },
   {
     "id": "sched-row-56",
     "rowNumber": 56,
-    "week": "Week 4",
+    "week": "Week 5",
     "day": "Wednesday",
-    "date": "23/09/2026",
-    "activityCount": 51,
+    "date": "30/09/2026",
+    "activityCount": 49,
     "pic": "IT Staff",
-    "topic": "AI Productivity & Prompt Engineering Tasks",
-    "mainMedia": "Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
-  },
-  {
-    "id": "sched-row-57",
-    "rowNumber": 57,
-    "week": "Week 4",
-    "day": "Wednesday",
-    "date": "23/09/2026",
-    "activityCount": 52,
-    "pic": "IT Manager",
-    "topic": "Daily Check-in",
-    "mainMedia": "Daily Check-in",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "topic": "Revise and develop an automation process for email template creation and quality checking using ChatGPT",
+    "mainMedia": "Personal Task",
+    "progress": ""
   },
   {
     "id": "sched-row-58",
     "rowNumber": 58,
-    "week": "Week 4",
+    "week": "Month 1 Review",
     "day": "Thursday",
-    "date": "24/09/2026",
-    "activityCount": 53,
-    "pic": "IT Staff",
-    "topic": "Cybersecurity & Data Protection Tasks",
-    "mainMedia": "Personal Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
-  },
-  {
-    "id": "sched-row-59",
-    "rowNumber": 59,
-    "week": "Week 4",
-    "day": "Thursday",
-    "date": "24/09/2026",
-    "activityCount": 54,
-    "pic": "IT Manager",
-    "topic": "Daily Check-in",
-    "mainMedia": "Daily Check-in",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
-  },
-  {
-    "id": "sched-row-60",
-    "rowNumber": 60,
-    "week": "Week 4",
-    "day": "Friday",
-    "date": "25/09/2026",
-    "activityCount": 55,
-    "pic": "IT Staff",
-    "topic": "Website & Systems Management Tasks",
-    "mainMedia": "Personal Task",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
-  },
-  {
-    "id": "sched-row-61",
-    "rowNumber": 61,
-    "week": "Week 4",
-    "day": "Friday",
-    "date": "25/09/2026",
-    "activityCount": 56,
-    "pic": "IT Manager",
-    "topic": "Weekly Check-in (Reflection, Feedback & Week 5 Preview)",
-    "mainMedia": "Weekly Check-in",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
-  },
-  {
-    "id": "sched-row-62",
-    "rowNumber": 62,
-    "week": "Week 4",
-    "day": "TBD",
-    "date": "dd/mm/yyyy",
-    "activityCount": 57,
+    "date": "01/10/2026",
     "pic": "IT & HRD & MD",
     "topic": "Month 1 Performance Review & Feedback and Month 2 Expectations",
     "mainMedia": "Monthly Review",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "progress": ""
   },
   {
-    "id": "sched-row-66",
-    "rowNumber": 66,
-    "week": "Month 2",
-    "day": "TBD",
-    "date": "dd/mm/yyyy",
-    "activityCount": 58,
+    "id": "sched-row-81",
+    "rowNumber": 81,
+    "week": "Month 2 Review",
+    "day": "Monday",
+    "date": "02/11/2026",
     "pic": "IT & HRD & MD",
     "topic": "Month 2 Performance Review & Feedback and Month 3 Expectations",
     "mainMedia": "Monthly Review",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
+    "progress": ""
   },
   {
-    "id": "sched-row-70",
-    "rowNumber": 70,
-    "week": "Month 3",
-    "day": "TBD",
-    "date": "dd/mm/yyyy",
-    "activityCount": 59,
+    "id": "sched-row-85",
+    "rowNumber": 85,
+    "week": "Month 3 Review",
+    "day": "Tuesday",
+    "date": "01/12/2026",
     "pic": "IT & HRD & MD",
     "topic": "Month 3 Performance Review & Feedback",
     "mainMedia": "Monthly Review",
-    "startTime": "",
-    "endTime": "",
-    "progress": "",
-    "notes": ""
-  }
+    "progress": ""
+  },
 ];
 
 export function escapeTsv(val: unknown): string {
@@ -944,32 +737,41 @@ export function escapeTsv(val: unknown): string {
 
 
 /**
- * Returns 5-column TSV string for Columns G–K of sheet 'Schedule':
- * [Duration (minutes), Start Time, End Time, Progress, Notes]
+ * Returns 6-column TSV string for Columns G–L of sheet 'Schedule':
+ * [Duration (minutes), Start Time, End Time, Progress, Link to Materials/Recording, Notes]
  *
  * NOTE: Google Sheets Column J only accepts: 'Done', 'In Progress', 'On-Hold', 'Reschedule', or '' (blank).
  * Unstarted activities must be serialized as '' to satisfy Google Sheets data validation.
  */
-export function clipboardRowForScheduleGtoK(activity: ScheduleActivity): string {
+export function clipboardRowForScheduleGtoL(activity: ScheduleActivity): string {
   const duration = activity.durationMinutes !== undefined ? String(activity.durationMinutes) : "";
   const start = activity.startTime || "";
   const end = activity.endTime || "";
   const progress = activity.progress && activity.progress !== "Not Started" ? activity.progress : "";
+  const materialsLink = activity.materialsLink || "";
   const notes = activity.notes || "";
 
-  return [duration, start, end, progress, notes].map(escapeTsv).join("\t");
+  return [duration, start, end, progress, materialsLink, notes].map(escapeTsv).join("\t");
 }
 
 /**
- * Returns 11-column TSV string for Columns A–K of sheet 'Schedule':
- * [Day, Date, Activity Count, PIC, Topic, Main Media, Duration, Start Time, End Time, Progress, Notes]
+ * Alias for clipboardRowForScheduleGtoL to preserve compatibility with existing callers.
+ */
+export function clipboardRowForScheduleGtoK(activity: ScheduleActivity): string {
+  return clipboardRowForScheduleGtoL(activity);
+}
+
+/**
+ * Returns 12-column TSV string for Columns A–L of sheet 'Schedule':
+ * [Day, Date, Activity Count, PIC, Topic, Main Media, Duration, Start Time, End Time, Progress, Link, Notes]
  */
 export function clipboardRowForScheduleFull(activity: ScheduleActivity): string {
   const duration = activity.durationMinutes !== undefined ? String(activity.durationMinutes) : "";
-  const count = String(activity.activityCount || "");
+  const count = activity.activityCount !== undefined ? String(activity.activityCount) : "";
   const start = activity.startTime || "";
   const end = activity.endTime || "";
   const progress = activity.progress && activity.progress !== "Not Started" ? activity.progress : "";
+  const materialsLink = activity.materialsLink || "";
   const notes = activity.notes || "";
 
   return [
@@ -983,6 +785,7 @@ export function clipboardRowForScheduleFull(activity: ScheduleActivity): string 
     start,
     end,
     progress,
+    materialsLink,
     notes,
   ]
     .map(escapeTsv)
@@ -1049,6 +852,7 @@ export function scheduleActivityToActivity(item: ScheduleActivity): Activity {
     day: item.day,
     activityCount: item.activityCount,
     pic: item.pic,
+    materialsLink: item.materialsLink,
     notes: item.notes,
   };
 }

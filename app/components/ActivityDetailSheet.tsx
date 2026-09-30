@@ -13,6 +13,8 @@ import {
   IconClock,
   IconUser,
   IconCalendar,
+  IconLink,
+  IconExternalLink,
 } from './Icons';
 
 export interface ActivityDetailSheetProps {
@@ -25,7 +27,7 @@ export interface ActivityDetailSheetProps {
   onSyncRow?: (activity: ScheduleActivity) => void;
   onStartTimer?: (activity: ScheduleActivity) => void;
   onWriteReflection?: (activity: ScheduleActivity) => void;
-  copiedToast?: { rowNumber: number; type: 'G-K' | 'Full' } | null;
+  copiedToast?: { rowNumber: number; type: 'G-K' | 'G-L' | 'Full' } | null;
   isSyncing?: boolean;
 }
 
@@ -209,15 +211,53 @@ export function ActivityDetailSheet({
               </div>
             </div>
 
-            {/* Notes Section */}
+            {/* Materials & Recording Link Section (Column K) */}
+            {activity.materialsLink && (
+              <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
+                <span className="text-xs font-bold uppercase tracking-wider text-sky-800 block mb-1.5 flex items-center gap-1.5">
+                  <IconLink className="h-3.5 w-3.5 text-sky-600" />
+                  Link to Materials or Recording (Col K)
+                </span>
+                <div className="flex items-center justify-between gap-2 mt-2 bg-white rounded-xl p-2.5 border border-sky-200/60">
+                  <span className="text-xs text-sky-900 truncate font-mono">
+                    {activity.materialsLink}
+                  </span>
+                  <a
+                    href={activity.materialsLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white px-2.5 py-1 text-xs font-semibold shrink-0 transition"
+                  >
+                    <span>Open</span>
+                    <IconExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Notes Section (Column L) */}
             {activity.notes ? (
               <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
-                <span className="text-xs font-bold uppercase tracking-wider text-stone-500 block mb-1.5">
-                  Your Activity Notes (Col K)
+                <span className="text-xs font-bold uppercase tracking-wider text-stone-500 block mb-1.5 flex items-center gap-1.5">
+                  <IconNote className="h-3.5 w-3.5 text-stone-500" />
+                  Your Activity Notes (Col L)
                 </span>
-                <p className="text-xs text-stone-800 whitespace-pre-wrap leading-relaxed">
+                <p className="text-xs text-stone-800 whitespace-pre-wrap leading-relaxed break-words">
                   {activity.notes}
                 </p>
+                {activity.notes.startsWith('http') && (
+                  <div className="mt-2.5">
+                    <a
+                      href={activity.notes}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 px-2.5 py-1 text-xs font-medium transition"
+                    >
+                      <IconExternalLink className="h-3 w-3" />
+                      <span>Open Link from Notes ↗</span>
+                    </a>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-stone-200 p-4 text-center text-xs text-stone-400">
@@ -259,17 +299,17 @@ export function ActivityDetailSheet({
                   type="button"
                   onClick={() => onCopyGtoK(activity)}
                   className="inline-flex items-center gap-1.5 rounded-full bg-white border border-stone-200 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 transition active:scale-95"
-                  title="Copy tab-separated Duration, Start, End, Progress, Notes"
+                  title="Copy tab-separated Duration, Start, End, Progress, Link, Notes"
                 >
-                  {copiedToast?.rowNumber === activity.rowNumber && copiedToast.type === 'G-K' ? (
+                  {(copiedToast?.rowNumber === activity.rowNumber && (copiedToast.type === 'G-K' || copiedToast.type === 'G-L')) ? (
                     <>
                       <IconCheck className="h-3.5 w-3.5 text-mint-600" />
-                      <span className="text-mint-700 font-semibold">Copied G–K!</span>
+                      <span className="text-mint-700 font-semibold">Copied G–L!</span>
                     </>
                   ) : (
                     <>
                       <IconClipboard className="h-3.5 w-3.5 text-stone-500" />
-                      <span>Copy G–K TSV</span>
+                      <span>Copy G–L TSV</span>
                     </>
                   )}
                 </button>
@@ -279,7 +319,7 @@ export function ActivityDetailSheet({
                     type="button"
                     onClick={() => onCopyFullRow(activity)}
                     className="inline-flex items-center gap-1.5 rounded-full bg-white border border-stone-200 px-3 py-2 text-xs font-medium text-stone-600 hover:bg-stone-100 transition active:scale-95"
-                    title="Copy all 11 columns A–K for this row"
+                    title="Copy all 12 columns A–L for this row"
                   >
                     {copiedToast?.rowNumber === activity.rowNumber && copiedToast.type === 'Full' ? (
                       <>
@@ -289,7 +329,7 @@ export function ActivityDetailSheet({
                     ) : (
                       <>
                         <IconClipboard className="h-3.5 w-3.5 text-stone-500" />
-                        <span>Copy Row A–K</span>
+                        <span>Copy Row A–L</span>
                       </>
                     )}
                   </button>

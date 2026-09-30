@@ -23,6 +23,11 @@ const TYPE_COLUMNS = ['type', 'category', 'kind', 'mainmedia', 'media', 'format'
 const STATUS_COLUMNS = ['status', 'state', 'progress', 'progres'];
 const DURATION_COLUMNS = ['duration', 'durationminutes', 'durasi', 'length', 'time'];
 const DATE_COLUMNS = ['date', 'tanggal'];
+const LINK_COLUMNS = ['link', 'materialslink', 'linktothematerialsorrecording', 'materials', 'recording', 'url'];
+const NOTES_COLUMNS = ['notes', 'note', 'catatan', 'keterangan'];
+const PIC_COLUMNS = ['pic', 'owner', 'assigned', 'person'];
+const COUNT_COLUMNS = ['count', 'activitycount', 'no', 'number', 'nomor'];
+const DAY_COLUMNS = ['day', 'hari'];
 
 const STATUS_MAP: Record<string, ActivityStatus> = {
   completed: 'done',
@@ -43,6 +48,11 @@ type HeaderRow = {
   status: number | null;
   duration: number | null;
   date: number | null;
+  link: number | null;
+  notes: number | null;
+  pic: number | null;
+  count: number | null;
+  day: number | null;
 };
 
 /** Parses an uploaded schedule file into validated activities. Untrusted input. */
@@ -129,7 +139,20 @@ function findHeader(matrix: string[][]): HeaderRow {
 }
 
 /** Maps column roles for a candidate header row; requires at least 2 of name/start/end. */
-function mapColumns(row: string[]): { name: number; start: number; end: number; type: number | null; status: number | null; duration: number | null; date: number | null } | null {
+function mapColumns(row: string[]): {
+  name: number;
+  start: number;
+  end: number;
+  type: number | null;
+  status: number | null;
+  duration: number | null;
+  date: number | null;
+  link: number | null;
+  notes: number | null;
+  pic: number | null;
+  count: number | null;
+  day: number | null;
+} | null {
   const name = indexOfColumn(row, NAME_COLUMNS);
   const start = indexOfColumn(row, START_COLUMNS);
   const end = indexOfColumn(row, END_COLUMNS);
@@ -143,6 +166,11 @@ function mapColumns(row: string[]): { name: number; start: number; end: number; 
     status: indexOfColumn(row, STATUS_COLUMNS),
     duration: indexOfColumn(row, DURATION_COLUMNS),
     date: indexOfColumn(row, DATE_COLUMNS),
+    link: indexOfColumn(row, LINK_COLUMNS),
+    notes: indexOfColumn(row, NOTES_COLUMNS),
+    pic: indexOfColumn(row, PIC_COLUMNS),
+    count: indexOfColumn(row, COUNT_COLUMNS),
+    day: indexOfColumn(row, DAY_COLUMNS),
   };
 }
 
@@ -184,6 +212,13 @@ function rowToActivity(row: string[], n: number, header: HeaderRow): Activity | 
   const status = parseStatus(header.status === null ? '' : cell(row, header.status));
   const date = header.date !== null ? parseDate(cell(row, header.date)) : undefined;
 
+  const materialsLink = header.link !== null ? cell(row, header.link).trim() : undefined;
+  const notes = header.notes !== null ? cell(row, header.notes).trim() : undefined;
+  const pic = header.pic !== null ? cell(row, header.pic).trim() : undefined;
+  const rawCount = header.count !== null ? cell(row, header.count).trim() : '';
+  const activityCount = rawCount && /^[0-9]+(\.[0-9]+)?$/.test(rawCount) ? Math.round(Number(rawCount)) : undefined;
+  const day = header.day !== null ? cell(row, header.day).trim() : undefined;
+
   const activity: Activity = {
     id: `import-${n}-${slug(name)}`,
     name,
@@ -205,6 +240,21 @@ function rowToActivity(row: string[], n: number, header: HeaderRow): Activity | 
   }
   if (date) {
     activity.date = date;
+  }
+  if (materialsLink) {
+    activity.materialsLink = materialsLink;
+  }
+  if (notes) {
+    activity.notes = notes;
+  }
+  if (pic) {
+    activity.pic = pic;
+  }
+  if (activityCount !== undefined) {
+    activity.activityCount = activityCount;
+  }
+  if (day) {
+    activity.day = day;
   }
 
   return activity;

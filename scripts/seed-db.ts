@@ -166,7 +166,7 @@ async function main() {
         duration_minutes, start_time, end_time, progress, notes, updated_at
       ) VALUES (
         ${act.id}, ${act.rowNumber}, ${act.week}, ${act.day}, ${act.date},
-        ${act.activityCount}, ${act.pic}, ${act.topic}, ${act.mainMedia},
+        ${act.activityCount ?? 0}, ${act.pic}, ${act.topic}, ${act.mainMedia},
         ${act.durationMinutes ?? null}, ${act.startTime ?? null}, ${act.endTime ?? null},
         ${act.progress || ''}, ${act.notes || ''}, now()
       )

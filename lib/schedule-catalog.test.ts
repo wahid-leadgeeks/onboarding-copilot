@@ -12,8 +12,8 @@ import {
 } from './schedule-catalog';
 
 describe('Official Schedule Catalog', () => {
-  it('contains 59 activities across Weeks 1 to 4 and Monthly Reviews', () => {
-    expect(OFFICIAL_SCHEDULE_ACTIVITIES.length).toBe(59);
+  it('contains 53 activities across Weeks 1 to 5 and Monthly Reviews', () => {
+    expect(OFFICIAL_SCHEDULE_ACTIVITIES.length).toBe(53);
 
     const first = OFFICIAL_SCHEDULE_ACTIVITIES[0];
     expect(first.rowNumber).toBe(3);
@@ -28,7 +28,7 @@ describe('Official Schedule Catalog', () => {
     expect(itWorkflow?.pic).toBe('IT Manager');
     expect(itWorkflow?.topic).toContain('How IT Works at LeadGeeks');
     expect(itWorkflow?.durationMinutes).toBe(155);
-    expect(itWorkflow?.notes).toContain('drive.google.com');
+    expect(itWorkflow?.materialsLink).toContain('drive.google.com');
   });
 
   it('calculates duration in minutes from start and end times', () => {
@@ -41,7 +41,7 @@ describe('Official Schedule Catalog', () => {
     expect(calculateDurationFromTimes('23:00', '01:15')).toBe(135);
   });
 
-  it('generates a 5-column TSV for Columns G–K of sheet Schedule', () => {
+  it('generates a 6-column TSV for Columns G–L of sheet Schedule', () => {
     const item: ScheduleActivity = {
       id: 'sched-row-20',
       rowNumber: 20,
@@ -56,24 +56,26 @@ describe('Official Schedule Catalog', () => {
       startTime: '10:00',
       endTime: '12:35',
       progress: 'Done',
+      materialsLink: 'https://drive.google.com/test',
       notes: 'Review complete',
     };
 
     const tsv = clipboardRowForScheduleGtoK(item);
     const cols = tsv.split('\t');
-    expect(cols).toHaveLength(5);
+    expect(cols).toHaveLength(6);
     expect(cols[0]).toBe('155'); // Col G: Duration (minutes)
     expect(cols[1]).toBe('10:00'); // Col H: Start Time
     expect(cols[2]).toBe('12:35'); // Col I: End Time
     expect(cols[3]).toBe('Done'); // Col J: Progress
-    expect(cols[4]).toBe('Review complete'); // Col K: Notes
+    expect(cols[4]).toBe('https://drive.google.com/test'); // Col K: Link to Materials
+    expect(cols[5]).toBe('Review complete'); // Col L: Notes
   });
 
-  it('generates an 11-column TSV for Columns A–K of sheet Schedule', () => {
+  it('generates a 12-column TSV for Columns A–L of sheet Schedule', () => {
     const item = OFFICIAL_SCHEDULE_ACTIVITIES[0];
     const tsv = clipboardRowForScheduleFull(item);
     const cols = tsv.split('\t');
-    expect(cols).toHaveLength(11);
+    expect(cols).toHaveLength(12);
     expect(cols[0]).toBe(item.day);
     expect(cols[4]).toBe(item.topic);
     expect(cols[6]).toBe('30');
@@ -183,14 +185,14 @@ describe('Official Schedule Catalog', () => {
     it('retrieves only the 2 tasks for Tuesday 08/09/2026 from official schedule catalog', () => {
       const todayTasks = getTodayScheduleActivities(OFFICIAL_SCHEDULE_ACTIVITIES, targetDate);
       expect(todayTasks).toHaveLength(2);
-      expect(todayTasks[0].activityCount).toBe(25);
-      expect(todayTasks[0].rowNumber).toBe(28);
+      expect(todayTasks[0].activityCount).toBe(24);
+      expect(todayTasks[0].rowNumber).toBe(27);
       expect(todayTasks[0].day).toBe('Tuesday');
       expect(todayTasks[0].date).toBe('08/09/2026');
       expect(todayTasks[0].topic).toContain('Infrastructure Management at LeadGeeks');
 
-      expect(todayTasks[1].activityCount).toBe(26);
-      expect(todayTasks[1].rowNumber).toBe(29);
+      expect(todayTasks[1].activityCount).toBe(25);
+      expect(todayTasks[1].rowNumber).toBe(28);
       expect(todayTasks[1].day).toBe('Tuesday');
       expect(todayTasks[1].date).toBe('08/09/2026');
       expect(todayTasks[1].topic).toContain('Independent Learning and Task');

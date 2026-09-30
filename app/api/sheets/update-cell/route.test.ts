@@ -101,7 +101,7 @@ describe('/api/sheets/update-cell route', () => {
       expect(data.success).toBe(true);
       expect(data.sheet).toBe('Schedule');
       expect(data.rowNumber).toBe(20);
-      expect(data.range).toBe("'Schedule'!G20:K20");
+      expect(data.range).toBe("'Schedule'!G20:L20");
       expect(data.durationMinutes).toBe(155);
       expect(data.startTime).toBe('10:00');
       expect(data.endTime).toBe('12:35');
@@ -114,10 +114,10 @@ describe('/api/sheets/update-cell route', () => {
     it('sanitizes "Not Started" to empty string for Schedule Col J to comply with Sheets data validation', async () => {
       jest.spyOn(sessionModule, 'getSessionAccessToken').mockResolvedValue('valid-token');
       const updateRangeSpy = jest.spyOn(extractorModule, 'updateSheetRange').mockResolvedValue({
-        updatedRange: "'Schedule'!G27:K27",
+        updatedRange: "'Schedule'!G27:L27",
         updatedRows: 1,
-        updatedColumns: 5,
-        updatedCells: 5,
+        updatedColumns: 6,
+        updatedCells: 6,
       });
 
       const req = new Request('http://localhost/api/sheets/update-cell', {
@@ -141,8 +141,8 @@ describe('/api/sheets/update-cell route', () => {
       expect(updateRangeSpy.mock.calls.length).toBe(1);
       expect(updateRangeSpy.mock.calls[0]).toEqual([
         'test-spreadsheet-id-123',
-        "'Schedule'!G27:K27",
-        [['45', '09:00', '09:45', '', 'Testing sanitization']],
+        "'Schedule'!G27:L27",
+        [['45', '09:00', '09:45', '', '', 'Testing sanitization']],
         { accessToken: 'valid-token' },
       ]);
     });

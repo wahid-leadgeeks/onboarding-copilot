@@ -19,6 +19,7 @@ import {
   SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY,
   readScheduleCustomizations,
   writeScheduleCustomizations,
+  clipboardRowForScheduleGtoL,
   clipboardRowForScheduleGtoK,
   clipboardRowForScheduleFull,
   getMergedScheduleActivities,
@@ -37,7 +38,7 @@ export default function MasterSchedulePage() {
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [editingScheduleItem, setEditingScheduleItem] = useState<ScheduleActivity | null>(null);
   const [detailActivity, setDetailActivity] = useState<ScheduleActivity | null>(null);
-  const [copiedRowToast, setCopiedRowToast] = useState<{ rowNumber: number; type: 'G-K' | 'Full' } | null>(null);
+  const [copiedRowToast, setCopiedRowToast] = useState<{ rowNumber: number; type: 'G-K' | 'G-L' | 'Full' } | null>(null);
   const [scheduleTipDismissed, setScheduleTipDismissed] = useState(false);
   const [syncHelpExpanded, setSyncHelpExpanded] = useState(false);
   const [isSyncingRow, setIsSyncingRow] = useState(false);
@@ -60,12 +61,12 @@ export default function MasterSchedulePage() {
   }
 
   async function handleCopyGtoK(item: ScheduleActivity) {
-    const tsv = clipboardRowForScheduleGtoK(item);
+    const tsv = clipboardRowForScheduleGtoL(item);
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(tsv);
-        setCopiedRowToast({ rowNumber: item.rowNumber, type: 'G-K' });
-        toast.success(`Copied G–K TSV for Row ${item.rowNumber} (${item.pic})!`);
+        setCopiedRowToast({ rowNumber: item.rowNumber, type: 'G-L' });
+        toast.success(`Copied G–L TSV for Row ${item.rowNumber} (${item.pic})!`);
         setTimeout(() => setCopiedRowToast(null), 3000);
       }
     } catch {
@@ -79,7 +80,7 @@ export default function MasterSchedulePage() {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(tsv);
         setCopiedRowToast({ rowNumber: item.rowNumber, type: 'Full' });
-        toast.success(`Copied Full Row ${item.rowNumber} TSV!`);
+        toast.success(`Copied Full Row ${item.rowNumber} TSV (A–L)!`);
         setTimeout(() => setCopiedRowToast(null), 3000);
       }
     } catch {
@@ -100,6 +101,7 @@ export default function MasterSchedulePage() {
           startTime: item.startTime,
           endTime: item.endTime,
           progress: item.progress || 'Done',
+          materialsLink: item.materialsLink,
           notes: item.notes,
         }),
       });
@@ -112,7 +114,7 @@ export default function MasterSchedulePage() {
       toast.success(`Successfully synced Row ${item.rowNumber} to Google Sheets!`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to sync to Google Sheets';
-      toast.error(`Sync error: ${msg}. You can use "Copy G–K TSV" as a fallback.`);
+      toast.error(`Sync error: ${msg}. You can use "Copy G–L TSV" as a fallback.`);
     } finally {
       setIsSyncingRow(false);
     }
@@ -181,13 +183,14 @@ export default function MasterSchedulePage() {
     'Week 2': scheduleCatalog.filter((a) => a.week === 'Week 2').length,
     'Week 3': scheduleCatalog.filter((a) => a.week === 'Week 3').length,
     'Week 4': scheduleCatalog.filter((a) => a.week === 'Week 4').length,
-    'Month 2 & 3': scheduleCatalog.filter((a) => a.week === 'Month 2' || a.week === 'Month 3').length,
+    'Week 5': scheduleCatalog.filter((a) => a.week === 'Week 5').length,
+    'Monthly Reviews': scheduleCatalog.filter((a) => a.week.startsWith('Month')).length,
   };
 
   const currentWeekActivities = scheduleCatalog.filter((a) => {
     if (selectedWeek === 'Today') return isSameDate(a.date, now);
     if (selectedWeek === 'All') return true;
-    if (selectedWeek === 'Month 2 & 3') return a.week === 'Month 2' || a.week === 'Month 3';
+    if (selectedWeek === 'Monthly Reviews') return a.week.startsWith('Month');
     return a.week === selectedWeek;
   });
 
@@ -252,7 +255,7 @@ export default function MasterSchedulePage() {
               Onboarding Schedule
             </h1>
             <p className="mt-1 text-sm text-stone-500">
-              Browse, filter, and sync all 59 activities across Weeks 1–4 and Months 2 & 3.
+              Browse, filter, and sync all 53 activities across Weeks 1–5 and Monthly Reviews.
             </p>
           </div>
 
@@ -295,10 +298,10 @@ export default function MasterSchedulePage() {
                 {syncHelpExpanded && (
                   <div className="mt-2.5 space-y-1.5 rounded-xl bg-white/80 p-3 text-[11px] text-sky-900 border border-sky-100">
                     <p>
-                      <strong>1-Click Direct Sync:</strong> Open an activity to sync Duration, Start Time, End Time, Progress, and Notes straight to your Google Sheet.
+                      <strong>1-Click Direct Sync:</strong> Open an activity to sync Duration, Start Time, End Time, Progress, Materials Link, and Notes straight to your Google Sheet.
                     </p>
                     <p>
-                      <strong>Clipboard Fallback:</strong> Click <code className="bg-sky-100 px-1 py-0.5 rounded font-mono font-semibold">Copy G–K</code> to copy tab-separated values, then paste into cell <code className="bg-sky-100 px-1 py-0.5 rounded font-mono font-bold">G&#123;row&#125;</code> in Google Sheets.
+                      <strong>Clipboard Fallback:</strong> Click <code className="bg-sky-100 px-1 py-0.5 rounded font-mono font-semibold">Copy G–L</code> to copy tab-separated values, then paste into cell <code className="bg-sky-100 px-1 py-0.5 rounded font-mono font-bold">G&#123;row&#125;</code> in Google Sheets.
                     </p>
                   </div>
                 )}
@@ -318,7 +321,7 @@ export default function MasterSchedulePage() {
 
       {/* Week Filter Tabs */}
       <div data-tour="schedule-toolbar" className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-stone-100 pb-3">
-        {(['All', 'Today', 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Month 2 & 3'] as const).map((w) => {
+        {(['All', 'Today', 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Monthly Reviews'] as const).map((w) => {
           const active = selectedWeek === w;
           const count = weekCounts[w] || 0;
           return (
