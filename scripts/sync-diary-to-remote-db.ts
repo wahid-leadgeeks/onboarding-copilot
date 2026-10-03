@@ -6,6 +6,10 @@
  * DRY RUN by default (read-only transaction). --apply writes inside one transaction after
  * locking the compared rows; the run aborts with exit 1 and zero writes on rejected rows,
  * blockers, or protected-field conflicts without --force. No DDL: run `pnpm db:migrate` first.
+ *
+ * A DRY RUN also exits 1 (after printing the plan) when the same --apply would abort, so it
+ * can gate an --apply in scripts. Output prints DB and file values (up to 80 chars each);
+ * never paste it into public issues. See docs/DATABASE.md.
  */
 import postgres from 'postgres';
 import {

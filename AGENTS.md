@@ -41,7 +41,7 @@ The application must:
 
 ## Architecture Rules
 
-- Do not introduce a database without a corresponding ADR.
+- Do not introduce a database without a corresponding ADR. The existing PostgreSQL working-copy mode is covered only by [ADR-0006](docs/adr/0006-database-working-copy-and-sync-conflicts.md), which is **Proposed**, not accepted. Schema changes go through the drizzle migrations in `drizzle/` (see `docs/DATABASE.md`).
 - Do not replace Google Sheets without a corresponding ADR.
 - Do not make n8n mandatory for core application functionality.
 - Keep integration code isolated from business logic.

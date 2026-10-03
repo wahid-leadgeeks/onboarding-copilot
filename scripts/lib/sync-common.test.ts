@@ -59,6 +59,19 @@ describe('parseSyncArgs', () => {
     }
   });
 
+  it('--allow-non-empty is accepted, absent by default and independent of --force', () => {
+    expect(parseSyncArgs([]).allowNonEmpty).toBeUndefined();
+    expect(parseSyncArgs(['--allow-non-empty'])).toEqual({
+      apply: false,
+      prune: false,
+      force: false,
+      forcePrune: false,
+      allowEnvFile: false,
+      allowNonEmpty: true,
+    });
+    expect(parseSyncArgs(['--force']).allowNonEmpty).toBeUndefined();
+  });
+
   it('--force does not imply --force-prune', () => {
     expect(parseSyncArgs(['--force']).forcePrune).toBe(false);
   });
@@ -94,7 +107,7 @@ describe('parseSyncArgs', () => {
   it('throws on unknown flags', () => {
     expect(() => parseSyncArgs(['--aply'])).toThrow('Unknown flag: --aply');
     expect(() => parseSyncArgs(['-f'])).toThrow('Unknown flag: -f');
-    expect(() => parseSyncArgs(['--allow-non-empty'])).toThrow('Unknown flag');
+    expect(() => parseSyncArgs(['--no-such-flag'])).toThrow('Unknown flag: --no-such-flag');
   });
 });
 

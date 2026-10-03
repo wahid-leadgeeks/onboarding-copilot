@@ -8,6 +8,10 @@
  * blockers (including stale activities referenced by session_logs), or protected-field
  * conflicts without --force. --force-prune is accepted but has no effect here. No DDL: run
  * `pnpm db:migrate` first.
+ *
+ * A DRY RUN also exits 1 (after printing the plan) when the same --apply would abort, so it
+ * can gate an --apply in scripts. Output prints DB and file values (up to 80 chars each);
+ * never paste it into public issues. See docs/DATABASE.md.
  */
 import postgres from 'postgres';
 import {

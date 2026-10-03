@@ -1,7 +1,7 @@
 # Roadmap
 
 **Product:** NOVA (Newcomer Onboarding & Virtual Assistant)
-**Last updated:** 2026-09-03
+**Last updated:** 2026-10-03
 
 > The roadmap defines **where the product is going**.
 > For what to work on right now, see [`docs/TODO.md`](TODO.md).
@@ -10,15 +10,15 @@
 
 ## Where We Are Now
 
-**Updated:** 2026-09-03
+**Updated:** 2026-10-03
 
 | | |
 |---|---|
-| **Done** | Phases 0–3 are functionally complete in **local-first mode**: Today dashboard, Journey view, session timing with duration calculation, learning capture (text + voice + assistive AI), diary and quick notes, pending-sync queue with retry, a first-run guide tour, and **schedule import from Excel/CSV files** (Settings → Schedule). |
-| **Next** | Phase 4 (Feedback) — interface design, then local capture with confirmation. |
-| **Blocked** | Connected Sheets/OAuth activation (Phase 0 remainder, Phase 2 sync). Waiting on Google Cloud credentials and the workbook column mapping from HR — see [`docs/TODO.md`](TODO.md#blocked). Until then, all writes are queued locally with an explicit pending state. |
+| **Done** | Phases 0–3 are functionally complete, and Google OAuth login, Sheets read/write sync, the Phase 4 Feedback flow and the optional PostgreSQL database mode have shipped (confirmed by the product owner). Today dashboard, Journey view, session timing, learning capture (text + voice + assistive AI), diary and quick notes, pending-sync queue with retry, a first-run guide tour, and schedule import from Excel/CSV files (Settings → Schedule) all work. |
+| **Next** | Finish Phase 4 (feedback history view), then harden the database/Sheets sync (see [`docs/TODO.md`](TODO.md) and [ADR-0006](adr/0006-database-working-copy-and-sync-conflicts.md), proposed). |
+| **Blocked** | Nothing is tracked as blocked. Known sync and auth defects are listed under Bugs in [`docs/TODO.md`](TODO.md#bugs). |
 
-> The application is a cockpit over the spreadsheet, not a replacement. Local-first behavior is intentional: every feature works without credentials, and sync activates when the connection exists.
+> The application is a cockpit over the spreadsheet, not a replacement. Local-first behavior is intentional: every feature works without credentials, and sync is used when the connection exists. Database mode ([`docs/DATABASE.md`](DATABASE.md)) is optional and is not a source of truth.
 
 ---
 
@@ -26,14 +26,14 @@
 
 **Goal:** Create the basic application skeleton and establish the Google Sheets connection.
 
-**Status:** Complete in local mode · Sheets connection blocked on credentials.
+**Status:** Complete. Deployment to a development environment is not yet recorded.
 
 - [x] Project bootstrap (Next.js + TypeScript + Tailwind)
 - [x] TypeScript strict mode configured
 - [x] ESLint configured
-- [ ] Google OAuth authentication *(blocked: Google Cloud credentials)*
+- [x] Google OAuth authentication
 - [x] Google Sheets API client (`lib/sheets/`)
-- [x] Read Schedule sheet *(validated fallback rows until credentials are configured)*
+- [x] Read Schedule sheet *(validated fallback rows when Sheets is not configured)*
 - [x] Define `Activity` type
 - [x] Environment variable setup and documentation
 - [ ] Deployment to development environment
@@ -64,13 +64,13 @@
 
 **Goal:** Remove manual start/end time entry from the employee's responsibilities.
 
-**Status:** Complete in local mode · Sheets write sync blocked on credentials.
+**Status:** Complete.
 
 - [x] Start session action
 - [x] Live session timer
 - [x] Finish session action
 - [x] Actual duration calculation
-- [ ] Sync actual times to Schedule sheet *(blocked: write proxy credentials)*
+- [x] Sync actual times to Schedule sheet
 - [x] Handle late starts (scheduled time has already passed) — detected by the session API; "Started late" deviation note in the UI
 - [x] Handle cancelled activities — "Cancelled" deviation note in the UI
 - [x] Sync failure handling (pending state, retry)
@@ -82,14 +82,14 @@
 
 **Goal:** Make the Onboarding Diary effortless to complete.
 
-**Status:** Complete in local mode.
+**Status:** Complete.
 
 - [x] Manual text input for learning notes
 - [x] Voice input for learning notes
 - [x] AI extraction and structuring of raw notes
 - [x] User review and edit of AI output
 - [x] User confirmation before saving
-- [x] Sync learning entry to Onboarding Diary sheet *(queued locally until write proxy is configured)*
+- [x] Sync learning entry to Onboarding Diary sheet *(queued locally while the write connection is unavailable)*
 - [x] Skip / defer learning capture option
 - [x] Quick note drafts (captured on Today, listed under Learnings)
 
@@ -99,17 +99,17 @@
 
 **Goal:** Simplify completion of the Feedback Sheet.
 
-**Status:** Not started · **This is the next phase.**
+**Status:** Mostly shipped. Only the feedback history view is open.
 
 > Design constraint: AI may draft or suggest feedback wording, but submission always requires explicit user confirmation (see [ADR-0003](adr/0003-ai-is-assistive-not-authoritative.md)).
 
-- [ ] Mobile-friendly feedback interface
-- [ ] Rating capture (numeric or scale)
-- [ ] Structured question responses
-- [ ] Free-text comments
-- [ ] User confirmation before submitting
-- [ ] Sync to Feedback Sheet
-- [ ] Feedback history view
+- [x] Mobile-friendly feedback interface
+- [x] Rating capture (numeric or scale)
+- [x] Structured question responses
+- [x] Free-text comments
+- [x] User confirmation before submitting
+- [x] Sync to Feedback Sheet
+- [ ] Feedback history view *(only a pending/evaluated filter over the 14 sessions exists today)*
 
 ---
 
@@ -151,7 +151,7 @@
 
 > Any persistent database introduced here requires a new ADR (see [ADR-0001](adr/0001-google-sheets-as-source-of-truth.md) for the current storage decision).
 
-- [ ] Persistent database (with ADR)
+- [ ] Persistent database (with ADR) — ADR-0006 proposed; awaiting acceptance
 - [ ] Multi-employee support
 - [ ] Manager dashboard
 - [ ] HR reporting

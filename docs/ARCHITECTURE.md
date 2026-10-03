@@ -246,9 +246,13 @@ components/           React components (UI only, no API calls)
 
 | Decision | Deferred Until |
 |---|---|
-| Persistent database | Multiple concurrent users or data relationship complexity |
+| Persistent database as a source of truth | Multiple concurrent users or data relationship complexity. An optional PostgreSQL working copy exists (proposed in [ADR-0006](adr/0006-database-working-copy-and-sync-conflicts.md), see [`DATABASE.md`](DATABASE.md)); Sheets remains the source of truth. |
 | Redis / caching | Google Sheets API rate limits become a real problem |
 | Separate backend service | API Routes become insufficient |
 | Multi-tenant support | Phase 7 (Scale) |
+
+### Optional database working copy (`lib/db/`, `scripts/`)
+
+`lib/db/` holds the drizzle schema (`schema.ts`) and the connection (`index.ts`, `ssl.ts`); the database is used only when `DATABASE_URL` is set (`isDbConfigured()`). Migrations are in `drizzle/`. `scripts/` contains the user-run tooling: `migrate.ts`, `seed-db.ts`, `db-inspect.ts`, `print-baseline-sql.ts` and the file-to-database sync scripts (`sync-diary-to-remote-db.ts`, `sync-schedule-to-remote-db.ts`), which default to a dry run and read private rows from gitignored `data/private/`. Agents never connect to the remote database. Rules and procedures: [`docs/DATABASE.md`](DATABASE.md); status of the decision: [ADR-0006](adr/0006-database-working-copy-and-sync-conflicts.md) (Proposed).
 
 See [`docs/ROADMAP.md`](ROADMAP.md) for phase definitions.

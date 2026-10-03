@@ -69,3 +69,9 @@ This decision should be revisited if any of the following occur:
 - Google Sheets API rate limits become a real operational constraint.
 
 When revisiting, create a new ADR that supersedes this one.
+
+---
+
+## Amendment proposed in ADR-0006
+
+[ADR-0006](0006-database-working-copy-and-sync-conflicts.md) (Status: Proposed, not accepted) proposes approving a single-user PostgreSQL working copy while the spreadsheet remains the source of truth, with rules for row matching and sync conflicts. Until ADR-0006 is accepted, this ADR is unchanged: the line "No separate persistent database will be introduced without a new ADR explicitly approving it" still stands. This ADR's status remains Accepted.

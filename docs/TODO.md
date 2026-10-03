@@ -1,7 +1,7 @@
 # TODO
 
 **Product:** NOVA (Newcomer Onboarding & Virtual Assistant)
-**Last updated:** 2026-09-05
+**Last updated:** 2026-10-03
 
 > This file tracks **what to work on right now**.
 > For product direction, see [`docs/ROADMAP.md`](ROADMAP.md).
@@ -143,25 +143,42 @@
 
 ## Bugs
 
-- [ ] *(none yet)*
+- [ ] Logout redirects to a caller-supplied `redirect` parameter via `new URL(redirectTo, request.url)` (`app/api/auth/logout/route.ts`, lines 6 and 16-18). (ADR-0006 follow-up 6)
+- [ ] Login `returnTo` check misses `/\evil.example` (`app/api/auth/login/route.ts`, line 35). (ADR-0006 follow-up 6)
+- [ ] Login passes `redirect_uri` through from the query string (`app/api/auth/login/route.ts`, line 13). (ADR-0006 follow-up 6)
+- [ ] `x-forwarded-host` is trusted (`lib/auth/config.ts`, line 38). (ADR-0006 follow-up 6)
+- [ ] `writeDiary` is a no-op that reports success in database mode (`lib/sheets/client.ts`, lines 132-135). (ADR-0006 follow-up 6)
+- [ ] `/api/diary` answers 400 when the database write fails (`app/api/diary/route.ts`, lines 98-106). (ADR-0006 follow-up 6)
+- [ ] `/api/sheets/extract` fabricates an identity in database mode. (ADR-0006 follow-up 6)
+- [ ] `/api/diary/sync` writes a whole G:H block with no read-before-write; it can overwrite hand edits. (ADR-0006 follow-up 6)
+- [ ] The sync plan output counts a `session_logs` prune blocker under the `file:` section instead of `activities:` (`scripts/lib/sync-schedule.ts`, `formatPlan` in `scripts/lib/sync-common.ts`). Cosmetic.
 
 ---
 
 ## Technical Debt
 
-- [ ] *(none yet)*
+- [ ] Add sheet-sync marker columns (last value written to the sheet, per row) via a drizzle migration. (ADR-0006 follow-up 1, proposed)
+- [ ] Per-row read-compare-write in `/api/diary/sync` and `/api/schedule/sync`: verify label column, compare with marker, surface conflicts, allow intentional clearing. (ADR-0006 follow-up 2)
+- [ ] Remove the arbitrary `range`/`values`/`value` passthrough in `/api/sheets/update-cell`; restrict feedback writes to columns D:M. (ADR-0006 follow-up 3)
+- [ ] Unify activity matching on `activities.id` across `update-cell`, the sync routes and `writeSession`. (ADR-0006 follow-up 4)
+- [ ] Write user-typed learned/notes with `valueInputOption=RAW` instead of `USER_ENTERED` (`lib/sheets/extractor.ts`, lines 559, 562, 656): formula-injection risk. (ADR-0006 follow-up 5)
+- [ ] Large files to split (line counts checked with `wc -l` on 2026-10-03): `app/page.tsx` 1177, `lib/schedule-catalog.ts` 1143, `lib/timeline.ts` 911, `app/components/Icons.tsx` 876, `app/components/FeedbackDetailSheet.tsx` 800, `app/first-month-review/page.tsx` 741, `lib/sheets/extractor.ts` 731, `app/components/LearningModal.tsx` 729.
+- [ ] `DiarySyncAllModal.tsx` and `ScheduleSyncAllModal.tsx` (and `ScheduleFillModal.tsx`) are near-duplicates: extract a shared bulk-sync modal.
+- [ ] ADR-0006 is Proposed. Accept or reject it; the follow-ups above and in the Bugs section are its consequences. Nothing may claim it is accepted until then.
+- [ ] Public history: commit `7352f74` (and later commits) in this public repository exposes schedule data, spreadsheet share links and a personal filesystem path. Decide whether to rotate the share links and/or rewrite history. Private rows now live in gitignored `data/private/`.
+- [ ] `eslint.config.mjs` defines no rules (only `ignores`), so `pnpm lint` checks almost nothing. Add a real rule set.
+- [ ] `pnpm db:seed` (and other `tsx` scripts) fail from a non-root cwd because `lib/feedback.ts`, `lib/timeline.ts` and `lib/schedule-catalog.ts` use `@/` imports. Make them relative.
+- [ ] `lib/test-globals.d.ts` narrows the jest globals (hides `describe.skip`, `toHaveBeenCalled*`, `expect.any`). Consider real `@types/jest`.
+- [ ] `lib/db/migrations.integration.test.ts` hardcodes exactly 1 migration (line 54). Update it whenever a migration is added.
+- [ ] `pnpm build` was not verified without `.env.local` in the database-hardening change set. Verify it.
+- [ ] User action: run `pnpm db:inspect` against the remote database yourself, then follow the baseline procedure in [`docs/DATABASE.md`](DATABASE.md#existing-remote-database-created-by-the-old-seed-script-user-run-only). Agents never connect to it.
+- [ ] Sync script dry-run output prints private values (learned text, notes, links). Do not paste it into public places; see [`docs/DATABASE.md`](DATABASE.md#output-contains-your-data).
 
 ---
 
 ## Blocked
 
-- [ ] Google Cloud project credentials — waiting on: *(owner TBD)*
-- [x] Google Sheets workbook structure — structure and column mapping identified & supported from HR Onboarding Kit 2026 (Schedule + Onboarding Diary worksheets)
-
-> Roadmap note: credential-free MVP behavior is implemented locally, including
-> schedule fallback, session timing, learning capture, assistive AI, history,
-> and pending synchronization. Connected Sheets/OAuth activation remains
-> intentionally gated on the deployment credentials and workbook mapping above.
+Nothing is currently blocked. Google OAuth and the Sheets workbook mapping are in place.
 
 ---
 

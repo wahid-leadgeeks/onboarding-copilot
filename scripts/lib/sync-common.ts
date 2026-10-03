@@ -32,6 +32,8 @@ export interface SyncArgs {
   forcePrune: boolean;
   /** Permit writes when the URL came from .env.local. */
   allowEnvFile: boolean;
+  /** db:seed only: seed even when `activities` already has rows. Set only when passed. */
+  allowNonEmpty?: boolean;
 }
 
 const BOOLEAN_FLAGS: Record<string, keyof Omit<SyncArgs, 'url' | 'file'>> = {
@@ -40,6 +42,7 @@ const BOOLEAN_FLAGS: Record<string, keyof Omit<SyncArgs, 'url' | 'file'>> = {
   '--force': 'force',
   '--force-prune': 'forcePrune',
   '--allow-env-file': 'allowEnvFile',
+  '--allow-non-empty': 'allowNonEmpty',
 };
 
 /** Parses `process.argv.slice(2)`. Throws on unknown flags, a missing --file value, or 2+ positionals. */

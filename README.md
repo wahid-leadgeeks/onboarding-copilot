@@ -90,6 +90,16 @@ and a status of `not-started`, `in-progress`, `done`, or `overdue`).
 When these values are absent or unavailable, sessions and learning notes remain
 available locally and are marked pending for later synchronization.
 
+## Database mode (optional)
+
+Setting `DATABASE_URL` switches the app from the Google Sheet to a PostgreSQL
+working copy. Sheets stays the source of truth; see
+[ADR-0001](docs/adr/0001-google-sheets-as-source-of-truth.md) and the proposed
+[ADR-0006](docs/adr/0006-database-working-copy-and-sync-conflicts.md). Setup,
+migrations, seeding, sync scripts and the baseline procedure for an existing
+database are documented in [`docs/DATABASE.md`](docs/DATABASE.md). Leave
+`DATABASE_URL` unset to stay in Sheets mode.
+
 ## Development
 
 ```bash
@@ -118,6 +128,7 @@ pull request to `main` ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 | [`docs/PRD.md`](docs/PRD.md) | Why are we building this? |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | What does the system look like? |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | How should it behave and look? |
+| [`docs/DATABASE.md`](docs/DATABASE.md) | How do I run, migrate and sync the optional database? |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Where are we going? |
 | [`docs/TODO.md`](docs/TODO.md) | What should we do next? |
 | [`docs/adr/`](docs/adr/) | Why did we make this decision? |
