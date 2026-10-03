@@ -146,7 +146,7 @@ function ToastContainer({
     <div
       aria-live="polite"
       aria-atomic="false"
-      className="fixed bottom-5 right-5 z-50 flex max-w-sm flex-col gap-2.5 sm:bottom-6 sm:right-6 pointer-events-none"
+      className="fixed bottom-[calc(10rem+env(safe-area-inset-bottom))] right-4 left-4 z-50 flex flex-col items-end gap-2.5 sm:left-auto sm:max-w-sm md:bottom-6 md:right-24 pointer-events-none"
     >
       {toasts.map((t) => (
         <ToastCard key={t.id} item={t} onDismiss={() => onDismiss(t.id)} />
@@ -210,7 +210,7 @@ function ToastCard({
               item.action?.onClick();
               onDismiss();
             }}
-            className="rounded-lg bg-stone-800 px-2.5 py-1 text-xs font-semibold text-mint-400 hover:bg-stone-700 hover:text-mint-300 transition"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg bg-stone-800 px-2.5 py-1 text-xs font-semibold text-mint-400 sm:min-h-0 sm:min-w-0 hover:bg-stone-700 hover:text-mint-300 transition"
           >
             {item.action.label}
           </button>
@@ -219,7 +219,7 @@ function ToastCard({
           type="button"
           onClick={onDismiss}
           aria-label="Dismiss notification"
-          className="rounded-md p-1 text-stone-400 hover:bg-stone-800 hover:text-stone-200 transition"
+          className="inline-flex size-11 items-center justify-center rounded-md text-stone-400 hover:bg-stone-800 hover:text-stone-200 transition sm:size-auto sm:p-1"
         >
           <IconX className="h-3.5 w-3.5" />
         </button>

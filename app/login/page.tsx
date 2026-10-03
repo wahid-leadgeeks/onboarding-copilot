@@ -66,12 +66,12 @@ function LoginContent() {
               <h1 className="text-2xl font-bold tracking-[0.16em] text-stone-900">
                 NOVA
               </h1>
-              <span className="rounded bg-mint-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-mint-700">
+              <span className="rounded bg-mint-50 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-mint-700">
                 v3
               </span>
             </div>
 
-            <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-stone-400">
+            <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-stone-500">
               Newcomer Onboarding Cockpit
             </p>
 
@@ -129,21 +129,21 @@ function LoginContent() {
 
           {/* Reassurance Footer */}
           <div className="mt-8 border-t border-stone-100 pt-6">
-            <div className="flex flex-col gap-2.5 text-[11px] text-stone-500">
+            <div className="flex flex-col gap-2.5 text-xs text-stone-500">
               <div className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full bg-mint-500 shrink-0" />
                 <span>Encrypted session with Google Workspace</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="size-1.5 rounded-full bg-mint-500 shrink-0" />
-                <span>Dual-sync with PostgreSQL & Google Sheets</span>
+                <span>Your work is saved on this device first</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Small sub-caption */}
-        <p className="mt-4 text-center text-xs text-stone-400">
+        <p className="mt-4 text-center text-xs text-stone-500">
           NOVA · The Onboarding Cockpit for High-Performing Teams
         </p>
       </div>

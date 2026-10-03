@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import {
   clipboardRowForDiary,
   suggestAiLearnings,
@@ -8,16 +8,20 @@ import {
   type DiaryEntryRecord,
   type DiaryTopicItem,
 } from '@/lib/diary-cockpit';
-import {
-  IconCalendar,
-  IconCheck,
-  IconClipboard,
-  IconEdit,
-  IconRocket,
-  IconSparkles,
-  IconUser,
-  IconX,
-} from './Icons';
+import { markSynced, notifySyncChanged } from '@/lib/sync-status';
+import { RowTag } from './RowTag';
+import { SheetToolsMenu, type SheetToolsMenuItem } from './SheetToolsMenu';
+import { shouldSheetCloseOnEscape } from './sheetEscape';
+import { useRestoreFocus } from './useRestoreFocus';
+import { IconCheck, IconEdit, IconSparkles, IconUser, IconX } from './Icons';
+
+function safeLocalStorage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
 
 export interface DiaryDetailSheetProps {
   readonly topic: DiaryTopicItem | null;
@@ -56,6 +60,10 @@ export function DiaryDetailSheet({
 
   const [aiLearningsDraft, setAiLearningsDraft] = useState<string | null>(null);
   const [aiNotesDraft, setAiNotesDraft] = useState<string | null>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const learnedId = useId();
+  const notesId = useId();
+  useRestoreFocus(isOpen && Boolean(topic), closeRef);
 
   // Sync state whenever topic or existingEntry changes
   useEffect(() => {
@@ -78,18 +86,19 @@ export function DiaryDetailSheet({
   // Escape key listener
   useEffect(() => {
     if (!isOpen) return;
+    // Capture phase: runs before the Sheet tools menu's own handler, while the menu is still marked open,
+    // so an Escape meant for an open menu (even with focus on its trigger) closes only the menu.
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
+      if (!shouldSheetCloseOnEscape(e)) return;
+      e.preventDefault();
+      onClose();
     };
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown, true);
       document.body.style.overflow = originalOverflow;
     };
   }, [isOpen, onClose]);
@@ -128,16 +137,50 @@ export function DiaryDetailSheet({
 
       const data = await res.json();
       if (res.ok && data.success) {
-        setSyncMessage(`Row ${topic.rowNumber} successfully synced to Google Sheets!`);
+        markSynced(safeLocalStorage());
+        notifySyncChanged();
+        setSyncMessage('Synced to the sheet.');
       } else {
-        setSyncError(data.error || 'Failed to sync to Google Sheets.');
+        setSyncError(
+          `${data.error || "Couldn't sync this topic."} You can copy it from Sheet tools instead.`
+        );
       }
     } catch {
-      setSyncError('Network error while syncing to Google Sheets.');
+      setSyncError("Couldn't reach the server to sync. You can copy this topic from Sheet tools instead.");
     } finally {
       setSyncing(false);
     }
   };
+
+  const sheetItems: SheetToolsMenuItem[] = [
+    {
+      id: 'sync-topic',
+      label: 'Sync this topic to the sheet',
+      hint: `Writes columns G–H of row ${topic.rowNumber}`,
+      onSelect: handleSyncToSheets,
+      state: syncing ? 'busy' : 'idle',
+    },
+    ...(onCopyTsv
+      ? [
+          {
+            id: 'copy-topic',
+            label: 'Copy for the sheet',
+            hint: `Columns G–H · paste at G${topic.rowNumber}`,
+            onSelect: () => onCopyTsv(topic, existingEntry),
+            state: isCopied ? ('done' as const) : ('idle' as const),
+            doneLabel: 'Copied',
+          },
+        ]
+      : []),
+  ];
+
+  const iconButton =
+    'inline-flex size-11 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 disabled:opacity-30 sm:size-9';
+  const sectionTitle = 'block text-[11px] font-semibold uppercase tracking-wider text-stone-500';
+  const fieldLabel = 'text-[11px] font-semibold uppercase tracking-wider text-stone-600';
+  const suggestButton =
+    'inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-lavender-700 transition hover:text-lavender-900 sm:min-h-0';
+  const draftAction = 'inline-flex min-h-11 items-center text-xs sm:min-h-0';
 
   return (
     <div
@@ -164,26 +207,24 @@ export function DiaryDetailSheet({
           <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-stone-200 sm:hidden" />
 
           {/* Header */}
-          <div className="flex items-start justify-between border-b border-stone-100 p-5 sm:p-6">
-            <div className="space-y-1.5 pr-3">
+          <div className="flex items-start justify-between gap-2 border-b border-stone-100 p-5 sm:p-6">
+            <div className="min-w-0 space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-stone-900 px-2 py-0.5 text-[11px] font-bold text-white tracking-wide">
-                  Row {topic.rowNumber}
-                </span>
-                <span className="rounded-full bg-lavender-50 px-2.5 py-0.5 text-[11px] font-semibold text-lavender-800">
+                <RowTag rowNumber={topic.rowNumber} />
+                <span className="rounded-full bg-lavender-50 px-2.5 py-0.5 text-xs font-semibold text-lavender-800">
                   {topic.day} · Week {topic.week}
                 </span>
                 {isCompleted ? (
-                  <span className="rounded-full bg-mint-50 px-2 py-0.5 text-[11px] font-semibold text-mint-700 border border-mint-200">
+                  <span className="rounded-full border border-mint-200 bg-mint-50 px-2 py-0.5 text-xs font-semibold text-mint-800">
                     Completed ✓
                   </span>
                 ) : isNeedsNotes ? (
-                  <span className="rounded-full bg-peach-50 px-2 py-0.5 text-[11px] font-semibold text-peach-700 border border-peach-200">
-                    Needs Notes (Col H)
+                  <span className="rounded-full border border-peach-200 bg-peach-50 px-2 py-0.5 text-xs font-semibold text-peach-800">
+                    Needs notes
                   </span>
                 ) : (
-                  <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600">
-                    To Do
+                  <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
+                    To do
                   </span>
                 )}
               </div>
@@ -194,9 +235,9 @@ export function DiaryDetailSheet({
                 {topic.topic.split('\n')[0]}
               </h2>
               <div className="flex items-center gap-3 text-xs text-stone-500">
-                <span className="flex items-center gap-1">
-                  <IconUser className="h-3.5 w-3.5 text-stone-400" />
-                  PIC: <strong className="text-stone-700">{topic.pic}</strong>
+                <span className="flex min-w-0 items-center gap-1">
+                  <IconUser className="h-3.5 w-3.5 shrink-0 text-stone-500" />
+                  Led by <strong className="truncate text-stone-700">{topic.pic}</strong>
                 </span>
               </div>
             </div>
@@ -208,11 +249,11 @@ export function DiaryDetailSheet({
                   type="button"
                   disabled={!hasPrev}
                   onClick={onPrevTopic}
-                  className="rounded-full p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900 disabled:opacity-30 transition"
+                  className={iconButton}
                   title="Previous topic"
                   aria-label="Previous topic"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
@@ -222,20 +263,21 @@ export function DiaryDetailSheet({
                   type="button"
                   disabled={!hasNext}
                   onClick={onNextTopic}
-                  className="rounded-full p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900 disabled:opacity-30 transition"
+                  className={iconButton}
                   title="Next topic"
                   aria-label="Next topic"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
               )}
               <button
+                ref={closeRef}
                 type="button"
                 onClick={onClose}
-                className="rounded-full p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition ml-1"
-                aria-label="Close sheet"
+                className={iconButton}
+                aria-label="Close"
               >
                 <IconX className="h-5 w-5" />
               </button>
@@ -246,13 +288,13 @@ export function DiaryDetailSheet({
           <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
             {/* Status alerts */}
             {syncMessage && (
-              <div className="flex items-center gap-2 rounded-xl border border-mint-200 bg-mint-50 p-3 text-xs text-mint-900 font-medium">
-                <IconCheck className="h-4 w-4 text-mint-600 shrink-0" />
+              <div role="status" className="flex items-center gap-2 rounded-xl border border-mint-200 bg-mint-50 p-3 text-xs font-medium text-mint-900">
+                <IconCheck className="h-4 w-4 shrink-0 text-mint-700" />
                 <span>{syncMessage}</span>
               </div>
             )}
             {syncError && (
-              <div className="rounded-xl border border-peach-200 bg-peach-50 p-3 text-xs text-peach-900 font-medium">
+              <div role="alert" className="rounded-xl border border-peach-200 bg-peach-50 p-3 text-xs font-medium text-peach-900">
                 {syncError}
               </div>
             )}
@@ -260,42 +302,35 @@ export function DiaryDetailSheet({
             {!isEditing ? (
               /* VIEW MODE */
               <div className="space-y-5">
-                {/* 3 Learnings Section */}
-                <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4 space-y-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-stone-500 block">
-                    3 Things You Learned (Column G)
-                  </span>
+                <section className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4 space-y-2">
+                  <h3 className={sectionTitle}>3 things you learned</h3>
                   {learned.trim() ? (
                     <div className="rounded-xl bg-white p-3.5 border border-stone-100 text-xs text-stone-800 leading-relaxed whitespace-pre-wrap">
                       {learned}
                     </div>
                   ) : (
-                    <p className="text-xs text-stone-400 italic">No key learnings recorded yet.</p>
+                    <p className="text-xs italic text-stone-500">Nothing written yet.</p>
                   )}
-                </div>
+                </section>
 
-                {/* Personal Notes Section */}
-                <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4 space-y-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-stone-500 block">
-                    Your Personal Notes &amp; Reflections (Column H)
-                  </span>
+                <section className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4 space-y-2">
+                  <h3 className={sectionTitle}>Your notes</h3>
                   {notes.trim() ? (
                     <div className="rounded-xl bg-white p-3.5 border border-stone-100 text-xs text-stone-800 leading-relaxed whitespace-pre-wrap">
                       {notes}
                     </div>
                   ) : (
-                    <p className="text-xs text-stone-400 italic">No personal notes or reflections logged yet.</p>
+                    <p className="text-xs italic text-stone-500">No notes yet.</p>
                   )}
-                </div>
+                </section>
               </div>
             ) : (
               /* EDIT MODE */
               <div className="space-y-6">
-                {/* Learnings Input (Col G) */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold uppercase tracking-wider text-stone-600">
-                      3 Things You Learned (Col G)
+                  <div className="flex items-center justify-between gap-2">
+                    <label htmlFor={learnedId} className={fieldLabel}>
+                      3 things you learned
                     </label>
                     <button
                       type="button"
@@ -303,32 +338,32 @@ export function DiaryDetailSheet({
                         const suggestion = suggestAiLearnings(topic);
                         setAiLearningsDraft(suggestion);
                       }}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-lavender-700 hover:text-lavender-900 transition"
+                      className={suggestButton}
                     >
                       <IconSparkles className="h-3.5 w-3.5" />
-                      <span>Suggest Ideas</span>
+                      <span>Suggest ideas</span>
                     </button>
                   </div>
 
                   {aiLearningsDraft && (
                     <div className="rounded-xl border border-lavender-200 bg-lavender-50/70 p-3 text-xs space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-lavender-900 text-[11px]">AI Suggested Takeaways:</span>
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-x-2">
+                        <span className="font-semibold text-lavender-900">Suggested takeaways</span>
+                        <div className="flex items-center gap-3">
                           <button
                             type="button"
                             onClick={() => {
                               setLearned(aiLearningsDraft);
                               setAiLearningsDraft(null);
                             }}
-                            className="font-bold text-lavender-700 hover:underline text-[11px]"
+                            className={`${draftAction} font-bold text-lavender-800 hover:underline`}
                           >
-                            Apply to notes
+                            Use this
                           </button>
                           <button
                             type="button"
                             onClick={() => setAiLearningsDraft(null)}
-                            className="text-stone-400 hover:text-stone-600 text-[11px]"
+                            className={`${draftAction} text-stone-600 hover:text-stone-800`}
                           >
                             Dismiss
                           </button>
@@ -339,19 +374,19 @@ export function DiaryDetailSheet({
                   )}
 
                   <textarea
+                    id={learnedId}
                     rows={4}
                     value={learned}
                     onChange={(e) => setLearned(e.target.value)}
                     placeholder="1. First key takeaway...&#10;2. Second key takeaway...&#10;3. Third key takeaway..."
-                    className="w-full rounded-xl border border-stone-200 bg-white p-3 text-xs text-stone-800 placeholder:text-stone-400 focus:border-stone-900 focus:outline-none leading-relaxed"
+                    className="w-full rounded-xl border border-stone-200 bg-white p-3 text-xs text-stone-800 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none leading-relaxed"
                   />
                 </div>
 
-                {/* Personal Notes Input (Col H) */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold uppercase tracking-wider text-stone-600">
-                      Personal Notes &amp; Observations (Col H)
+                  <div className="flex items-center justify-between gap-2">
+                    <label htmlFor={notesId} className={fieldLabel}>
+                      Your notes
                     </label>
                     <button
                       type="button"
@@ -359,32 +394,32 @@ export function DiaryDetailSheet({
                         const suggestion = suggestAiNotes(topic);
                         setAiNotesDraft(suggestion);
                       }}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-lavender-700 hover:text-lavender-900 transition"
+                      className={suggestButton}
                     >
                       <IconSparkles className="h-3.5 w-3.5" />
-                      <span>Suggest Notes</span>
+                      <span>Suggest notes</span>
                     </button>
                   </div>
 
                   {aiNotesDraft && (
                     <div className="rounded-xl border border-lavender-200 bg-lavender-50/70 p-3 text-xs space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-lavender-900 text-[11px]">AI Suggested Notes:</span>
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-x-2">
+                        <span className="font-semibold text-lavender-900">Suggested notes</span>
+                        <div className="flex items-center gap-3">
                           <button
                             type="button"
                             onClick={() => {
                               setNotes(aiNotesDraft);
                               setAiNotesDraft(null);
                             }}
-                            className="font-bold text-lavender-700 hover:underline text-[11px]"
+                            className={`${draftAction} font-bold text-lavender-800 hover:underline`}
                           >
-                            Apply to notes
+                            Use this
                           </button>
                           <button
                             type="button"
                             onClick={() => setAiNotesDraft(null)}
-                            className="text-stone-400 hover:text-stone-600 text-[11px]"
+                            className={`${draftAction} text-stone-600 hover:text-stone-800`}
                           >
                             Dismiss
                           </button>
@@ -395,11 +430,12 @@ export function DiaryDetailSheet({
                   )}
 
                   <textarea
+                    id={notesId}
                     rows={4}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="How does this apply to your day-to-day role? Any questions or action items?"
-                    className="w-full rounded-xl border border-stone-200 bg-white p-3 text-xs text-stone-800 placeholder:text-stone-400 focus:border-stone-900 focus:outline-none leading-relaxed"
+                    className="w-full rounded-xl border border-stone-200 bg-white p-3 text-xs text-stone-800 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none leading-relaxed"
                   />
                 </div>
               </div>
@@ -411,55 +447,26 @@ export function DiaryDetailSheet({
             <div className="flex flex-wrap items-center justify-between gap-3">
               {!isEditing ? (
                 <>
+                  <SheetToolsMenu items={sheetItems} placement="up" align="start" className="mr-auto" />
+
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setIsEditing(true)}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white hover:bg-stone-800 transition active:scale-95 shadow-xs"
+                      onClick={onClose}
+                      className="inline-flex min-h-11 items-center rounded-full px-3 text-xs font-medium text-stone-600 transition hover:text-stone-900 sm:min-h-9"
                     >
-                      <IconEdit className="h-3.5 w-3.5" />
-                      <span>{learned.trim() || notes.trim() ? 'Edit Notes' : 'Fill Notes'}</span>
+                      Close
                     </button>
 
                     <button
                       type="button"
-                      disabled={syncing}
-                      onClick={handleSyncToSheets}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-white border border-stone-200 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 transition active:scale-95 disabled:opacity-50"
-                      title="Sync directly to Google Sheets via API"
+                      onClick={() => setIsEditing(true)}
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-stone-900 px-4 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800 active:scale-95 sm:min-h-9"
                     >
-                      <IconRocket className="h-3.5 w-3.5 text-stone-600" />
-                      <span>{syncing ? 'Syncing…' : 'Sync to Sheets'}</span>
+                      <IconEdit className="h-3.5 w-3.5" />
+                      <span>{learned.trim() || notes.trim() ? 'Edit notes' : 'Add notes'}</span>
                     </button>
-
-                    {onCopyTsv && (
-                      <button
-                        type="button"
-                        onClick={() => onCopyTsv(topic, existingEntry)}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-white border border-stone-200 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 transition active:scale-95"
-                      >
-                        {isCopied ? (
-                          <>
-                            <IconCheck className="h-3.5 w-3.5 text-mint-600" />
-                            <span className="text-mint-700 font-semibold">Copied TSV!</span>
-                          </>
-                        ) : (
-                          <>
-                            <IconClipboard className="h-3.5 w-3.5 text-stone-500" />
-                            <span>Copy TSV (Cols G &amp; H)</span>
-                          </>
-                        )}
-                      </button>
-                    )}
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="text-xs font-medium text-stone-500 hover:text-stone-800 transition px-2"
-                  >
-                    Close
-                  </button>
                 </>
               ) : (
                 <>
@@ -472,7 +479,7 @@ export function DiaryDetailSheet({
                         onClose();
                       }
                     }}
-                    className="rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 transition active:scale-95"
+                    className="inline-flex min-h-11 items-center rounded-full border border-stone-200 bg-white px-4 text-xs font-semibold text-stone-700 transition hover:bg-stone-100 active:scale-95 sm:min-h-9"
                   >
                     Cancel
                   </button>
@@ -480,10 +487,10 @@ export function DiaryDetailSheet({
                   <button
                     type="button"
                     onClick={handleSave}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-mint-700 px-5 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition active:scale-95 shadow-xs"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-stone-900 px-5 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800 active:scale-95 sm:min-h-9"
                   >
                     <IconCheck className="h-4 w-4" />
-                    <span>Save Notes</span>
+                    <span>Save notes</span>
                   </button>
                 </>
               )}

@@ -139,6 +139,38 @@
 - [x] **App-Wide Non-Technical Guide Tour (Feature Priority Walkthrough)**: Redesigned the onboarding guide tour to actively navigate across all pages (`/`, `/schedule`, `/timeline`, `/reviews`, `/diary`, `/feedback`, `/glossary`, `/settings`) and teach the primary action on each page (e.g. tracking work with stopwatch on Today, documenting 3 key learnings and reflections on Diary, checking off stage deliverables on Timeline, conducting 1-on-1 reviews, rating sessions on Feedback, searching modules on Glossary, and cloud sync/backup on Settings). Formatted with 3 actionable numbered steps and pro-tips per feature, with spotlight targets attached directly to the core feature elements on each page.
 - [x] **Navigation & Quality Gates**: Verified 0 errors across `pnpm typecheck`, `pnpm lint`, `pnpm test` (42 suites / 581 tests), and `pnpm build`.
 
+### UI/UX pass (2026-10-03)
+
+Ten points, plan in `.plans/ui-ux-pass.md` (revision 4). Display and navigation only: no API route, `lib/sheets/*`, clipboard/TSV builder or written data changed, except the flagged schedule bulk-sync payload (now only rows with data). Design details are in [`docs/DESIGN.md`](DESIGN.md). The final browser verification (step 9.3) and the final review (9.4) are still to run.
+
+- [x] **1. Mobile layout and FAB** — done: content wrapper `min-w-0` + `overflow-x-clip` on `main`, 44px targets, safe-area padding, FAB/timer/toast stacked without overlap, FAB hides under modal dialogs (`useModalPresence`).
+- [~] **2. Hide the spreadsheet** — partial: Row/Col/PIC wording replaced by `RowTag` and "Sheet tools" menus everywhere in the UI; the rendered jargon listed under open items below remains.
+- [x] **3. Truthful sync status** — done: one `SyncStatusChip` derived from `/api/health`, the pending queue and the last confirmed write (`lib/sync-status.ts`); hardcoded "Connected"/PostgreSQL text removed; feedback pull failures show one inline notice with Retry.
+- [x] **4. One safe bulk-sync modal** — done: shared `BulkSyncModal`, exact ranges and counts, blocking rows with Fill, non-dismissible while busy, never posts an empty schedule list. Residual write risks are in Technical Debt below.
+- [x] **5. Staged learning capture** — done: `LearningModal` write / review / takeaways stages, sticky Save, no auto-confirm of AI output (ADR-0003).
+- [x] **6. Schedule restructure** — done: grouped by week with sticky headers, one-line completed rows, Hide completed (persisted), Jump to next, mobile filter disclosure, hash/`nova:focus-activity` deep links.
+- [x] **7. Navigation, redirects and titles** — done: 8 nav items, `ReviewsTabs` for Reviews / First month / Monthly score, `/journey` and `/history` redirect permanently, `%s · NOVA` titles, skip link, one global command palette, tour copy updated.
+- [x] **8. Today: off-day state, counts, hydration, dates** — done: "Nothing scheduled today" with a next-activity CTA, computed counts (no hardcoded 59), time-derived output after mount, display dates in Asia/Jakarta (`lib/format-date.ts`), no hardcoded name.
+- [~] **9. Readability and accessibility** — partial: 12px text minimum (11px uppercase eyebrows only), `stone-500` text, darker mint/peach tokens with `-800/-900/-950`, `focus:outline-hidden` removed, focus restore and Escape order fixed; the global focus outline contrast and the button hover lift remain (open items).
+- [~] **10. Dead code** — partial: both old sync modals deleted and `FeedbackModal` helpers moved to `lib/feedback.ts`; the files listed below are not yet deleted.
+
+Open items from this pass:
+
+- [ ] Delete dead files (zero importers). Not done because the permission system refused `rm` in this run: `app/components/ActivityDetailModal.tsx`, `GlossaryDetailModal.tsx`, `PrimaryNav.tsx`, `DiaryModal.tsx`, `ExportNotes.tsx`, `LearningRecordCard.tsx`, `FeedbackModal.tsx`, `app/journey/page.tsx`, `app/history/page.tsx` (the last two are shadowed by the redirects). Re-grep for importers first.
+- [ ] Rendered jargon left because those paths were off-limits for this pass: `lib/sheets/extractor.ts` lines 190 and 294 ("Session at Row N" / "Topic at Row N") and `lib/import/import-schedule.ts` line 208.
+- [ ] The global `:focus-visible` outline (`#35c98e`, `app/globals.css`) is only about 2:1 on white. Use a darker ring (for example `mint-700`).
+- [ ] `app/globals.css` line 125: the `button:not(:disabled):hover` lift also applies to text-link buttons. Scope it.
+- [ ] `lib/glossary.ts` line 138: "Department PIC" source text still uses the PIC wording.
+- [ ] Residual risk (ADR-0006 follow-up, not fixed here): schedule rows with partial data write `''` to their empty cells, which clears those sheet cells (route + `USER_ENTERED`, `lib/sheets/extractor.ts` around lines 559 and 656). The bulk-sync warning says so.
+- [ ] Residual risk (ADR-0006 follow-up 5, not fixed here): formula injection through `valueInputOption=USER_ENTERED` on user-typed text.
+- [ ] Follow-up (not fixed here): the chip "Synced HH:MM" can reflect a database write rather than a sheet write (R1 behavior).
+- [ ] Follow-up (not fixed here): Settings "Writing the schedule/diary: Not configured" reflects only the Apps Script env flags and ignores OAuth (`lib/connection-status.ts` around lines 62-65).
+- [ ] Follow-up (not fixed here): "Sync this row" on a not-started schedule card sends progress 'Done' (`app/schedule/page.tsx` around line 254). Pre-existing write hazard.
+- [ ] Follow-up (not fixed here): the schedule sync modal does not say when it is syncing the bundled fallback catalog because `/api/schedule` failed (`app/schedule/page.tsx` around lines 121-124).
+- [ ] Follow-up (not fixed here): the feedback pull falls back to `?source=local` but says "Loaded N evaluations from the sheet" (`app/feedback/page.tsx` around lines 62-90).
+- [ ] Follow-up (not fixed here): CommandPalette searches only the first 30 activities (`app/components/CommandPalette.tsx` line 185).
+- [ ] Follow-up (not fixed here): stacked dialogs. Esc in ScheduleFillModal or LearningModal opened over ActivityDetailSheet closes both.
+
 ---
 
 ## Bugs
@@ -162,8 +194,8 @@
 - [ ] Remove the arbitrary `range`/`values`/`value` passthrough in `/api/sheets/update-cell`; restrict feedback writes to columns D:M. (ADR-0006 follow-up 3)
 - [ ] Unify activity matching on `activities.id` across `update-cell`, the sync routes and `writeSession`. (ADR-0006 follow-up 4)
 - [ ] Write user-typed learned/notes with `valueInputOption=RAW` instead of `USER_ENTERED` (`lib/sheets/extractor.ts`, lines 559, 562, 656): formula-injection risk. (ADR-0006 follow-up 5)
-- [ ] Large files to split (line counts checked with `wc -l` on 2026-10-03): `app/page.tsx` 1177, `lib/schedule-catalog.ts` 1143, `lib/timeline.ts` 911, `app/components/Icons.tsx` 876, `app/components/FeedbackDetailSheet.tsx` 800, `app/first-month-review/page.tsx` 741, `lib/sheets/extractor.ts` 731, `app/components/LearningModal.tsx` 729.
-- [ ] `DiarySyncAllModal.tsx` and `ScheduleSyncAllModal.tsx` (and `ScheduleFillModal.tsx`) are near-duplicates: extract a shared bulk-sync modal.
+- [ ] Large files to split (line counts checked with `wc -l` on 2026-10-03, after the UI/UX pass): `lib/schedule-catalog.ts` 1143, `app/page.tsx` 1017, `lib/timeline.ts` 911, `app/components/Icons.tsx` 876, `app/components/LearningModal.tsx` 822, `app/schedule/page.tsx` 805, `app/components/FeedbackDetailSheet.tsx` 786, `lib/sheets/extractor.ts` 731, `app/first-month-review/page.tsx` 628.
+- [x] `DiarySyncAllModal.tsx` and `ScheduleSyncAllModal.tsx` were near-duplicates: both are deleted and replaced by one shared `BulkSyncModal` (`app/components/BulkSyncModal.tsx`, plans in `lib/bulk-sync.ts`). `ScheduleFillModal.tsx` remains separate (single-row edit).
 - [ ] ADR-0006 is Proposed. Accept or reject it; the follow-ups above and in the Bugs section are its consequences. Nothing may claim it is accepted until then.
 - [ ] Public history: commit `7352f74` (and later commits) in this public repository exposes schedule data, spreadsheet share links and a personal filesystem path. Decide whether to rotate the share links and/or rewrite history. Private rows now live in gitignored `data/private/`.
 - [ ] `eslint.config.mjs` defines no rules (only `ignores`), so `pnpm lint` checks almost nothing. Add a real rule set.

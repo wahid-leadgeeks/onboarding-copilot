@@ -2,13 +2,15 @@
 
 import React, { useEffect, useRef } from 'react';
 import type { ScheduleActivity } from '@/lib/schedule-catalog';
+import { activityDateLabel } from '@/lib/today-view';
+import { RowTag } from './RowTag';
+import { SheetToolsMenu, type SheetToolsMenuItem } from './SheetToolsMenu';
+import { shouldSheetCloseOnEscape } from './sheetEscape';
+import { useRestoreFocus } from './useRestoreFocus';
 import {
-  IconClipboard,
   IconEdit,
   IconPlay,
   IconNote,
-  IconRocket,
-  IconCheck,
   IconX,
   IconClock,
   IconUser,
@@ -45,24 +47,27 @@ export function ActivityDetailSheet({
   isSyncing = false,
 }: ActivityDetailSheetProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useRestoreFocus(isOpen && Boolean(activity), closeRef);
 
   // Close on Escape key and prevent body scroll when open
   useEffect(() => {
     if (!isOpen) return;
 
+    // Capture phase: runs before the Sheet tools menu's own handler, while the menu is still marked open,
+    // so an Escape meant for an open menu (even with focus on its trigger) closes only the menu.
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
+      if (!shouldSheetCloseOnEscape(e)) return;
+      e.preventDefault();
+      onClose();
     };
 
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown, true);
       document.body.style.overflow = originalOverflow;
     };
   }, [isOpen, onClose]);
@@ -73,6 +78,42 @@ export function ActivityDetailSheet({
   const title = lines[0];
   const subtopics = lines.slice(1);
   const isDone = activity.progress === 'Done';
+  const copiedSheetRow =
+    copiedToast?.rowNumber === activity.rowNumber && (copiedToast.type === 'G-K' || copiedToast.type === 'G-L');
+  const copiedFullRow = copiedToast?.rowNumber === activity.rowNumber && copiedToast.type === 'Full';
+  const sheetItems: SheetToolsMenuItem[] = [
+    ...(onSyncRow
+      ? [
+          {
+            id: 'sync-row',
+            label: 'Sync this row to the sheet',
+            hint: `Writes duration, times, progress and notes to row ${activity.rowNumber}`,
+            onSelect: () => onSyncRow(activity),
+            state: isSyncing ? ('busy' as const) : ('idle' as const),
+          },
+        ]
+      : []),
+    {
+      id: 'copy-row',
+      label: 'Copy row for the sheet',
+      hint: `Columns G–L · paste at G${activity.rowNumber}`,
+      onSelect: () => onCopyGtoK(activity),
+      state: copiedSheetRow ? ('done' as const) : ('idle' as const),
+      doneLabel: 'Copied',
+    },
+    ...(onCopyFullRow
+      ? [
+          {
+            id: 'copy-full-row',
+            label: 'Copy full row',
+            hint: 'All 12 columns, A–L',
+            onSelect: () => onCopyFullRow(activity),
+            state: copiedFullRow ? ('done' as const) : ('idle' as const),
+            doneLabel: 'Copied full row',
+          },
+        ]
+      : []),
+  ];
 
   return (
     <div
@@ -103,17 +144,17 @@ export function ActivityDetailSheet({
           <div className="flex items-start justify-between border-b border-stone-100 p-5 sm:p-6">
             <div className="space-y-1.5 pr-4">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-stone-900 px-2 py-0.5 text-[11px] font-bold text-white tracking-wide">
-                  Row {activity.rowNumber}
+                <RowTag rowNumber={activity.rowNumber} />
+                <span className="rounded-full bg-mint-50 px-2.5 py-0.5 text-xs font-semibold text-mint-700">
+                  {[activity.week, activityDateLabel(activity.day, activity.date)].filter(Boolean).join(' · ')}
                 </span>
-                <span className="rounded-full bg-mint-50 px-2.5 py-0.5 text-[11px] font-semibold text-mint-700">
-                  {activity.week} · {activity.day} ({activity.date})
-                </span>
-                <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[11px] font-medium text-stone-600">
-                  #{activity.activityCount}
-                </span>
+                {activity.activityCount !== undefined && (
+                  <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-medium text-stone-600">
+                    Activity {activity.activityCount}
+                  </span>
+                )}
                 <span
-                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold border ${
+                  className={`rounded-full px-2 py-0.5 text-xs font-semibold border ${
                     isDone
                       ? 'bg-mint-50 text-mint-700 border-mint-200'
                       : activity.progress === 'In Progress'
@@ -132,9 +173,10 @@ export function ActivityDetailSheet({
               </h2>
             </div>
             <button
+              ref={closeRef}
               type="button"
               onClick={onClose}
-              className="rounded-full p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition"
+              className="flex size-11 shrink-0 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100 hover:text-stone-700 sm:size-9"
               aria-label="Close details"
             >
               <IconX className="h-5 w-5" />
@@ -152,7 +194,7 @@ export function ActivityDetailSheet({
                 <ul className="space-y-1.5 text-xs text-stone-700">
                   {subtopics.map((sub, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <span className="text-stone-400 mt-0.5">•</span>
+                      <span className="mt-0.5 text-stone-500" aria-hidden="true">•</span>
                       <span>{sub.replace(/^[-*•]\s*/, '')}</span>
                     </li>
                   ))}
@@ -160,22 +202,22 @@ export function ActivityDetailSheet({
               </div>
             )}
 
-            {/* PIC and Media */}
+            {/* Who leads it and how */}
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="rounded-xl border border-stone-100 bg-stone-50/50 p-3.5">
-                <div className="flex items-center gap-1.5 text-stone-400 mb-1">
+                <div className="mb-1 flex items-center gap-1.5 text-stone-500">
                   <IconUser className="h-3.5 w-3.5" />
-                  <span className="font-semibold uppercase tracking-wider text-[10px]">
-                    Person in Charge (Col D)
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">
+                    Led by
                   </span>
                 </div>
                 <span className="text-stone-900 font-bold block text-sm">{activity.pic}</span>
               </div>
               <div className="rounded-xl border border-stone-100 bg-stone-50/50 p-3.5">
-                <div className="flex items-center gap-1.5 text-stone-400 mb-1">
+                <div className="mb-1 flex items-center gap-1.5 text-stone-500">
                   <IconCalendar className="h-3.5 w-3.5" />
-                  <span className="font-semibold uppercase tracking-wider text-[10px]">
-                    Main Media (Col E)
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">
+                    Format
                   </span>
                 </div>
                 <span className="text-stone-900 font-bold block text-sm">{activity.mainMedia || 'Online Meeting'}</span>
@@ -189,21 +231,21 @@ export function ActivityDetailSheet({
                   Time & Duration
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-stone-600">
-                  <IconClock className="h-3.5 w-3.5 text-stone-400" />
+                  <IconClock className="h-3.5 w-3.5 text-stone-500" />
                   {activity.durationMinutes ? `${activity.durationMinutes} mins` : 'TBD'}
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-2 text-center text-xs">
                 <div className="rounded-xl bg-stone-50 p-2.5">
-                  <span className="block text-[10px] text-stone-400 font-medium uppercase">Start</span>
+                  <span className="block text-[11px] font-medium uppercase tracking-wider text-stone-500">Start</span>
                   <span className="font-bold text-stone-900">{activity.startTime || '—'}</span>
                 </div>
                 <div className="rounded-xl bg-stone-50 p-2.5">
-                  <span className="block text-[10px] text-stone-400 font-medium uppercase">End</span>
+                  <span className="block text-[11px] font-medium uppercase tracking-wider text-stone-500">End</span>
                   <span className="font-bold text-stone-900">{activity.endTime || '—'}</span>
                 </div>
                 <div className="rounded-xl bg-stone-50 p-2.5">
-                  <span className="block text-[10px] text-stone-400 font-medium uppercase">Duration</span>
+                  <span className="block text-[11px] font-medium uppercase tracking-wider text-stone-500">Duration</span>
                   <span className="font-bold text-stone-900">
                     {activity.durationMinutes ? `${activity.durationMinutes}m` : '—'}
                   </span>
@@ -211,12 +253,12 @@ export function ActivityDetailSheet({
               </div>
             </div>
 
-            {/* Materials & Recording Link Section (Column K) */}
+            {/* Materials or recording link */}
             {activity.materialsLink && (
               <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
                 <span className="text-xs font-bold uppercase tracking-wider text-sky-800 block mb-1.5 flex items-center gap-1.5">
                   <IconLink className="h-3.5 w-3.5 text-sky-600" />
-                  Link to Materials or Recording (Col K)
+                  Materials or recording
                 </span>
                 <div className="flex items-center justify-between gap-2 mt-2 bg-white rounded-xl p-2.5 border border-sky-200/60">
                   <span className="text-xs text-sky-900 truncate font-mono">
@@ -235,12 +277,12 @@ export function ActivityDetailSheet({
               </div>
             )}
 
-            {/* Notes Section (Column L) */}
+            {/* Notes */}
             {activity.notes ? (
               <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
                 <span className="text-xs font-bold uppercase tracking-wider text-stone-500 block mb-1.5 flex items-center gap-1.5">
                   <IconNote className="h-3.5 w-3.5 text-stone-500" />
-                  Your Activity Notes (Col L)
+                  Your notes
                 </span>
                 <p className="text-xs text-stone-800 whitespace-pre-wrap leading-relaxed break-words">
                   {activity.notes}
@@ -251,7 +293,7 @@ export function ActivityDetailSheet({
                       href={activity.notes}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 px-2.5 py-1 text-xs font-medium transition"
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-700 px-2.5 py-1 text-xs font-medium transition sm:min-h-0"
                     >
                       <IconExternalLink className="h-3 w-3" />
                       <span>Open Link from Notes ↗</span>
@@ -260,8 +302,8 @@ export function ActivityDetailSheet({
                 )}
               </div>
             ) : (
-              <div className="rounded-2xl border border-dashed border-stone-200 p-4 text-center text-xs text-stone-400">
-                No personal or mentor notes logged yet for this row.
+              <div className="rounded-2xl border border-dashed border-stone-200 p-4 text-center text-xs text-stone-500">
+                No notes yet. Use Edit details to add some.
               </div>
             )}
           </div>
@@ -270,70 +312,18 @@ export function ActivityDetailSheet({
           <div className="border-t border-stone-100 bg-stone-50/80 p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
+                <SheetToolsMenu items={sheetItems} placement="up" align="start" />
                 <button
                   type="button"
                   onClick={() => {
                     onClose();
                     onEdit(activity);
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white hover:bg-stone-700 transition active:scale-95"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-stone-200 bg-white px-4 text-xs font-semibold text-stone-800 transition hover:bg-stone-100 active:scale-95 sm:min-h-9"
                 >
                   <IconEdit className="h-3.5 w-3.5" />
-                  <span>Fill / Edit Row</span>
+                  <span>Edit details</span>
                 </button>
-
-                {onSyncRow && (
-                  <button
-                    type="button"
-                    disabled={isSyncing}
-                    onClick={() => onSyncRow(activity)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white border border-stone-200 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 transition active:scale-95 disabled:opacity-50"
-                    title="Sync this row to Google Sheets via API"
-                  >
-                    <IconRocket className="h-3.5 w-3.5 text-stone-600" />
-                    <span>{isSyncing ? 'Syncing…' : 'Sync to Sheets'}</span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => onCopyGtoK(activity)}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-white border border-stone-200 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 transition active:scale-95"
-                  title="Copy tab-separated Duration, Start, End, Progress, Link, Notes"
-                >
-                  {(copiedToast?.rowNumber === activity.rowNumber && (copiedToast.type === 'G-K' || copiedToast.type === 'G-L')) ? (
-                    <>
-                      <IconCheck className="h-3.5 w-3.5 text-mint-600" />
-                      <span className="text-mint-700 font-semibold">Copied G–L!</span>
-                    </>
-                  ) : (
-                    <>
-                      <IconClipboard className="h-3.5 w-3.5 text-stone-500" />
-                      <span>Copy G–L TSV</span>
-                    </>
-                  )}
-                </button>
-
-                {onCopyFullRow && (
-                  <button
-                    type="button"
-                    onClick={() => onCopyFullRow(activity)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-white border border-stone-200 px-3 py-2 text-xs font-medium text-stone-600 hover:bg-stone-100 transition active:scale-95"
-                    title="Copy all 12 columns A–L for this row"
-                  >
-                    {copiedToast?.rowNumber === activity.rowNumber && copiedToast.type === 'Full' ? (
-                      <>
-                        <IconCheck className="h-3.5 w-3.5 text-mint-600" />
-                        <span className="text-mint-700 font-semibold">Copied Row!</span>
-                      </>
-                    ) : (
-                      <>
-                        <IconClipboard className="h-3.5 w-3.5 text-stone-500" />
-                        <span>Copy Row A–L</span>
-                      </>
-                    )}
-                  </button>
-                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -344,7 +334,7 @@ export function ActivityDetailSheet({
                       onClose();
                       onStartTimer(activity);
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-mint-700 px-4 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition active:scale-95 shadow-xs"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-stone-900 px-4 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-700 active:scale-95 sm:min-h-9"
                   >
                     <IconPlay className="h-3.5 w-3.5 fill-current" />
                     <span>Start Stopwatch</span>
@@ -357,7 +347,7 @@ export function ActivityDetailSheet({
                       onClose();
                       onWriteReflection(activity);
                     }}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-mint-700 px-4 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition active:scale-95 shadow-xs"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-stone-900 px-4 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-700 active:scale-95 sm:min-h-9"
                   >
                     <IconNote className="h-3.5 w-3.5" />
                     <span>Write Diary Reflection</span>

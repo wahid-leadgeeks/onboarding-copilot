@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { OFFICIAL_SCHEDULE_ACTIVITIES, type ScheduleActivity } from '@/lib/schedule-catalog';
 import { IconSearch } from './Icons';
+import { useRestoreFocus } from './useRestoreFocus';
 
 export interface CommandPaletteProps {
   isOpen: boolean;
@@ -44,6 +45,9 @@ export function CommandPalette({
   const [selectedIndex, setSelectedIndex] = useState(0);
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Give focus back to whatever opened the palette when it closes.
+  useRestoreFocus(isOpen);
 
   // Focus input when opened
   useEffect(() => {
@@ -141,9 +145,10 @@ export function CommandPalette({
     },
     {
       id: 'page-settings',
-      title: 'Settings (Google Sheets Connection)',
+      title: 'Settings',
       category: 'Pages',
       badge: '8',
+      keywords: 'connection sync status spreadsheet',
       onSelect: () => router.push('/settings'),
     },
   ];
@@ -170,8 +175,9 @@ export function CommandPalette({
       : []),
     {
       id: 'action-sync',
-      title: 'Check Google Sheets Status',
+      title: 'Check connection status',
       category: 'Actions',
+      keywords: 'sync spreadsheet settings',
       onSelect: () => router.push('/settings'),
     },
   ];
@@ -180,7 +186,7 @@ export function CommandPalette({
     id: act.id,
     title: act.topic.split('\n')[0],
     category: 'Schedule Topics',
-    badge: `Row ${act.rowNumber}`,
+    badge: act.week,
     keywords: `${act.pic} ${act.week} ${act.day}`,
     onSelect: () => {
       if (onSelectActivity) {
@@ -242,9 +248,9 @@ export function CommandPalette({
             }}
             onKeyDown={handleInputKeyDown}
             placeholder="Type a command or search topics..."
-            className="w-full text-sm font-medium text-stone-900 placeholder-stone-400 focus:outline-hidden"
+            className="w-full rounded-md text-sm font-medium text-stone-900 placeholder-stone-500"
           />
-          <kbd className="hidden sm:inline-block rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-500">
+          <kbd className="hidden sm:inline-block rounded-md bg-stone-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-stone-500">
             ESC
           </kbd>
         </div>
@@ -271,14 +277,14 @@ export function CommandPalette({
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider shrink-0 w-16">
+                    <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider shrink-0 w-16">
                       {item.category === 'Schedule Topics' ? 'Topic' : item.category}
                     </span>
                     <span className="truncate text-stone-900 font-semibold">{item.title}</span>
                   </div>
 
                   {item.badge && (
-                    <span className="rounded-md bg-stone-200/80 px-2 py-0.5 text-[10px] font-mono font-bold text-stone-700 shrink-0 ml-2">
+                    <span className="rounded-md bg-stone-200/80 px-2 py-0.5 text-xs font-medium text-stone-700 shrink-0 ml-2">
                       {item.badge}
                     </span>
                   )}
@@ -289,7 +295,7 @@ export function CommandPalette({
         </div>
 
         {/* Footer shortcuts helper */}
-        <div className="flex items-center justify-between border-t border-stone-100 bg-stone-50/50 px-4 py-2.5 text-[11px] text-stone-400">
+        <div className="flex items-center justify-between border-t border-stone-100 bg-stone-50/50 px-4 py-2.5 text-xs text-stone-500">
           <div className="flex items-center gap-3">
             <span>
               <kbd className="font-semibold text-stone-600">↑↓</kbd> to navigate

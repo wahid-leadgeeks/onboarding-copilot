@@ -13,31 +13,47 @@
   /* Emotion palettes — color communicates meaning, never decoration. */
   --color-mint-50: #f0fdf9;
   --color-mint-100: #dcf7ec;
+  --color-mint-200: #b8eed6;
   --color-mint-300: #86e2bc;
+  --color-mint-400: #5dd6a5;
   --color-mint-500: #35c98e;
   --color-mint-600: #23ae77;
-  --color-mint-700: #1d8a60;
+  --color-mint-700: #187f58;
+  --color-mint-800: #14694a;
+  --color-mint-900: #0f5139;
+  --color-mint-950: #072e20;
 
   --color-peach-50: #fff6f0;
   --color-peach-100: #ffe9dc;
+  --color-peach-200: #ffd7bf;
   --color-peach-300: #ffc5a3;
+  --color-peach-400: #ffb187;
   --color-peach-500: #ff9d6b;
   --color-peach-600: #f58149;
-  --color-peach-700: #c9602a;
+  --color-peach-700: #b4521f;
+  --color-peach-800: #9a4419;
+  --color-peach-900: #7a3614;
 
   --color-lavender-50: #f6f4fe;
   --color-lavender-100: #ede9fd;
+  --color-lavender-200: #dad0fa;
   --color-lavender-300: #c4b5f5;
   --color-lavender-500: #9b8cf2;
   --color-lavender-600: #7e6ae6;
   --color-lavender-700: #6650c4;
+  --color-lavender-800: #533fa3;
+  --color-lavender-900: #3f3080;
 
   --color-sun-50: #fffbeb;
   --color-sun-100: #fef3c7;
+  --color-sun-200: #fde98a;
   --color-sun-300: #fde047;
+  --color-sun-400: #fbd52e;
   --color-sun-500: #facc15;
   --color-sun-600: #ca9f04;
-  --color-sun-700: #9c7a0d;
+  --color-sun-700: #856709;
+  --color-sun-800: #6e5508;
+  --color-sun-900: #574306;
 
   /* Soft warm elevation instead of bordered boxes. */
   --radius-card: 1.75rem;

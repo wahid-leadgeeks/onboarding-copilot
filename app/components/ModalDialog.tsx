@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { IconX } from './Icons';
+import { useRestoreFocus } from './useRestoreFocus';
 
 export interface ModalDialogProps {
   isOpen: boolean;
@@ -13,6 +14,13 @@ export interface ModalDialogProps {
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   role?: 'dialog' | 'alertdialog';
   badge?: React.ReactNode;
+  /** When false, Escape and backdrop clicks do nothing and the close (X) button is hidden. */
+  dismissible?: boolean;
+}
+
+/** Whether a keypress should dismiss the dialog. */
+export function shouldDismissOnEscape(dismissible: boolean, key: string): boolean {
+  return dismissible && key === 'Escape';
 }
 
 const maxWidthMap = {
@@ -33,8 +41,20 @@ export function ModalDialog({
   maxWidth = 'md',
   role = 'dialog',
   badge,
+  dismissible = true,
 }: ModalDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  const dismissibleRef = useRef(dismissible);
+
+  // Return focus to the element that opened the dialog once it closes.
+  useRestoreFocus(isOpen);
+
+  // Keep the latest callback/flag without re-running the open effect (no focus re-grab on re-render).
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    dismissibleRef.current = dismissible;
+  });
 
   // Lock body scroll and handle Escape key
   useEffect(() => {
@@ -44,8 +64,8 @@ export function ModalDialog({
     document.body.style.overflow = 'hidden';
 
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') {
-        onClose();
+      if (shouldDismissOnEscape(dismissibleRef.current, e.key)) {
+        onCloseRef.current();
       }
     }
 
@@ -66,7 +86,7 @@ export function ModalDialog({
       window.removeEventListener('keydown', handleKeyDown);
       clearTimeout(focusTimer);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -78,7 +98,7 @@ export function ModalDialog({
       aria-describedby={description ? 'modal-dialog-desc' : undefined}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fade-in"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (dismissible && e.target === e.currentTarget) onClose();
       }}
     >
       <div
@@ -101,14 +121,16 @@ export function ModalDialog({
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close dialog"
-            className="rounded-full p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition active:scale-95"
-          >
-            <IconX className="h-4 w-4" />
-          </button>
+          {dismissible && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close dialog"
+              className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 hover:text-stone-700 transition active:scale-95 sm:size-9"
+            >
+              <IconX className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Body */}

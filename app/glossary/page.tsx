@@ -72,11 +72,11 @@ export default function GlossaryPage() {
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
       {/* Header */}
-      <header className="animate-fade-up pb-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
-          Worksheet: Glossaries &amp; Guide · Master Curriculum Catalog
+      <header className="animate-fade-up min-w-0 pb-5">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+          Training library
         </p>
-        <div className="mt-2">
+        <div className="mt-2 min-w-0">
           <h1 className="text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
             Glossary &amp; Guides
           </h1>
@@ -94,10 +94,10 @@ export default function GlossaryPage() {
             role="tab"
             aria-selected={activeTab === 'modules'}
             onClick={() => setActiveTab('modules')}
-            className={`flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition ${
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-2 text-xs font-semibold transition ${
               activeTab === 'modules'
                 ? 'bg-white text-stone-900 shadow-xs'
-                : 'text-stone-500 hover:text-stone-800'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             Syllabus Modules ({OFFICIAL_TRAINING_MODULES.length})
@@ -107,10 +107,10 @@ export default function GlossaryPage() {
             role="tab"
             aria-selected={activeTab === 'guide'}
             onClick={() => setActiveTab('guide')}
-            className={`flex items-center justify-center gap-2 rounded-xl py-2 text-xs font-semibold transition ${
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-xl px-2 text-xs font-semibold transition ${
               activeTab === 'guide'
                 ? 'bg-white text-stone-900 shadow-xs'
-                : 'text-stone-500 hover:text-stone-800'
+                : 'text-stone-600 hover:text-stone-900'
             }`}
           >
             Workbook Guide (6 Sheets)
@@ -128,7 +128,8 @@ export default function GlossaryPage() {
                 <button
                   type="button"
                   onClick={() => setMediaFilter('all')}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                  aria-pressed={mediaFilter === 'all'}
+                  className={`inline-flex min-h-11 items-center rounded-full px-3 text-xs font-medium transition sm:min-h-8 ${
                     mediaFilter === 'all'
                       ? 'bg-stone-900 text-white shadow-xs'
                       : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
@@ -139,7 +140,8 @@ export default function GlossaryPage() {
                 <button
                   type="button"
                   onClick={() => setMediaFilter('Video')}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition ${
+                  aria-pressed={mediaFilter === 'Video'}
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition sm:min-h-8 ${
                     mediaFilter === 'Video'
                       ? 'bg-stone-900 text-white shadow-xs'
                       : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
@@ -151,7 +153,8 @@ export default function GlossaryPage() {
                 <button
                   type="button"
                   onClick={() => setMediaFilter('Online Meeting')}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition ${
+                  aria-pressed={mediaFilter === 'Online Meeting'}
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition sm:min-h-8 ${
                     mediaFilter === 'Online Meeting'
                       ? 'bg-stone-900 text-white shadow-xs'
                       : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
@@ -162,13 +165,14 @@ export default function GlossaryPage() {
                 </button>
               </div>
 
-              <div>
+              <div className="min-w-0">
                 <input
                   type="search"
-                  placeholder="Search topic or PIC..."
+                  aria-label="Search training modules"
+                  placeholder="Search topic or leader…"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full rounded-full border border-stone-200 bg-stone-50 px-3.5 py-1.5 text-xs text-stone-800 placeholder:text-stone-400 focus:border-stone-900 focus:bg-white focus:outline-none sm:w-64"
+                  className="min-h-11 w-full rounded-full border border-stone-200 bg-stone-50 px-3.5 text-xs text-stone-800 placeholder:text-stone-500 focus:border-stone-900 focus:bg-white focus:outline-none sm:min-h-9 sm:w-64"
                 />
               </div>
             </div>
@@ -180,31 +184,32 @@ export default function GlossaryPage() {
                 const isMeeting = mod.media.toLowerCase().includes('meeting');
 
                 return (
-                  <div
+                  <button
                     key={mod.id}
+                    type="button"
                     onClick={() => setSelectedModule(mod)}
-                    className="group flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-2xl border border-stone-200 bg-white p-3 sm:px-4 sm:py-2.5 cursor-pointer hover:border-stone-300 hover:shadow-2xs transition-all"
+                    className="group flex min-h-11 w-full min-w-0 flex-col justify-between gap-2.5 rounded-2xl border border-stone-200 bg-white p-3 text-left transition-all hover:border-stone-300 hover:shadow-2xs sm:flex-row sm:items-center sm:px-4 sm:py-2.5"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <span className="flex min-w-0 items-center gap-3">
                       {/* Number Pill */}
-                      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-[11px] font-bold text-stone-600">
+                      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-600">
                         {idx + 1}
                       </span>
 
                       {/* Topic Title */}
-                      <h3 className="text-sm font-medium text-stone-900 truncate">
+                      <span className="min-w-0 truncate text-sm font-medium text-stone-900">
                         {mod.topic}
-                      </h3>
-                    </div>
+                      </span>
+                    </span>
 
-                    {/* Right side: PIC chip, Media badge, Action */}
-                    <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pl-9 sm:pl-0">
-                      <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-medium text-stone-600">
+                    {/* Right side: leader chip, Media badge, Action */}
+                    <span className="flex min-w-0 shrink-0 items-center justify-between gap-2 pl-9 sm:justify-end sm:pl-0">
+                      <span className="min-w-0 truncate rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-600">
                         {mod.pic}
                       </span>
 
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                        className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                           isVideo
                             ? 'bg-lavender-50 text-lavender-800'
                             : isMeeting
@@ -222,16 +227,16 @@ export default function GlossaryPage() {
                         <span>{mod.durationMinutes}m</span>
                       </span>
 
-                      <span className="text-xs font-semibold text-stone-500 group-hover:text-stone-900 transition pl-1">
+                      <span className="shrink-0 pl-1 text-xs font-semibold text-stone-500 transition group-hover:text-stone-900">
                         Details →
                       </span>
-                    </div>
-                  </div>
+                    </span>
+                  </button>
                 );
               })}
 
               {filteredModules.length === 0 && (
-                <p className="py-8 text-center text-xs text-stone-400">
+                <p className="py-8 text-center text-xs text-stone-500">
                   No syllabus modules match your filter.
                 </p>
               )}
@@ -253,12 +258,12 @@ export default function GlossaryPage() {
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="rounded-md bg-stone-900 px-2 py-0.5 text-[11px] font-bold text-white">
+                      <span className="rounded-md bg-stone-900 px-2 py-0.5 text-xs font-bold text-white">
                         {item.tabName}
                       </span>
                       <a
                         href={targetRoute}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-mint-700 hover:text-mint-900 transition"
+                        className="inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-mint-800 transition hover:text-mint-900 sm:min-h-0"
                       >
                         <span>Open Screen</span>
                         <IconExternalLink className="h-3.5 w-3.5" />
@@ -270,10 +275,10 @@ export default function GlossaryPage() {
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-stone-100">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block mb-1">
+                    <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-stone-500">
                       How to use
                     </span>
-                    <p className="text-[11px] text-stone-500 leading-normal">
+                    <p className="text-xs leading-normal text-stone-500">
                       {item.howToUse}
                     </p>
                   </div>

@@ -79,13 +79,13 @@ export function FloatingTimer({
     <div
       role="region"
       aria-label="Active activity stopwatch"
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3.5 rounded-full bg-stone-900/95 px-5 py-2.5 text-stone-50 shadow-2xl backdrop-blur-md border border-stone-800 animate-pop-in transition hover:bg-stone-900"
+      className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] md:bottom-6 left-1/2 -translate-x-1/2 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-2 sm:gap-3.5 rounded-full bg-stone-900/95 px-4 py-1.5 text-stone-50 sm:px-5 sm:py-2.5 shadow-2xl backdrop-blur-md border border-stone-800 animate-pop-in transition hover:bg-stone-900"
     >
       {/* Activity indicator and name */}
       <button
         type="button"
         onClick={onScrollToTimer}
-        className="flex items-center gap-2.5 text-left group min-w-0 max-w-[180px] sm:max-w-xs focus:outline-hidden"
+        className="flex min-h-11 min-w-11 items-center gap-2.5 text-left group min-w-0 max-w-[180px] sm:min-h-0 sm:min-w-0 sm:max-w-xs"
         title="Click to jump back to stopwatch card"
       >
         <span
@@ -113,7 +113,7 @@ export function FloatingTimer({
           <button
             type="button"
             onClick={onResume}
-            className="inline-flex items-center gap-1 rounded-full bg-mint-500/20 px-2.5 py-1 text-xs font-semibold text-mint-300 hover:bg-mint-500/30 transition active:scale-95"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full bg-mint-500/20 px-3 py-1 sm:min-h-0 sm:min-w-0 sm:px-2.5 text-xs font-semibold text-mint-300 hover:bg-mint-500/30 transition active:scale-95"
             title="Resume stopwatch"
           >
             <IconPlay className="h-3 w-3 fill-current" />
@@ -123,7 +123,7 @@ export function FloatingTimer({
           <button
             type="button"
             onClick={onPause}
-            className="inline-flex items-center gap-1 rounded-full bg-stone-800 px-2.5 py-1 text-xs font-semibold text-stone-300 hover:bg-stone-700 hover:text-white transition active:scale-95"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full bg-stone-800 px-3 py-1 sm:min-h-0 sm:min-w-0 sm:px-2.5 text-xs font-semibold text-stone-300 hover:bg-stone-700 hover:text-white transition active:scale-95"
             title="Pause stopwatch"
           >
             <IconPause className="h-3 w-3 fill-current" />
@@ -134,7 +134,7 @@ export function FloatingTimer({
         <button
           type="button"
           onClick={onFinish}
-          className="inline-flex items-center gap-1 rounded-full bg-mint-600 px-3 py-1 text-xs font-semibold text-white hover:bg-mint-500 transition active:scale-95 shadow-xs"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-full bg-mint-700 px-3 py-1 sm:min-h-0 sm:min-w-0 text-xs font-semibold text-white hover:bg-mint-800 transition active:scale-95 shadow-xs"
           title="Finish and log activity"
         >
           <IconStop className="h-3 w-3 fill-current" />

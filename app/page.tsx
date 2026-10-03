@@ -10,27 +10,12 @@ import { ScheduleFillModal } from '@/app/components/ScheduleFillModal';
 import { useToast } from '@/app/components/Toast';
 import { ConfirmDialog } from '@/app/components/ConfirmDialog';
 import { ActivityDetailSheet } from '@/app/components/ActivityDetailSheet';
-import { CommandPalette } from '@/app/components/CommandPalette';
 import { StopwatchCard } from '@/app/components/StopwatchCard';
 import { FloatingTimer } from '@/app/components/FloatingTimer';
 import { NotificationBell } from '@/app/components/NotificationPanel';
-import {
-  IconEdit,
-  IconSearch,
-  IconClipboard,
-  IconCheck,
-  IconLightbulb,
-  IconCalendar,
-  IconX,
-  IconTrophy,
-  IconSprout,
-  IconTree,
-  IconClock,
-  IconZap,
-  IconExternalLink,
-  IconRocket,
-  IconPause,
-} from '@/app/components/Icons';
+import { IconTrophy } from '@/app/components/Icons';
+import { TodayHeader } from '@/app/components/today/TodayHeader';
+import { TodayAgenda } from '@/app/components/today/TodayAgenda';
 import {
   calculateElapsedSeconds,
   calculateStopwatchDurationMinutes,
@@ -46,8 +31,6 @@ import {
   scheduleActivityToActivity,
   getMergedScheduleActivities,
   calculateDurationFromTimes,
-  isSameDate,
-  getTodayScheduleActivities,
   type ScheduleActivity,
 } from '@/lib/schedule-catalog';
 import { IMPORTED_SCHEDULE_STORAGE_KEY, clipboardRowForSchedule, readImportedSchedule } from '@/lib/imported-schedule';
@@ -55,30 +38,12 @@ import { ACTIVE_SESSION_STORAGE_KEY, DIARY_STORAGE_KEY, QUICK_NOTES_STORAGE_KEY,
 import { diarySyncPayload, learningDiaryEntry } from '@/lib/learning-capture';
 import { selectCurrentActivity } from '@/lib/session/activity-selection';
 import { enqueueSync, pendingSyncStorageKey, readPendingSyncs, writePendingSyncs } from '@/lib/sync-queue';
-import { formatStartedAt, getProgressLabel, mergeCompletedCount } from '@/lib/session/presentation';
+import { getProgressLabel, mergeCompletedCount } from '@/lib/session/presentation';
+import { markSynced, notifySyncChanged, isSessionSynced } from '@/lib/sync-status';
+import { formatDisplayDate, greetingFor, isSameJakartaDate, jakartaHour } from '@/lib/format-date';
+import { ONBOARDING_TOTAL_DAYS, greetingLine, nextUpcomingActivity, onboardingDayNumber } from '@/lib/today-view';
 
 const fallback: Activity[] = OFFICIAL_SCHEDULE_ACTIVITIES.map(scheduleActivityToActivity);
-
-const activityDot = (type: string) =>
-  type === 'learning' ? 'bg-lavender-300' : type === 'setup' ? 'bg-sky-300' : 'bg-peach-300';
-
-const getProgressBadge = (progress: string) => {
-  const p = progress?.toLowerCase();
-  if (p === 'done') return 'bg-mint-50 text-mint-700 border-mint-200';
-  if (p === 'in progress') return 'bg-peach-50 text-peach-700 border-peach-200';
-  if (p === 'reschedule') return 'bg-sun-50 text-sun-700 border-sun-200';
-  return 'bg-stone-50 text-stone-600 border-stone-200';
-};
-
-const getPicBadge = (pic: string) => {
-  const p = pic?.toLowerCase();
-  if (p.includes('it manager')) return 'bg-sky-50 text-sky-700 border-sky-200';
-  if (p.includes('hrd')) return 'bg-purple-50 text-purple-700 border-purple-200';
-  if (p.includes('ceo')) return 'bg-peach-50 text-peach-700 border-peach-200';
-  if (p.includes('experience')) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-  if (p.includes('md')) return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-  return 'bg-stone-50 text-stone-700 border-stone-200';
-};
 
 const seedlingStage = (percent: number) =>
   percent <= 0
@@ -89,7 +54,15 @@ const seedlingStage = (percent: number) =>
     ? { label: 'Almost there', stage: 'tree' as const }
     : { label: 'Day complete', stage: 'trophy' as const };
 
-const formatClock = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+/** Marks a confirmed save (database or sheet): status chips show "Synced HH:MM". Only call on real success. */
+function recordSheetSync() {
+  try {
+    markSynced(window.localStorage);
+  } catch {
+    /* storage unavailable */
+  }
+  notifySyncChanged();
+}
 
 export default function TodayPage() {
   const { toast } = useToast();
@@ -97,7 +70,6 @@ export default function TodayPage() {
   const [scheduleCatalog, setScheduleCatalog] = useState<ScheduleActivity[]>(() => [...OFFICIAL_SCHEDULE_ACTIVITIES]);
   const [editingScheduleItem, setEditingScheduleItem] = useState<ScheduleActivity | null>(null);
   const [detailActivity, setDetailActivity] = useState<ScheduleActivity | null>(null);
-  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [copiedRowToast, setCopiedRowToast] = useState<{ rowNumber: number; type: 'G-K' | 'Full' } | null>(null);
 
@@ -109,7 +81,9 @@ export default function TodayPage() {
   const [finishedActivityName, setFinishedActivityName] = useState<string | null>(null);
   const [historySessions, setHistorySessions] = useState<StoredSession[]>([]);
   const [sync, setSync] = useState('');
-  const [now, setNow] = useState(Date.now());
+  // Time-derived output renders only after mount (null on the server and first paint) so it can't mismatch.
+  const [now, setNow] = useState<Date | null>(null);
+  const [diaryCount, setDiaryCount] = useState(0);
   const [progress, setProgress] = useState<{ completed: number; total: number; remaining: number } | null>(null);
   const [scheduleState, setScheduleState] = useState<'demo' | 'connected' | 'error' | 'imported'>('demo');
   const [deviation, setDeviation] = useState<string | null>(null);
@@ -118,7 +92,18 @@ export default function TodayPage() {
   const [selectedActivityForLearning, setSelectedActivityForLearning] = useState<Activity | null>(null);
   const [copiedScheduleId, setCopiedScheduleId] = useState<string | null>(null);
   const [isSyncingDirectSheets, setIsSyncingDirectSheets] = useState(false);
-  const [userName, setUserName] = useState<string>('Noah');
+  const [userName, setUserName] = useState<string>('');
+
+  useEffect(() => {
+    setNow(new Date());
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    try {
+      setDiaryCount(readDiary(localStorage.getItem(DIARY_STORAGE_KEY)).length);
+    } catch {
+      /* storage unavailable */
+    }
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     fetch('/api/auth/session', { cache: 'no-store' })
@@ -136,14 +121,6 @@ export default function TodayPage() {
         }
       })
       .catch(() => undefined);
-  }, []);
-
-  useEffect(() => {
-    function handleOpenPalette() {
-      setCommandPaletteOpen(true);
-    }
-    window.addEventListener('open-command-palette', handleOpenPalette);
-    return () => window.removeEventListener('open-command-palette', handleOpenPalette);
   }, []);
 
 
@@ -235,7 +212,7 @@ export default function TodayPage() {
     completedIds.has(item.id) ||
     activities.find((a) => a.id === item.id)?.status === 'done';
 
-  const todayActivities = getTodayScheduleActivities(scheduleCatalog, new Date(now));
+  const todayActivities = now ? scheduleCatalog.filter((item) => isSameJakartaDate(item.date, now)) : [];
   const todayCompletedCount = todayActivities.filter(isScheduleItemDone).length;
   const todayTotalCount = todayActivities.length;
 
@@ -276,16 +253,11 @@ export default function TodayPage() {
       ? getProgressLabel({ completed: todayCompletedCount, inProgress: todayInProgressCount, total: todayTotalCount })
       : 'No scheduled activities for today';
 
-  const todayLabel = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(now);
-  const hour = new Date(now).getHours();
-  const greeting = hour >= 5 && hour < 12 ? 'Good morning' : hour >= 12 && hour < 18 ? 'Good afternoon' : 'Good evening';
-
-  // Calculate day of 90 (placeholder: start from September 1, 2026)
-  const startDate = new Date(2026, 8, 1);
-  const nowDate = new Date(now);
-  const dayNumber = Math.floor((nowDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-  const totalDays = 90;
-  const dayProgress = Math.min(100, Math.round((dayNumber / totalDays) * 100));
+  const todayLabel = now ? formatDisplayDate(now) : '';
+  const greeting = now ? greetingFor(jakartaHour(now)) : '';
+  // Jakarta calendar day, so "Day N" agrees with the header date on any device timezone.
+  const dayNumber = now ? onboardingDayNumber(now) : 1;
+  const totalDays = ONBOARDING_TOTAL_DAYS;
 
   const duration = startedAt && finishedAt ? Math.floor((finishedAt - startedAt) / 60000) : 0;
 
@@ -293,13 +265,16 @@ export default function TodayPage() {
   const targetActivityIndex = targetLearningActivity ? activities.findIndex(a => a.id === targetLearningActivity.id) : -1;
   const activityOrderNumber = targetActivityIndex >= 0 ? targetActivityIndex + 1 : (overallCompletedCount || 1);
 
+  // Saved with the diary entry: keeps its original device-local day/date semantics (data unchanged).
+  const contextNow = now ?? new Date();
+  const contextDayNumber = Math.floor((contextNow.getTime() - new Date(2026, 8, 1).getTime()) / (1000 * 60 * 60 * 24)) + 1;
   const learningActivityContext: LearningActivityContext | null = targetLearningActivity || finishedAt ? {
     id: targetLearningActivity?.id ?? activeActivityId ?? undefined,
     topic: targetLearningActivity?.name ?? finishedActivityName ?? 'Activity Reflection',
     pic: (targetLearningActivity as { pic?: string })?.pic ?? (targetLearningActivity?.type === 'welcome' ? 'Experience Manager' : 'IT Manager'),
-    day: `Day ${dayNumber}`,
-    date: (targetLearningActivity as { date?: string })?.date ?? new Date(now).toLocaleDateString('en-CA'),
-    week: `Week ${Math.max(1, Math.ceil(dayNumber / 7))}`,
+    day: `Day ${contextDayNumber}`,
+    date: (targetLearningActivity as { date?: string })?.date ?? contextNow.toLocaleDateString('en-CA'),
+    week: `Week ${Math.max(1, Math.ceil(contextDayNumber / 7))}`,
     activityCount: activityOrderNumber,
   } : null;
 
@@ -423,17 +398,18 @@ export default function TodayPage() {
           if (res.ok) {
             const data = await res.json();
             if (data.success) {
-              toast.success(`Row ${matchedSched.rowNumber} synchronized to Google Sheets!`);
-              setSync(`Row ${matchedSched.rowNumber} synchronized to Google Sheets`);
+              recordSheetSync();
+              toast.success('Synced to the spreadsheet.');
+              setSync('Synced to the spreadsheet');
             } else {
-              setSync(`Row ${matchedSched.rowNumber} saved locally · Google sign-in required to sync`);
+              setSync('Saved on this device · sign in with Google to sync');
             }
           } else {
-            setSync(`Row ${matchedSched.rowNumber} saved locally · Google sign-in required to sync`);
+            setSync('Saved on this device · sign in with Google to sync');
           }
         })
         .catch(() => {
-          setSync(`Row ${matchedSched.rowNumber} saved locally`);
+          setSync('Saved on this device');
         });
     }
 
@@ -447,10 +423,16 @@ export default function TodayPage() {
       }),
     }).catch(() => null);
     const payload = (await response?.json().catch(() => null)) as {
+      syncStatus?: string;
       pendingSync?: { activityId: string; actualStart: string; actualEnd: string; durationMinutes: number };
     } | null;
-    if (payload?.pendingSync)
+    if (payload?.pendingSync) {
+      // The sheet write failed and was queued: tell the status chips, but never mark it synced.
       writePendingSyncs(localStorage, enqueueSync(readPendingSyncs(localStorage.getItem(pendingSyncStorageKey())), payload.pendingSync));
+      notifySyncChanged();
+    } else if (isSessionSynced(payload)) {
+      recordSheetSync();
+    }
   }
 
   async function handleLearningSave(submission: LearningSubmission) {
@@ -471,7 +453,9 @@ export default function TodayPage() {
       ...(submission.notes ? { notes: submission.notes } : {}),
     };
     const existing = readDiary(localStorage.getItem(DIARY_STORAGE_KEY));
-    localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(appendDiary(existing, entry)));
+    const nextDiary = appendDiary(existing, entry);
+    localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(nextDiary));
+    setDiaryCount(nextDiary.length);
     const response = await fetch('/api/diary', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(diarySyncPayload(entry)) }).catch(() => null);
     setSync(response?.ok ? 'Learning saved · pending sync' : 'Not synced');
     setShowLearningCapture(false);
@@ -530,8 +514,8 @@ export default function TodayPage() {
     );
 
     const titleSnippet = updated.topic.split('\n')[0].slice(0, 30);
-    setSync(`Row ${updated.rowNumber} (${titleSnippet}...) saved & synchronized!`);
-    toast.success(`Row ${updated.rowNumber} (${titleSnippet}...) saved!`);
+    setSync(`Saved “${titleSnippet}”`);
+    toast.success(`Saved “${titleSnippet}”.`);
     setEditingScheduleItem(null);
   }
 
@@ -541,7 +525,7 @@ export default function TodayPage() {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(tsv);
         setCopiedRowToast({ rowNumber: item.rowNumber, type: 'G-K' });
-        toast.success(`Copied Row ${item.rowNumber} Cols G–K TSV! Click cell G in Sheet to paste.`);
+        toast.success('Copied for the spreadsheet. Paste it into this activity’s row.');
         setTimeout(() => setCopiedRowToast(null), 2500);
       }
     } catch {
@@ -555,7 +539,7 @@ export default function TodayPage() {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(tsv);
         setCopiedRowToast({ rowNumber: item.rowNumber, type: 'Full' });
-        toast.success(`Copied Row ${item.rowNumber} Cols A–K TSV!`);
+        toast.success('Copied the full row for the spreadsheet.');
         setTimeout(() => setCopiedRowToast(null), 2500);
       }
     } catch {
@@ -623,7 +607,8 @@ export default function TodayPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          setSync(`Row ${item.rowNumber} started · Synced to Google Sheets`);
+          recordSheetSync();
+          setSync('Started · synced to the spreadsheet');
         }
       }
     }).catch(() => undefined);
@@ -664,13 +649,14 @@ export default function TodayPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        toast.success(`Row ${item.rowNumber} synchronized to Google Sheets!`);
-        setSync(`Row ${item.rowNumber} synchronized to Google Sheets`);
+        recordSheetSync();
+        toast.success('Synced to the spreadsheet.');
+        setSync('Synced to the spreadsheet');
       } else {
-        toast.error(data.message || data.error || 'Google Sheets sync requires active Google sign-in. Use TSV copy as fallback.');
+        toast.error(data.message || data.error || 'Couldn’t sync. Sign in with Google, or copy the row from Sheet tools instead.');
       }
     } catch {
-      toast.error('Network error connecting to Google Sheets. Use TSV copy as fallback.');
+      toast.error('Couldn’t reach the spreadsheet. Copy the row from Sheet tools instead.');
     }
   }
 
@@ -709,13 +695,14 @@ export default function TodayPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        toast.success(`Row ${schedItem.rowNumber} synchronized to Google Sheets!`);
-        setSync(`Row ${schedItem.rowNumber} synchronized to Google Sheets`);
+        recordSheetSync();
+        toast.success('Synced to the spreadsheet.');
+        setSync('Synced to the spreadsheet');
       } else {
-        toast.error(data.message || data.error || 'Google Sheets sync requires active Google sign-in. Use TSV copy as fallback.');
+        toast.error(data.message || data.error || 'Couldn’t sync. Sign in with Google, or copy the row from Sheet tools instead.');
       }
     } catch {
-      toast.error('Network error connecting to Google Sheets. Use TSV copy as fallback.');
+      toast.error('Couldn’t reach the spreadsheet. Copy the row from Sheet tools instead.');
     } finally {
       setIsSyncingDirectSheets(false);
     }
@@ -734,17 +721,14 @@ export default function TodayPage() {
     localStorage.removeItem(ACTIVE_SESSION_STORAGE_KEY);
   }
 
-  const statusBar =
+  const scheduleNotice =
     scheduleState === 'imported'
-      ? { dotColor: 'bg-sky-500', label: `Imported schedule · ${activities.length} activities`, className: 'bg-sky-50 text-sky-900' }
-      : scheduleState === 'demo'
-      ? { dotColor: 'bg-sun-500', label: 'Demo data', className: 'bg-sun-50 text-sun-700' }
+      ? `Using your imported schedule · ${activities.length} activities`
       : scheduleState === 'error'
-      ? { dotColor: 'bg-peach-500', label: 'Offline · Using saved schedule', className: 'bg-peach-50 text-peach-700' }
-      : { dotColor: 'bg-mint-500', label: sync || 'Synced just now', className: 'bg-mint-50 text-mint-700' };
+      ? 'Couldn’t load the latest schedule · showing the saved one'
+      : null;
 
-  const seedling = seedlingStage(todayTotalCount > 0 ? todayProgressPercent : overallProgressPercent);
-  const diaryCount = typeof window === 'undefined' ? 0 : readDiary(localStorage.getItem(DIARY_STORAGE_KEY)).length;
+  const seedling = seedlingStage(todayProgressPercent);
   const allDone = todayTotalCount > 0 && todayCompletedCount === todayTotalCount && !startedAt;
   const sessionToday = historySessions.length > 0 ? historySessions[historySessions.length - 1] : null;
   const durationHours = Math.floor(duration / 60);
@@ -753,7 +737,7 @@ export default function TodayPage() {
   const headline = allDone
     ? 'That’s everything for today.'
     : todayTotalCount === 0
-    ? 'No activities scheduled for today.'
+    ? 'Nothing scheduled today.'
     : todayCompletedCount === 0
     ? 'Your day is still unwritten.'
     : todayProgressPercent >= 50
@@ -766,22 +750,30 @@ export default function TodayPage() {
 
   const displayAgendaActivities = todayActivities.length > 0 ? todayActivities : upcomingFallbackActivities;
   const isUsingFallbackAgenda = todayActivities.length === 0 && upcomingFallbackActivities.length > 0;
+  const nextActivity = now && todayTotalCount === 0 ? nextUpcomingActivity(scheduleCatalog, now, isScheduleItemDone) : null;
+
+  function handleFocusAgendaItem(item: ScheduleActivity) {
+    const matchedAct = activities.find((a) => a.id === item.id) || scheduleActivityToActivity(item);
+    setActiveActivityId(matchedAct.id);
+    if (!activities.some((a) => a.id === matchedAct.id)) {
+      setActivities((prev) => [...prev, matchedAct]);
+    }
+    toast.info(`Switched focus to: ${item.topic.split('\n')[0].slice(0, 30)}...`);
+  }
 
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
       {/* Notification panel — receives all summary data; bell trigger is in AppShell */}
       <NotificationBell
         summary={{
-          syncLabel: statusBar.label,
-          syncDotColor: statusBar.dotColor,
-          syncClassName: statusBar.className,
+          scheduleNotice,
           dateLabel: todayLabel,
           dayNumber,
           totalDays,
           overallCompleted: overallCompletedCount,
           overallTotal: overallTotalCount,
           overallPercent: overallProgressPercent,
-          greeting,
+          greeting: greetingLine(greeting, userName),
           headline,
           todayCompleted: todayCompletedCount,
           todayTotal: todayTotalCount,
@@ -792,34 +784,21 @@ export default function TodayPage() {
         }}
       />
 
-      {/* Slim header — date + greeting only */}
-      <header data-tour="progress-header" className="animate-fade-up mb-8">
-        <p className="text-sm font-medium text-stone-400">{todayLabel} · Day {Math.min(dayNumber, totalDays)} of {totalDays}</p>
-        <h1 className="mt-1 text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">{greeting}, {userName}</h1>
-        <p className="mt-2 text-lg text-stone-500">{headline}</p>
-
-        {/* Today progress inline — compact */}
-        <div className="mt-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-          <div className="flex items-baseline gap-2">
-            <span className="text-5xl font-semibold tracking-tight text-stone-900">{todayCompletedCount}</span>
-            <span className="text-lg font-medium text-stone-400">of {todayTotalCount} today</span>
-          </div>
-          <p className="flex items-center text-sm text-stone-500">
-            {seedling.stage === 'trophy' ? (
-              <IconTrophy className="mr-1.5 h-4 w-4 text-sun-500 shrink-0" />
-            ) : seedling.stage === 'tree' ? (
-              <IconTree className="mr-1.5 h-4 w-4 text-emerald-600 shrink-0" />
-            ) : (
-              <IconSprout className="mr-1.5 h-4 w-4 text-mint-600 shrink-0" />
-            )}
-            {seedling.label}
-          </p>
-        </div>
-        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-stone-200" aria-label={`${todayProgressPercent}% of today's activities complete`}>
-          <div className="bar-gradient progress-shimmer h-full rounded-full transition-all" style={{ width: `${todayProgressPercent}%` }} />
-        </div>
-        <p className="mt-2 text-sm text-stone-400">{todayProgressLabel}</p>
-      </header>
+      <TodayHeader
+        ready={now !== null}
+        dateLabel={todayLabel}
+        greeting={greeting}
+        userName={userName}
+        headline={headline}
+        dayNumber={dayNumber}
+        totalDays={totalDays}
+        todayCompleted={todayCompletedCount}
+        todayTotal={todayTotalCount}
+        todayPercent={todayProgressPercent}
+        progressLabel={todayProgressLabel}
+        seedling={seedling}
+        nextActivity={nextActivity}
+      />
 
       {allDone ? (
         /* Day wrapped up */
@@ -943,149 +922,16 @@ export default function TodayPage() {
         </>
       )}
 
-      {/* Today's Agenda (Now & Next) */}
-      <section data-tour="day-timeline" className="animate-fade-up stagger-2 mt-10">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-3">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-xl font-bold tracking-tight text-stone-900 sm:text-2xl">
-                {isUsingFallbackAgenda ? 'Up Next in Your Journey' : "Today's Agenda"}
-              </h2>
-              <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-stone-700">
-                {displayAgendaActivities.length} {displayAgendaActivities.length === 1 ? 'task' : 'tasks'}
-              </span>
-            </div>
-            <p className="text-xs text-stone-500 mt-0.5">
-              {isUsingFallbackAgenda
-                ? 'No activities scheduled for today’s exact calendar date. Showing upcoming onboarding milestones:'
-                : 'Your scheduled activities for today · Click any item to view details or sync'}
-            </p>
-          </div>
-
-          <a
-            href="/schedule"
-            className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 transition active:scale-95"
-          >
-            <span>View Master Schedule (59) →</span>
-          </a>
-        </div>
-
-        {displayAgendaActivities.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-stone-200 p-8 text-center text-stone-500">
-            <p className="text-sm font-medium">All onboarding activities have been completed! 🎉</p>
-            <a
-              href="/schedule"
-              className="mt-2 inline-block text-xs font-semibold text-mint-700 underline underline-offset-4"
-            >
-              Browse all activities in Master Schedule →
-            </a>
-          </div>
-        ) : (
-          <div className="space-y-2.5">
-            {displayAgendaActivities.map((item) => {
-              const isDone = isScheduleItemDone(item);
-              const isCurrentActive = currentActivity?.id === item.id;
-              const timeDisplay =
-                item.startTime && item.endTime
-                  ? `${item.startTime} - ${item.endTime}`
-                  : item.durationMinutes
-                  ? `${item.durationMinutes}m`
-                  : 'Flexible';
-
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => setDetailActivity(item)}
-                  className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border p-3.5 sm:px-4 sm:py-3 cursor-pointer transition-all ${
-                    isCurrentActive
-                      ? 'border-peach-300 bg-peach-50/60 shadow-2xs'
-                      : isDone
-                      ? 'border-stone-100 bg-white/70 hover:border-stone-200 hover:bg-white'
-                      : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-2xs'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    {/* Status indicator */}
-                    <span
-                      className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                        isDone
-                          ? 'bg-mint-100 text-mint-700'
-                          : isCurrentActive
-                          ? 'bg-peach-100 text-peach-700 animate-pulse'
-                          : 'bg-stone-100 text-stone-400'
-                      }`}
-                    >
-                      {isDone ? (
-                        <IconCheck className="h-3.5 w-3.5" />
-                      ) : isCurrentActive ? (
-                        <span className="size-2 rounded-full bg-peach-600" />
-                      ) : (
-                        <span className="size-1.5 rounded-full bg-stone-300" />
-                      )}
-                    </span>
-
-                    {/* Row & Time window */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[11px] font-bold text-stone-700">
-                        Row {item.rowNumber}
-                      </span>
-                      <span className="text-xs font-medium text-stone-500">
-                        {timeDisplay}
-                      </span>
-                    </div>
-
-                    {/* Topic Title */}
-                    <h3 className="text-sm font-medium text-stone-900 truncate">
-                      {item.topic.split('\n')[0]}
-                    </h3>
-                  </div>
-
-                  {/* Right side: PIC chip + Action */}
-                  <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pl-9 sm:pl-0">
-                    <span
-                      className={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${getPicBadge(
-                        item.pic
-                      )}`}
-                    >
-                      {item.pic}
-                    </span>
-
-                    {isDone ? (
-                      <span className="text-xs font-semibold text-mint-700 px-2 py-0.5">
-                        Done ✓
-                      </span>
-                    ) : isCurrentActive ? (
-                      <span className="rounded-full bg-peach-100 px-2.5 py-1 text-xs font-semibold text-peach-800">
-                        Active Focus
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const matchedAct =
-                            activities.find((a) => a.id === item.id) ||
-                            scheduleActivityToActivity(item);
-                          setActiveActivityId(matchedAct.id);
-                          if (!activities.some((a) => a.id === matchedAct.id)) {
-                            setActivities((prev) => [...prev, matchedAct]);
-                          }
-                          toast.info(
-                            `Switched focus to: ${item.topic.split('\n')[0].slice(0, 30)}...`
-                          );
-                        }}
-                        className="rounded-full bg-stone-100 hover:bg-stone-200 px-3 py-1 text-xs font-medium text-stone-700 transition active:scale-95"
-                      >
-                        Focus / Start
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
+      <TodayAgenda
+        ready={now !== null}
+        items={displayAgendaActivities}
+        isFallback={isUsingFallbackAgenda}
+        catalogCount={scheduleCatalog.length}
+        isDone={isScheduleItemDone}
+        currentActivityId={currentActivity?.id ?? null}
+        onOpen={setDetailActivity}
+        onFocus={handleFocusAgendaItem}
+      />
 
       {/* Quick Note */}
       <QuickNote
@@ -1124,12 +970,6 @@ export default function TodayPage() {
           setShowLearningCapture(true);
         }}
         copiedToast={copiedRowToast}
-      />
-
-      <CommandPalette
-        isOpen={commandPaletteOpen}
-        onClose={() => setCommandPaletteOpen(false)}
-        onSelectActivity={(act) => setDetailActivity(act)}
       />
 
       <ConfirmDialog

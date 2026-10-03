@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { IconSparkles, IconX } from './Icons';
+import { useModalPresence } from './useModalPresence';
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
@@ -19,17 +20,15 @@ export function Assistant() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-
-  if (pathname === '/login') {
-    return null;
-  }
-
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
   const [notice, setNotice] = useState('');
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  // Another modal dialog (sheet, confirm, palette, drawer…) is open: step out of its way.
+  const otherDialogOpen = useModalPresence();
+  const hidden = pathname === '/login' || otherDialogOpen;
 
   useEffect(() => {
     if (!open) return;
@@ -49,13 +48,13 @@ export function Assistant() {
   }, [messages, sending]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || hidden) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open]);
+  }, [open, hidden]);
 
   async function send() {
     const content = input.trim();
@@ -85,6 +84,8 @@ export function Assistant() {
     setMessages(current => [...current, { role: 'assistant', content: value.reply.slice(0, 4000) }]);
   }
 
+  if (hidden) return null;
+
   return (
     <>
       {!open && (
@@ -93,7 +94,7 @@ export function Assistant() {
           aria-label="Ask NOVA"
           data-tour="assistant-launcher"
           onClick={() => setOpen(true)}
-          className="hero-gradient animate-float fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-xl transition hover:shadow-2xl active:scale-95"
+          className="hero-gradient animate-float fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] md:bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-xl transition hover:shadow-2xl active:scale-95"
         >
           <IconSparkles className="h-6 w-6 text-lavender-300" />
         </button>
@@ -102,7 +103,8 @@ export function Assistant() {
         <section
           role="dialog"
           aria-label="NOVA assistant"
-          className="animate-pop-in fixed bottom-5 right-5 z-50 flex h-[28rem] w-[min(24rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-card bg-white shadow-lift"
+          data-assistant=""
+          className="animate-pop-in fixed bottom-[calc(1.25rem+env(safe-area-inset-bottom))] md:bottom-5 right-5 z-50 flex h-[28rem] w-[min(24rem,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-card bg-white shadow-lift"
         >
           <header className="hero-gradient flex items-center justify-between px-4 py-3 text-white">
             <div>
@@ -113,7 +115,7 @@ export function Assistant() {
               type="button"
               aria-label="Close assistant"
               onClick={() => setOpen(false)}
-              className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-stone-300 transition hover:bg-white/10 hover:text-white"
+              className="inline-flex items-center justify-center size-11 sm:size-8 rounded-lg text-stone-300 transition hover:bg-white/10 hover:text-white"
             >
               <IconX className="h-4 w-4" />
             </button>

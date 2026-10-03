@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import {
   FEEDBACK_DIMENSIONS,
   formatFeedbackDate,
+  isRatingComplete,
   normalizeQuestionAddressing,
   type FeedbackEntry,
   type FeedbackRatingDimension,
@@ -12,16 +13,20 @@ import {
   type LikertScore,
   type QuestionAddressingOption,
 } from '@/lib/feedback';
-import {
-  IconCalendar,
-  IconCheck,
-  IconClipboard,
-  IconEdit,
-  IconLightbulb,
-  IconRocket,
-  IconUser,
-  IconX,
-} from './Icons';
+import { markSynced, notifySyncChanged } from '@/lib/sync-status';
+import { RowTag } from './RowTag';
+import { SheetToolsMenu, type SheetToolsMenuItem } from './SheetToolsMenu';
+import { shouldSheetCloseOnEscape } from './sheetEscape';
+import { useRestoreFocus } from './useRestoreFocus';
+import { IconCalendar, IconCheck, IconEdit, IconLightbulb, IconUser, IconX } from './Icons';
+
+function safeLocalStorage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
 
 export interface FeedbackDetailSheetProps {
   readonly session: FeedbackSession | null;
@@ -78,20 +83,6 @@ const ADDRESSING_CHOICES: AddressingChoiceConfig[] = [
   },
 ];
 
-export function isRatingComplete(ratings: Partial<FeedbackRatings>): ratings is FeedbackRatings {
-  const dims: FeedbackRatingDimension[] = [
-    'communication',
-    'alignment',
-    'understanding',
-    'readiness',
-    'pace',
-    'overall',
-  ];
-  return dims.every(
-    (d) => typeof ratings[d] === 'number' && ratings[d]! >= 1 && ratings[d]! <= 6
-  );
-}
-
 export function FeedbackDetailSheet({
   session,
   existingEntry,
@@ -121,6 +112,14 @@ export function FeedbackDetailSheet({
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState<boolean>(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const dateId = useId();
+  const ratingsHeadingId = useId();
+  const questionsLabelId = useId();
+  const explanationId = useId();
+  const addressingLabelId = useId();
+  const suggestionsId = useId();
+  useRestoreFocus(isOpen && Boolean(session), closeRef);
 
   // Sync state whenever session or existingEntry changes
   useEffect(() => {
@@ -155,18 +154,19 @@ export function FeedbackDetailSheet({
   // Handle escape key
   useEffect(() => {
     if (!isOpen) return;
+    // Capture phase: runs before the Sheet tools menu's own handler, while the menu is still marked open,
+    // so an Escape meant for an open menu (even with focus on its trigger) closes only the menu.
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
+      if (!shouldSheetCloseOnEscape(e)) return;
+      e.preventDefault();
+      onClose();
     };
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown, true);
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     return () => {
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown, true);
       document.body.style.overflow = originalOverflow;
     };
   }, [isOpen, onClose]);
@@ -183,7 +183,7 @@ export function FeedbackDetailSheet({
   const handleSyncToSheets = async (entryToSync?: FeedbackEntry) => {
     const targetEntry = entryToSync || existingEntry;
     if (!targetEntry && !isRatingComplete(ratings)) {
-      setValidationError('Please complete all 6 ratings before syncing to Google Sheets.');
+      setValidationError('Rate all 6 dimensions before syncing.');
       return;
     }
 
@@ -231,15 +231,19 @@ export function FeedbackDetailSheet({
       if (res.status === 401 || data?.authenticated === false) {
         setNeedsAuth(true);
         setSyncError(
-          'Google OAuth sign-in is required to sync directly to your spreadsheet. Please sign in or use "Copy TSV Row" below.'
+          'Your evaluation is saved here. Sign in with Google to sync it to the sheet, or copy it from Sheet tools instead.'
         );
       } else if (res.ok && data?.success) {
-        setSyncMessage(`Row ${session.rowNumber} successfully synced to Google Sheets!`);
+        markSynced(safeLocalStorage());
+        notifySyncChanged();
+        setSyncMessage('Synced to the sheet.');
       } else {
-        setSyncError(data?.error || data?.message || 'Failed to sync to Google Sheets.');
+        setSyncError(
+          `${data?.error || data?.message || "Couldn't sync this evaluation."} Your evaluation is saved here; you can copy it from Sheet tools instead.`
+        );
       }
-    } catch (err: unknown) {
-      setSyncError(err instanceof Error ? err.message : 'Network error while syncing to Google Sheets.');
+    } catch {
+      setSyncError("Couldn't reach the server to sync. Your evaluation is saved here; you can copy it from Sheet tools instead.");
     } finally {
       setSyncing(false);
     }
@@ -247,7 +251,7 @@ export function FeedbackDetailSheet({
 
   const handleSave = () => {
     if (!isRatingComplete(ratings)) {
-      setValidationError('Please rate all 6 dimensions (1 to 6) before saving.');
+      setValidationError('Rate all 6 dimensions (1 to 6) before saving.');
       return;
     }
 
@@ -290,6 +294,39 @@ export function FeedbackDetailSheet({
       ).toFixed(1)
     : null;
 
+  const sheetItems: SheetToolsMenuItem[] = isEvaluated
+    ? [
+        {
+          id: 'sync-session',
+          label: 'Sync this evaluation to the sheet',
+          hint: `Writes columns A–M of row ${session.rowNumber}`,
+          onSelect: () => handleSyncToSheets(),
+          state: syncing ? 'busy' : 'idle',
+        },
+        ...(onCopyRow
+          ? [
+              {
+                id: 'copy-session',
+                label: 'Copy for the sheet',
+                hint: `Columns A–M · paste at A${session.rowNumber}`,
+                onSelect: () => onCopyRow(existingEntry!),
+                state: isCopied ? ('done' as const) : ('idle' as const),
+                doneLabel: 'Copied',
+              },
+            ]
+          : []),
+      ]
+    : [];
+
+  const iconButton =
+    'inline-flex size-11 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 disabled:opacity-30 sm:size-9';
+  const sectionTitle = 'text-[11px] font-semibold uppercase tracking-wider text-stone-500';
+  const fieldLabel = 'block text-[11px] font-semibold uppercase tracking-wider text-stone-600';
+  const primaryButton =
+    'inline-flex min-h-11 items-center gap-1.5 rounded-full bg-stone-900 px-5 text-xs font-semibold text-white shadow-xs transition hover:bg-stone-800 active:scale-95 disabled:opacity-60 sm:min-h-9';
+  const secondaryButton =
+    'inline-flex min-h-11 items-center rounded-full border border-stone-200 bg-white px-4 text-xs font-semibold text-stone-700 transition hover:bg-stone-100 active:scale-95 sm:min-h-9';
+
   return (
     <div
       role="dialog"
@@ -312,27 +349,25 @@ export function FeedbackDetailSheet({
             sm:max-w-xl sm:h-full sm:rounded-l-3xl animate-fade-in"
         >
           {/* Mobile Handle Indicator */}
-          <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-stone-200 sm:hidden" />
+          <div className="mx-auto mt-3 h-1.5 w-12 shrink-0 rounded-full bg-stone-200 sm:hidden" />
 
           {/* Header */}
-          <div className="flex items-start justify-between border-b border-stone-100 p-5 sm:p-6">
-            <div className="space-y-1.5 pr-3">
+          <div className="flex shrink-0 items-start justify-between gap-2 border-b border-stone-100 p-5 sm:p-6">
+            <div className="min-w-0 space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-md bg-stone-900 px-2 py-0.5 text-[11px] font-bold text-white tracking-wide">
-                  Row {session.rowNumber}
-                </span>
+                <RowTag rowNumber={session.rowNumber} />
                 {session.department && (
-                  <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-medium text-stone-600">
+                  <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-600">
                     {session.department}
                   </span>
                 )}
                 {isEvaluated ? (
-                  <span className="rounded-full bg-mint-50 px-2 py-0.5 text-[11px] font-semibold text-mint-700 border border-mint-200">
+                  <span className="rounded-full border border-mint-200 bg-mint-50 px-2 py-0.5 text-xs font-semibold text-mint-800">
                     Evaluated · Avg {averageScore}/6
                   </span>
                 ) : (
-                  <span className="rounded-full bg-peach-50 px-2 py-0.5 text-[11px] font-semibold text-peach-700 border border-peach-200">
-                    Pending Evaluation
+                  <span className="rounded-full border border-peach-200 bg-peach-50 px-2 py-0.5 text-xs font-semibold text-peach-800">
+                    Not evaluated yet
                   </span>
                 )}
               </div>
@@ -342,15 +377,15 @@ export function FeedbackDetailSheet({
               >
                 {session.title}
               </h2>
-              <div className="flex items-center gap-3 text-xs text-stone-500">
-                <span className="flex items-center gap-1">
-                  <IconUser className="h-3.5 w-3.5 text-stone-400" />
-                  PIC: <strong className="text-stone-700">{session.pic}</strong>
+              <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-stone-500">
+                <span className="flex min-w-0 items-center gap-1">
+                  <IconUser className="h-3.5 w-3.5 shrink-0 text-stone-500" />
+                  Led by <strong className="truncate text-stone-700">{session.pic}</strong>
                 </span>
                 {existingEntry?.date && (
                   <span className="flex items-center gap-1">
-                    <IconCalendar className="h-3.5 w-3.5 text-stone-400" />
-                    Date: <strong className="text-stone-700">{existingEntry.date}</strong>
+                    <IconCalendar className="h-3.5 w-3.5 shrink-0 text-stone-500" />
+                    Evaluated on <strong className="text-stone-700">{existingEntry.date}</strong>
                   </span>
                 )}
               </div>
@@ -363,11 +398,11 @@ export function FeedbackDetailSheet({
                   type="button"
                   disabled={!hasPrev}
                   onClick={onPrevSession}
-                  className="rounded-full p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900 disabled:opacity-30 transition"
+                  className={iconButton}
                   title="Previous session"
                   aria-label="Previous session"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
@@ -377,49 +412,50 @@ export function FeedbackDetailSheet({
                   type="button"
                   disabled={!hasNext}
                   onClick={onNextSession}
-                  className="rounded-full p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900 disabled:opacity-30 transition"
+                  className={iconButton}
                   title="Next session"
                   aria-label="Next session"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
               )}
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-full p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition ml-1"
-                aria-label="Close sheet"
-              >
+              <button ref={closeRef} type="button" onClick={onClose} className={iconButton} aria-label="Close">
                 <IconX className="h-5 w-5" />
               </button>
             </div>
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
+          {/* Focusable so keyboard users can scroll it even when it holds no controls (view mode). */}
+          <div
+            role="region"
+            aria-label="Evaluation details"
+            tabIndex={0}
+            className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6 space-y-6 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-stone-900"
+          >
             {/* Sync Status Banners */}
             {syncMessage && (
-              <div className="flex items-center gap-2 rounded-xl border border-mint-200 bg-mint-50 p-3 text-xs text-mint-900 font-medium animate-fade-in">
-                <IconCheck className="h-4 w-4 text-mint-600 shrink-0" />
+              <div role="status" className="flex items-center gap-2 rounded-xl border border-mint-200 bg-mint-50 p-3 text-xs font-medium text-mint-900 animate-fade-in">
+                <IconCheck className="h-4 w-4 shrink-0 text-mint-700" />
                 <span>{syncMessage}</span>
               </div>
             )}
             {syncError && (
-              <div className="rounded-xl border border-peach-200 bg-peach-50 p-3 text-xs text-peach-900 font-medium space-y-2 animate-fade-in">
+              <div role="alert" className="space-y-2 rounded-xl border border-peach-200 bg-peach-50 p-3 text-xs font-medium text-peach-900 animate-fade-in">
                 <p>{syncError}</p>
                 {needsAuth && (
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <a
                       href="/api/auth/login"
-                      className="inline-flex items-center gap-1 rounded-md bg-stone-900 px-2.5 py-1 text-[11px] font-semibold text-white hover:bg-stone-800 transition"
+                      className="inline-flex min-h-11 items-center gap-1 rounded-full bg-stone-900 px-4 text-xs font-semibold text-white transition hover:bg-stone-800 sm:min-h-9"
                     >
                       Sign in with Google
                     </a>
                     <a
                       href="/settings"
-                      className="text-[11px] font-medium text-stone-600 underline hover:text-stone-900"
+                      className="inline-flex min-h-11 items-center px-2 text-xs font-medium text-stone-700 underline hover:text-stone-900 sm:min-h-9"
                     >
                       Open Settings
                     </a>
@@ -431,12 +467,10 @@ export function FeedbackDetailSheet({
               /* VIEW MODE */
               <>
                 {/* 6 Dimensions Breakdown */}
-                <div className="rounded-2xl border border-stone-100 bg-white p-4 shadow-2xs space-y-3">
-                  <div className="flex items-center justify-between border-b border-stone-100 pb-2.5">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                      Ratings Breakdown (Cols D–I)
-                    </h3>
-                    <span className="text-xs font-bold text-mint-700 bg-mint-50 px-2 py-0.5 rounded-md">
+                <section className="rounded-2xl border border-stone-100 bg-white p-4 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between gap-2 border-b border-stone-100 pb-2.5">
+                    <h3 className={sectionTitle}>Ratings</h3>
+                    <span className="rounded-md bg-mint-50 px-2 py-0.5 text-xs font-bold text-mint-800">
                       Score: {averageScore} / 6.0
                     </span>
                   </div>
@@ -449,15 +483,13 @@ export function FeedbackDetailSheet({
 
                       return (
                         <div key={dim.key} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-stone-700 font-medium">
-                              Col {dim.columnLetter}: {dim.shortLabel}
-                            </span>
-                            <span className="font-bold text-stone-900">
-                              {score}/6 · <span className="text-stone-500 font-normal">{opt?.short}</span>
+                          <div className="flex items-center justify-between gap-2 text-xs">
+                            <span className="min-w-0 font-medium text-stone-700">{dim.shortLabel}</span>
+                            <span className="shrink-0 font-bold text-stone-900">
+                              {score}/6 · <span className="font-normal text-stone-500">{opt?.short}</span>
                             </span>
                           </div>
-                          <div className="h-2 w-full rounded-full bg-stone-100 overflow-hidden">
+                          <div className="h-2 w-full overflow-hidden rounded-full bg-stone-100" aria-hidden="true">
                             <div
                               className="h-full rounded-full bg-mint-500 transition-all duration-300"
                               style={{ width: `${pct}%` }}
@@ -467,54 +499,42 @@ export function FeedbackDetailSheet({
                       );
                     })}
                   </div>
-                </div>
+                </section>
 
-                {/* Qualitative Responses (Cols J–M) */}
-                <div className="space-y-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                    Qualitative Notes &amp; Follow-ups (Cols J–M)
-                  </h3>
+                {/* Questions & suggestions */}
+                <section className="space-y-3">
+                  <h3 className={sectionTitle}>Questions and suggestions</h3>
 
-                  {/* Has Questions & Explanation (Cols J & K) */}
                   <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-stone-600">
-                        Questions on Topic (Col J)
-                      </span>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-stone-600">Questions about the topic</span>
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                          existingEntry.hasQuestions
-                            ? 'bg-peach-100 text-peach-800'
-                            : 'bg-mint-100 text-mint-800'
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          existingEntry.hasQuestions ? 'bg-peach-100 text-peach-800' : 'bg-mint-100 text-mint-800'
                         }`}
                       >
-                        {existingEntry.hasQuestions ? 'YES · Had questions' : 'NO · Clear'}
+                        {existingEntry.hasQuestions ? 'Yes · Had questions' : 'No · All clear'}
                       </span>
                     </div>
 
                     {existingEntry.questionExplanation ? (
                       <div>
-                        <span className="text-[11px] font-medium text-stone-400 block mb-1">
-                          Explanation (Col K)
-                        </span>
-                        <p className="text-xs text-stone-800 whitespace-pre-wrap bg-white p-3 rounded-xl border border-stone-100">
+                        <span className="mb-1 block text-xs font-medium text-stone-500">Explanation</span>
+                        <p className="whitespace-pre-wrap rounded-xl border border-stone-100 bg-white p-3 text-xs text-stone-800">
                           {existingEntry.questionExplanation}
                         </p>
                       </div>
                     ) : null}
                   </div>
 
-                  {/* Question Addressing (Col L) */}
                   <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4 space-y-1.5">
-                    <span className="text-xs font-semibold text-stone-600 block">
-                      Addressing Preference (Col L)
-                    </span>
+                    <span className="block text-xs font-semibold text-stone-600">How you’d like questions answered</span>
                     {(() => {
                       const val = normalizeQuestionAddressing(existingEntry.questionAddressing);
                       const match = ADDRESSING_CHOICES.find((c) => c.value === val);
                       return match ? (
                         <span
-                          className={`inline-block rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${match.badgeBg} ${match.badgeText} ${match.badgeBorder}`}
+                          className={`inline-block rounded-full border px-2.5 py-0.5 text-xs font-semibold ${match.badgeBg} ${match.badgeText} ${match.badgeBorder}`}
                         >
                           {match.label}
                         </span>
@@ -524,83 +544,82 @@ export function FeedbackDetailSheet({
                     })()}
                   </div>
 
-                  {/* Suggestions (Col M) */}
                   {existingEntry.suggestions && (
                     <div className="rounded-2xl border border-stone-100 bg-stone-50/70 p-4">
-                      <span className="text-xs font-semibold text-stone-600 block mb-1">
-                        Suggestions &amp; Feedback for Improvement (Col M)
-                      </span>
-                      <p className="text-xs text-stone-800 whitespace-pre-wrap">
-                        {existingEntry.suggestions}
-                      </p>
+                      <span className="mb-1 block text-xs font-semibold text-stone-600">Suggestions for improvement</span>
+                      <p className="whitespace-pre-wrap text-xs text-stone-800">{existingEntry.suggestions}</p>
                     </div>
                   )}
-                </div>
+                </section>
               </>
             ) : (
               /* EDIT MODE */
               <div className="space-y-6">
                 {validationError && (
-                  <div className="rounded-xl border border-peach-200 bg-peach-50 p-3 text-xs text-peach-900 font-medium">
+                  <div role="alert" className="rounded-xl border border-peach-200 bg-peach-50 p-3 text-xs font-medium text-peach-900">
                     {validationError}
                   </div>
                 )}
 
                 {/* Evaluation Date */}
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                    Evaluation Date
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label htmlFor={dateId} className={fieldLabel}>
+                    Evaluation date
                   </label>
                   <input
+                    id={dateId}
                     type="text"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     placeholder="DD/MM/YYYY"
-                    className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-1 text-xs text-stone-800 focus:border-stone-900 focus:bg-white focus:outline-none"
+                    className="min-h-11 rounded-xl border border-stone-200 bg-stone-50 px-3 text-xs text-stone-800 placeholder:text-stone-500 focus:border-stone-900 focus:bg-white focus:outline-none sm:min-h-9"
                   />
                 </div>
 
                 {/* Rating dimensions */}
-                <div className="space-y-4">
-                  <div className="border-b border-stone-100 pb-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500">
-                      Rate Session Dimensions (1 to 6)
-                    </h3>
-                    <p className="text-xs text-stone-500 mt-0.5">
-                      Columns D through I of the Feedback Sheet
-                    </p>
-                  </div>
+                <section aria-labelledby={ratingsHeadingId} className="space-y-4">
+                  <h3 id={ratingsHeadingId} className={`border-b border-stone-100 pb-2 ${sectionTitle}`}>
+                    Rate each dimension (1 to 6)
+                  </h3>
 
                   {FEEDBACK_DIMENSIONS.map((dim) => {
                     const currentScore = ratings[dim.key];
+                    const dimLabelId = `${ratingsHeadingId}-${dim.key}`;
                     return (
-                      <div key={dim.key} className="rounded-2xl border border-stone-100 bg-stone-50/50 p-3.5 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-stone-800">
-                            Col {dim.columnLetter}: {dim.shortLabel}
+                      <div
+                        key={dim.key}
+                        role="group"
+                        aria-labelledby={dimLabelId}
+                        className="rounded-2xl border border-stone-100 bg-stone-50/50 p-3.5 space-y-2"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span id={dimLabelId} className="min-w-0 text-xs font-semibold text-stone-800">
+                            {dim.shortLabel}
                           </span>
-                          <span className="text-xs font-bold text-mint-700">
+                          <span className="shrink-0 text-xs font-bold text-mint-800">
                             {currentScore ? `${currentScore} / 6` : 'Not rated'}
                           </span>
                         </div>
-                        <p className="text-[11px] text-stone-500">{dim.statement}</p>
+                        <p className="text-xs text-stone-600">{dim.statement}</p>
 
-                        <div className="grid grid-cols-6 gap-1.5 pt-1">
+                        <div className="grid grid-cols-3 gap-1.5 pt-1 sm:grid-cols-6">
                           {LIKERT_OPTIONS.map((opt) => {
                             const isSelected = currentScore === opt.score;
                             return (
                               <button
                                 key={opt.score}
                                 type="button"
+                                aria-pressed={isSelected}
+                                aria-label={`${opt.score}, ${opt.short}`}
                                 onClick={() => handleScoreChange(dim.key, opt.score)}
-                                className={`flex flex-col items-center justify-center rounded-xl py-1.5 px-1 text-center transition ${
+                                className={`flex min-h-11 min-w-0 flex-col items-center justify-center rounded-xl px-1 py-1 text-center transition ${
                                   isSelected
-                                    ? 'bg-mint-700 text-white shadow-xs font-bold'
-                                    : 'bg-white border border-stone-200 text-stone-700 hover:bg-stone-100'
+                                    ? 'bg-stone-900 font-bold text-white shadow-xs'
+                                    : 'border border-stone-200 bg-white text-stone-700 hover:bg-stone-100'
                                 }`}
                               >
                                 <span className="text-xs">{opt.score}</span>
-                                <span className="text-[9px] truncate max-w-full opacity-80">{opt.short}</span>
+                                <span className="max-w-full truncate text-xs">{opt.short}</span>
                               </button>
                             );
                           })}
@@ -608,65 +627,68 @@ export function FeedbackDetailSheet({
                       </div>
                     );
                   })}
-                </div>
+                </section>
 
-                {/* Q1: Do you have questions? (Col J) */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-stone-500 block">
-                    Do you have any questions about today's topic? (Col J)
-                  </label>
+                {/* Q1: Do you have questions? */}
+                <div role="group" aria-labelledby={questionsLabelId} className="space-y-2">
+                  <span id={questionsLabelId} className={fieldLabel}>
+                    Do you have any questions about today&apos;s topic?
+                  </span>
                   <div className="flex gap-2">
                     <button
                       type="button"
+                      aria-pressed={!hasQuestions}
                       onClick={() => {
                         setHasQuestions(false);
                         setQuestionAddressing("I don't have any questions today");
                       }}
-                      className={`flex-1 rounded-xl p-2.5 text-xs font-semibold transition border ${
+                      className={`min-h-11 flex-1 rounded-xl border p-2.5 text-xs font-semibold transition ${
                         !hasQuestions
                           ? 'border-mint-500 bg-mint-50 text-mint-900 shadow-2xs'
                           : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
                       }`}
                     >
-                      NO · Everything clear
+                      No · Everything clear
                     </button>
                     <button
                       type="button"
+                      aria-pressed={hasQuestions}
                       onClick={() => {
                         setHasQuestions(true);
                         setQuestionAddressing('Chat response is fine');
                       }}
-                      className={`flex-1 rounded-xl p-2.5 text-xs font-semibold transition border inline-flex items-center justify-center gap-1.5 ${
+                      className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border p-2.5 text-xs font-semibold transition ${
                         hasQuestions
                           ? 'border-peach-500 bg-peach-50 text-peach-900 shadow-2xs'
                           : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
                       }`}
                     >
                       <IconLightbulb className="h-3.5 w-3.5 text-peach-700" />
-                      <span>YES · Have questions</span>
+                      <span>Yes · I have questions</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Q2: Explanation (Col K) */}
+                {/* Q2: Explanation */}
                 <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-stone-500 block mb-1">
-                    Please explain your answer / questions (Col K)
+                  <label htmlFor={explanationId} className={`${fieldLabel} mb-1`}>
+                    Explain your answer or questions
                   </label>
                   <textarea
+                    id={explanationId}
                     rows={2}
                     value={questionExplanation}
                     onChange={(e) => setQuestionExplanation(e.target.value)}
-                    placeholder="Details or questions on the session..."
-                    className="w-full rounded-xl border border-stone-200 bg-white p-3 text-xs text-stone-800 placeholder:text-stone-400 focus:border-stone-900 focus:outline-none"
+                    placeholder="Details or questions about the session…"
+                    className="w-full rounded-xl border border-stone-200 bg-white p-3 text-xs text-stone-800 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
                   />
                 </div>
 
-                {/* Q3: Question Addressing (Col L) */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-stone-500 block">
-                    How would you like your question addressed? (Col L)
-                  </label>
+                {/* Q3: Question Addressing */}
+                <div role="group" aria-labelledby={addressingLabelId} className="space-y-2">
+                  <span id={addressingLabelId} className={fieldLabel}>
+                    How would you like your question answered?
+                  </span>
                   <div className="flex flex-col gap-2">
                     {ADDRESSING_CHOICES.map((choice) => {
                       const isSelected = questionAddressing === choice.value;
@@ -674,8 +696,9 @@ export function FeedbackDetailSheet({
                         <button
                           key={choice.value}
                           type="button"
+                          aria-pressed={isSelected}
                           onClick={() => setQuestionAddressing(choice.value)}
-                          className={`flex items-center justify-between rounded-xl border p-2.5 text-left text-xs transition ${
+                          className={`flex min-h-11 items-center justify-between rounded-xl border p-2.5 text-left text-xs transition ${
                             isSelected
                               ? `${choice.badgeBg} ${choice.badgeBorder} ${choice.badgeText} font-semibold ring-1 ring-stone-900`
                               : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
@@ -689,17 +712,18 @@ export function FeedbackDetailSheet({
                   </div>
                 </div>
 
-                {/* Q4: Suggestions (Col M) */}
+                {/* Q4: Suggestions */}
                 <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-stone-500 block mb-1">
-                    Suggestions / Feedback for improvement (Col M)
+                  <label htmlFor={suggestionsId} className={`${fieldLabel} mb-1`}>
+                    Suggestions for improvement
                   </label>
                   <textarea
+                    id={suggestionsId}
                     rows={2}
                     value={suggestions}
                     onChange={(e) => setSuggestions(e.target.value)}
-                    placeholder="Suggestions for future sessions or topics..."
-                    className="w-full rounded-xl border border-stone-200 bg-white p-3 text-xs text-stone-800 placeholder:text-stone-400 focus:border-stone-900 focus:outline-none"
+                    placeholder="Suggestions for future sessions or topics…"
+                    className="w-full rounded-xl border border-stone-200 bg-white p-3 text-xs text-stone-800 placeholder:text-stone-500 focus:border-stone-900 focus:outline-none"
                   />
                 </div>
               </div>
@@ -707,62 +731,29 @@ export function FeedbackDetailSheet({
           </div>
 
           {/* Sticky Bottom Actions */}
-          <div className="border-t border-stone-100 bg-stone-50/90 p-4 sm:p-5">
+          <div className="shrink-0 border-t border-stone-100 bg-stone-50/90 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               {!isEditing ? (
                 <>
+                  {sheetItems.length > 0 ? (
+                    <SheetToolsMenu items={sheetItems} placement="up" align="start" className="mr-auto" />
+                  ) : (
+                    <span className="mr-auto" />
+                  )}
+
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setIsEditing(true)}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white hover:bg-stone-800 transition active:scale-95 shadow-xs"
+                      onClick={onClose}
+                      className="inline-flex min-h-11 items-center rounded-full px-3 text-xs font-medium text-stone-600 transition hover:text-stone-900 sm:min-h-9"
                     >
-                      <IconEdit className="h-3.5 w-3.5" />
-                      <span>{isEvaluated ? 'Edit Evaluation' : 'Fill Evaluation'}</span>
+                      Close
                     </button>
-
-                    {isEvaluated && (
-                      <button
-                        type="button"
-                        disabled={syncing}
-                        onClick={() => void handleSyncToSheets()}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-white border border-stone-200 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 transition active:scale-95 disabled:opacity-50 shadow-2xs"
-                        title="Sync directly to Google Sheets via API"
-                      >
-                        <IconRocket className={`h-3.5 w-3.5 text-stone-600 ${syncing ? 'animate-spin' : ''}`} />
-                        <span>{syncing ? 'Syncing…' : 'Sync to Sheets'}</span>
-                      </button>
-                    )}
-
-                    {isEvaluated && onCopyRow && (
-                      <button
-                        type="button"
-                        onClick={() => onCopyRow(existingEntry!)}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-white border border-stone-200 px-3.5 py-2 text-xs font-medium text-stone-700 hover:bg-stone-100 transition active:scale-95"
-                        title={`Copy Row ${session.rowNumber} TSV (paste into cell A${session.rowNumber} in Google Sheets)`}
-                      >
-                        {isCopied ? (
-                          <>
-                            <IconCheck className="h-3.5 w-3.5 text-mint-600" />
-                            <span className="text-mint-700 font-semibold">Copied TSV!</span>
-                          </>
-                        ) : (
-                          <>
-                            <IconClipboard className="h-3.5 w-3.5 text-stone-500" />
-                            <span>Copy TSV Row</span>
-                          </>
-                        )}
-                      </button>
-                    )}
+                    <button type="button" onClick={() => setIsEditing(true)} className={primaryButton}>
+                      <IconEdit className="h-3.5 w-3.5" />
+                      <span>{isEvaluated ? 'Edit evaluation' : 'Fill in evaluation'}</span>
+                    </button>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="text-xs font-medium text-stone-500 hover:text-stone-800 transition px-2"
-                  >
-                    Close
-                  </button>
                 </>
               ) : (
                 <>
@@ -775,19 +766,14 @@ export function FeedbackDetailSheet({
                         onClose();
                       }
                     }}
-                    className="rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-100 transition active:scale-95"
+                    className={secondaryButton}
                   >
                     Cancel
                   </button>
 
-                  <button
-                    type="button"
-                    disabled={syncing}
-                    onClick={handleSave}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-mint-700 px-5 py-2 text-xs font-semibold text-white hover:bg-mint-800 transition active:scale-95 shadow-xs disabled:opacity-60"
-                  >
+                  <button type="button" disabled={syncing} onClick={handleSave} className={primaryButton}>
                     <IconCheck className="h-4 w-4" />
-                    <span>{syncing ? 'Saving & Syncing…' : 'Save Evaluation'}</span>
+                    <span>{syncing ? 'Saving…' : 'Save Evaluation'}</span>
                   </button>
                 </>
               )}

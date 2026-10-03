@@ -97,3 +97,38 @@ describe('ScheduleCard progressive disclosure & state logic', () => {
     expect(doneSubline).toBe('Logged: 55 min · 09:00 → 10:00');
   });
 });
+
+// Card / completed-row logic lives in pure helpers (lib/schedule-view.ts); jest is node-only.
+import { completedRowSummary, scheduleCardPrimaryAction, scheduleRowToolLabels, activityAnchorId } from '@/lib/schedule-view';
+
+describe('ScheduleCard helpers (exported, pure)', () => {
+  it('hides Write Reflection once a reflection is linked', () => {
+    const base = { isTimerRunning: false, isTimerPaused: false };
+    expect(scheduleCardPrimaryAction({ ...base, progress: 'Done', hasReflection: false })).toBe('reflection');
+    expect(scheduleCardPrimaryAction({ ...base, progress: 'Done', hasReflection: true })).toBe('none');
+    expect(scheduleCardPrimaryAction({ ...base, progress: '', hasReflection: true })).toBe('start');
+  });
+
+  it('anchors each card and completed row at #activity-{id}', () => {
+    expect(activityAnchorId('sched-row-26')).toBe('activity-sched-row-26');
+  });
+
+  it('keeps sheet ranges inside the Sheet tools hints only', () => {
+    const labels = scheduleRowToolLabels(26);
+    expect(Object.values(labels).map((l) => l.label)).toEqual([
+      'Sync this row',
+      'Copy row (G–L)',
+      'Copy full row (A–L)',
+      'Full outline',
+    ]);
+    expect(labels.sync.hint).toContain('row 26');
+  });
+
+  it('ScheduleCompletedRow shows title, formatted date and reflection status', () => {
+    const summary = completedRowSummary(
+      { topic: 'Understanding IT\n- Overview', day: 'Monday', date: '07/09/2026', durationMinutes: 60 },
+      false
+    );
+    expect(summary).toEqual({ title: 'Understanding IT', dateLabel: 'Mon 7 Sep 2026', duration: '60 min', needsReflection: true });
+  });
+});

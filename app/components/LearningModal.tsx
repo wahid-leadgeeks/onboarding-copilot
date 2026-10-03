@@ -21,12 +21,14 @@ import {
   IconUser,
   IconCalendar,
   IconClock,
+  IconEdit,
   IconMic,
   IconMicOff,
   IconSparkles,
-  IconClipboard,
   IconChevronDown,
 } from './Icons';
+import { SheetToolsMenu, type SheetToolsMenuItem } from './SheetToolsMenu';
+import { useRestoreFocus } from './useRestoreFocus';
 
 export {
   canRequestSummary,
@@ -113,6 +115,27 @@ export function tabWrapTarget<T>(active: T | null, focusable: readonly T[], shif
   return null;
 }
 
+export type LearningStage = 'write' | 'review' | 'takeaways';
+
+/**
+ * Which part of the capture is on screen. Render-only: the draft reducer is
+ * unchanged, this only decides what to disclose.
+ * - 'write': one "What did you learn?" box, dictation and "Summarize for me".
+ * - 'review': an unconfirmed AI draft waiting for Confirm / Edit / Revert.
+ * - 'takeaways': the three takeaway fields (opened by the user, or a confirmed
+ *   AI draft — never 'write', so Save stays reachable).
+ * Manual takeaways or notes already typed keep 'takeaways' open so nothing that
+ * would be saved is ever hidden.
+ */
+export function learningStage(state: LearningDraftState, takeawaysOpen: boolean): LearningStage {
+  if (state.aiGenerated) {
+    return state.summaryConfirmed || takeawaysOpen ? 'takeaways' : 'review';
+  }
+  if (takeawaysOpen) return 'takeaways';
+  const hasManualContent = [state.takeaway1, state.takeaway2, state.takeaway3, state.notes].some((v) => v.trim() !== '');
+  return hasManualContent ? 'takeaways' : 'write';
+}
+
 export interface LearningActivityContext {
   readonly id?: string;
   readonly topic: string;
@@ -173,12 +196,18 @@ export function LearningModal({ open, activity, onSave, onSkip }: LearningModalP
   const [state, dispatch] = useReducer(learningDraftReducer, initialLearningDraft());
   const [copied, setCopied] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [takeawaysOpen, setTakeawaysOpen] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
 
   const dialogRef = useRef<HTMLElement | null>(null);
   const rawNotesRef = useRef<HTMLTextAreaElement | null>(null);
+  const takeaway1Ref = useRef<HTMLTextAreaElement | null>(null);
+  const saveRef = useRef<HTMLButtonElement | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Move focus into the dialog on open and give it back to the opener on close.
+  useRestoreFocus(open, rawNotesRef);
 
   // Check browser speech recognition support
   useEffect(() => {
@@ -230,8 +259,14 @@ export function LearningModal({ open, activity, onSave, onSkip }: LearningModalP
       });
       setCopied(false);
       setNotesOpen(false);
+      setTakeawaysOpen(false);
     }
   }, [open, activity]);
+
+  /** Focus an element once the stage change it depends on has rendered. */
+  function focusSoon(ref: { readonly current: HTMLElement | null }) {
+    window.setTimeout(() => ref.current?.focus(), 0);
+  }
 
   function toggleVoiceDictation() {
     if (state.isListening) {
@@ -343,21 +378,46 @@ export function LearningModal({ open, activity, onSave, onSkip }: LearningModalP
     }
   }
 
+  // ADR-0003: never confirm AI output on the user's behalf. Save is only enabled
+  // when canSaveLearning(state) holds, so an unconfirmed AI draft cannot be saved.
   function save() {
-    let effectiveState = state;
-    if (effectiveState.aiGenerated && !effectiveState.summaryConfirmed) {
-      dispatch({ type: 'confirm-structure' });
-      effectiveState = { ...effectiveState, summaryConfirmed: true };
-    }
-    const submission = deriveLearningSubmission(effectiveState, activity);
+    if (!canSaveLearning(state)) return;
+    const submission = deriveLearningSubmission(state, activity);
     if (submission === null) return;
     onSave(submission);
+  }
+
+  function confirmDraft() {
+    dispatch({ type: 'confirm-structure' });
+    setTakeawaysOpen(true);
+    focusSoon(saveRef);
+  }
+
+  function editDraft() {
+    setTakeawaysOpen(true);
+    focusSoon(takeaway1Ref);
+  }
+
+  function revertDraft() {
+    dispatch({ type: 'reject-structure' });
+    setTakeawaysOpen(false);
+    focusSoon(rawNotesRef);
+  }
+
+  function writeTakeawaysMyself() {
+    setTakeawaysOpen(true);
+    focusSoon(takeaway1Ref);
   }
 
   // Keyboard-safe dialog: Escape dismisses, Tab stays inside the dialog.
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
+      // React's listeners share `document` with this one, so the Sheet tools menu's
+      // stopPropagation cannot stop it. Listening in the capture phase sees the menu
+      // still open (React has not handled the key yet), so an Escape meant for the
+      // menu — from an item or from its trigger — closes only the menu.
+      if (event.target instanceof Element && event.target.closest('[role="menu"], [aria-haspopup="menu"][aria-expanded="true"]')) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         onSkip();
@@ -373,356 +433,389 @@ export function LearningModal({ open, activity, onSave, onSkip }: LearningModalP
         }
       }
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
   }, [open, onSkip]);
-
-  // Move focus into the dialog on open and restore it to the caller on close.
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    rawNotesRef.current?.focus();
-    return () => { previous?.focus(); };
-  }, [open]);
 
   if (!open) return null;
 
+  const stage = learningStage(state, takeawaysOpen);
   const topicName = activity?.topic || state.topic || 'Learning Reflection';
-  const hasStructuredTakeaways = Boolean(
-    state.takeaway1.trim() ||
-    state.takeaway2.trim() ||
-    state.takeaway3.trim() ||
-    state.summary?.trim()
-  );
-  const canSave = state.aiGenerated
-    ? hasStructuredTakeaways
-    : canSaveLearning(state);
+  const canSave = canSaveLearning(state);
   const isUnconfirmedAi = state.aiGenerated && !state.summaryConfirmed;
   const copyDisabled = isUnconfirmedAi || !canCopyDiary(state);
+  const isSummarizing = state.status === 'summarizing' || state.isStructuring;
+  const showNotes = notesOpen || state.notes.trim() !== '';
+  const draftTakeaways = [state.takeaway1, state.takeaway2, state.takeaway3].map((t) => t.trim()).filter(Boolean);
+  const saveHint = isUnconfirmedAi ? 'Confirm the AI draft to save it.' : null;
+
+  const sheetItems: SheetToolsMenuItem[] = [
+    {
+      id: 'copy-diary-row',
+      label: 'Copy for the spreadsheet',
+      hint: isUnconfirmedAi ? 'Confirm the AI draft first' : 'Paste it into your onboarding diary',
+      onSelect: handleCopyTsv,
+      disabled: copyDisabled,
+      state: copied ? 'done' : 'idle',
+      doneLabel: 'Copied',
+    },
+  ];
+
+  const fieldClass =
+    'mt-1.5 w-full rounded-xl border border-stone-200 bg-white p-3 text-sm text-stone-900 placeholder:text-stone-500 focus:border-mint-400 focus:ring-mint-400';
+  const secondaryButton =
+    'inline-flex min-h-11 items-center gap-1.5 rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 transition hover:bg-stone-100 disabled:opacity-40 sm:min-h-9';
+  const quietLink =
+    'inline-flex min-h-11 items-center text-xs font-medium text-stone-600 underline underline-offset-4 transition hover:text-stone-900 sm:min-h-9';
+
+  const takeawayFields = [
+    {
+      id: 'takeaway-1-input',
+      label: '1. Core idea',
+      help: 'What concept or system did you learn?',
+      placeholder: 'e.g. How the sync queue batches writes made on this device',
+      value: state.takeaway1,
+      action: 'type-takeaway1' as const,
+    },
+    {
+      id: 'takeaway-2-input',
+      label: '2. How it’s done here',
+      help: 'What process, workflow or standard was covered?',
+      placeholder: 'e.g. The 4-step deployment review and its checklist',
+      value: state.takeaway2,
+      action: 'type-takeaway2' as const,
+    },
+    {
+      id: 'takeaway-3-input',
+      label: '3. How you’ll use it',
+      help: 'How will you apply this in your day-to-day work?',
+      placeholder: 'e.g. Keep local secrets out of commits when I set up my machine',
+      value: state.takeaway3,
+      action: 'type-takeaway3' as const,
+    },
+  ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/45 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/45 p-3 sm:p-4">
       <section
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={TITLE_ID}
-        aria-busy={state.status === 'summarizing' || state.isStructuring}
-        className="animate-pop-in max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-card bg-white p-6 shadow-lift sm:p-8"
+        aria-busy={isSummarizing}
+        className="animate-pop-in flex max-h-[90vh] max-h-[90dvh] w-full max-w-lg flex-col overflow-hidden rounded-card bg-white shadow-lift"
       >
-        {/* Pre-filled Metadata Header */}
-        <div>
-          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-mint-700">
-            <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-full bg-mint-100">
-              <IconCheck className="h-3.5 w-3.5 text-mint-700" />
-            </span>
-            Activity complete · Onboarding Diary
-          </p>
-          <h2 id={TITLE_ID} className="mt-3 text-2xl font-semibold tracking-tight text-stone-900">{topicName}</h2>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-5 sm:px-8 sm:pt-8">
+          {/* Activity context */}
+          <div>
+            <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-mint-700">
+              <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-full bg-mint-100">
+                <IconCheck className="h-3.5 w-3.5 text-mint-800" />
+              </span>
+              Activity complete · Learning reflection
+            </p>
+            <h2 id={TITLE_ID} className="mt-2 text-xl font-semibold tracking-tight text-stone-900 sm:text-2xl">{topicName}</h2>
 
-          {/* Activity Metadata Badges */}
-          <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-600">
-            {activity?.pic && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">
-                <IconUser className="h-3 w-3 text-stone-500" />
-                {activity.pic}
-              </span>
-            )}
-            {activity?.date && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">
-                <IconCalendar className="h-3 w-3 text-stone-500" />
-                {activity.date}
-              </span>
-            )}
-            {activity?.day && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-sun-50 px-3 py-1 font-medium text-sun-800">
-                <IconClock className="h-3 w-3 text-sun-600" />
-                {activity.day}
-              </span>
-            )}
-            {activity?.week !== undefined && activity.week !== '' && (
-              <span className="rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">
-                {typeof activity.week === 'number' ? `Week ${activity.week}` : activity.week}
-              </span>
-            )}
-            {activity?.activityCount !== undefined && activity.activityCount !== '' && (
-              <span className="rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">
-                Activity #{activity.activityCount}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Scratchpad & Voice Dictation */}
-        <div className="mt-6 rounded-2xl border border-stone-200 bg-stone-50/50 p-4">
-          <label htmlFor="raw-thoughts-input" className="block text-xs font-semibold uppercase tracking-[0.15em] text-stone-500">
-            Raw Thoughts / Voice Scratchpad
-          </label>
-          <textarea
-            id="raw-thoughts-input"
-            ref={rawNotesRef}
-            aria-label="Raw thoughts or voice scratchpad"
-            placeholder="Speak or type raw thoughts, bullet points, or session reflections here..."
-            value={state.raw}
-            onChange={event => dispatch({ type: 'type-raw', content: event.target.value })}
-            rows={3}
-            className="mt-2 w-full rounded-xl border border-stone-200 bg-white p-3 text-sm text-stone-900 placeholder:text-stone-400 focus:border-mint-400 focus:ring-mint-400"
-          />
-
-          {/* Live Voice Transcript Banner if active */}
-          {state.transcript && (
-            <div className="mt-3 rounded-xl bg-peach-50 p-3 text-xs text-peach-900">
-              <p className="font-semibold">Live Speech Transcript:</p>
-              <p className="mt-1">{state.transcript}</p>
-              <div className="mt-2 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => dispatch({ type: 'apply-transcript-to-raw' })}
-                  className="rounded-lg bg-peach-200 px-2.5 py-1 text-xs font-medium text-peach-900 transition hover:bg-peach-300"
-                >
-                  Append to Raw Thoughts
-                </button>
-                <button
-                  type="button"
-                  onClick={() => dispatch({ type: 'apply-transcript-to-notes' })}
-                  className="rounded-lg bg-peach-200 px-2.5 py-1 text-xs font-medium text-peach-900 transition hover:bg-peach-300"
-                >
-                  Append to Notes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => dispatch({ type: 'voice-clear' })}
-                  className="rounded-lg px-2 py-1 text-xs text-stone-500 hover:text-stone-700"
-                >
-                  Clear
-                </button>
-              </div>
+            <div className="mt-2.5 flex flex-wrap gap-1.5 text-xs text-stone-600">
+              {activity?.pic && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-1 font-medium text-stone-700">
+                  <IconUser className="h-3 w-3 text-stone-500" />
+                  {activity.pic}
+                </span>
+              )}
+              {activity?.date && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-1 font-medium text-stone-700">
+                  <IconCalendar className="h-3 w-3 text-stone-500" />
+                  {activity.date}
+                </span>
+              )}
+              {activity?.day && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-sun-50 px-2.5 py-1 font-medium text-sun-800">
+                  <IconClock className="h-3 w-3 text-sun-600" />
+                  {activity.day}
+                </span>
+              )}
+              {activity?.week !== undefined && activity.week !== '' && (
+                <span className="rounded-full bg-stone-100 px-2.5 py-1 font-medium text-stone-700">
+                  {typeof activity.week === 'number' ? `Week ${activity.week}` : activity.week}
+                </span>
+              )}
+              {activity?.activityCount !== undefined && activity.activityCount !== '' && (
+                <span className="rounded-full bg-stone-100 px-2.5 py-1 font-medium text-stone-700">
+                  Activity #{activity.activityCount}
+                </span>
+              )}
             </div>
-          )}
+          </div>
 
-          {/* Voice Dictate & AI Structuring buttons */}
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <div>
+          {/* Stage 1: write it down (always visible; later stages build on it) */}
+          <div className="mt-5">
+            <label htmlFor="raw-thoughts-input" className="block text-base font-semibold text-stone-900">
+              What did you learn?
+            </label>
+            <p id="raw-thoughts-help" className="mt-0.5 text-xs text-stone-500">
+              In your own words — bullet points are fine.
+            </p>
+            <textarea
+              id="raw-thoughts-input"
+              ref={rawNotesRef}
+              aria-describedby="raw-thoughts-help"
+              placeholder="Type or dictate what stood out…"
+              value={state.raw}
+              onChange={event => dispatch({ type: 'type-raw', content: event.target.value })}
+              rows={stage === 'write' ? 4 : 3}
+              className={fieldClass}
+            />
+
+            {state.transcript && (
+              <div className="mt-3 rounded-xl bg-peach-50 p-3 text-xs text-peach-900">
+                <p className="font-semibold">What we heard</p>
+                <p className="mt-1">{state.transcript}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: 'apply-transcript-to-raw' })}
+                    className="min-h-11 rounded-lg bg-peach-200 px-2.5 py-1 text-xs font-medium text-peach-900 transition hover:bg-peach-300 sm:min-h-8"
+                  >
+                    Add to what I learned
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: 'apply-transcript-to-notes' })}
+                    className="min-h-11 rounded-lg bg-peach-200 px-2.5 py-1 text-xs font-medium text-peach-900 transition hover:bg-peach-300 sm:min-h-8"
+                  >
+                    Add to follow-up notes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => dispatch({ type: 'voice-clear' })}
+                    className="min-h-11 rounded-lg px-2 py-1 text-xs text-stone-600 hover:text-stone-900 sm:min-h-8"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               {speechSupported ? (
                 <button
                   type="button"
                   onClick={toggleVoiceDictation}
                   aria-pressed={state.isListening}
-                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition ${
+                  className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition sm:min-h-9 ${
                     state.isListening
-                      ? 'animate-pulse-soft bg-peach-100 text-peach-700 ring-2 ring-peach-300'
+                      ? 'animate-pulse-soft bg-peach-100 text-peach-800 ring-2 ring-peach-300'
                       : 'border border-stone-200 bg-white text-stone-700 hover:bg-stone-100'
                   }`}
                 >
                   {state.isListening ? (
                     <>
                       <IconMicOff className="h-3.5 w-3.5" />
-                      <span>Stop Listening</span>
+                      <span>Stop listening</span>
                     </>
                   ) : (
                     <>
                       <IconMic className="h-3.5 w-3.5" />
-                      <span>Voice Dictate</span>
+                      <span>Dictate</span>
                     </>
                   )}
                 </button>
               ) : (
-                <span className="inline-flex items-center gap-1 text-xs text-stone-400">
+                <span className="inline-flex items-center gap-1 text-xs text-stone-500">
                   <IconMicOff className="h-3.5 w-3.5" />
-                  Voice dictation unavailable in this browser
+                  Voice dictation isn’t available in this browser
                 </span>
+              )}
+
+              {stage === 'write' && (
+                <button
+                  type="button"
+                  onClick={() => void requestSummary()}
+                  disabled={!canRequestSummary(state)}
+                  className={secondaryButton}
+                >
+                  {isSummarizing ? (
+                    'Summarizing…'
+                  ) : (
+                    <>
+                      <IconSparkles className="h-3.5 w-3.5 text-lavender-700" />
+                      <span>Summarize for me</span>
+                    </>
+                  )}
+                </button>
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => void requestSummary()}
-              disabled={!canRequestSummary(state)}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 transition hover:bg-stone-100 disabled:opacity-40"
-            >
-              {state.status === 'summarizing' || state.isStructuring ? (
-                'Structuring…'
+            {stage === 'write' && (
+              <button type="button" onClick={writeTakeawaysMyself} className={`mt-1 ${quietLink}`}>
+                Write takeaways myself
+              </button>
+            )}
+
+            {state.status === 'summarize-failed' && (
+              <p className="mt-2 text-sm text-peach-800" role="status">
+                The summary isn’t available right now. Your notes are safe — you can still save them as they are.
+              </p>
+            )}
+            {state.aiError && state.status !== 'summarize-failed' && (
+              <p className="mt-2 text-xs text-peach-800" role="status">
+                {state.aiError}
+              </p>
+            )}
+          </div>
+
+          {/* Stage 2: review the AI draft (ADR-0003 — nothing is saved until the user confirms) */}
+          {stage === 'review' && (
+            <div className="mt-5 rounded-2xl bg-lavender-50 p-4" role="group" aria-labelledby="ai-draft-title">
+              <p id="ai-draft-title" className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-lavender-800">
+                <IconSparkles className="h-3.5 w-3.5 shrink-0" />
+                AI draft
+              </p>
+              <p className="mt-1 text-xs text-stone-600">Check it matches what you learned. Nothing is saved until you confirm it.</p>
+              {draftTakeaways.length > 0 ? (
+                <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-stone-800">
+                  {draftTakeaways.map((item, index) => (
+                    <li key={index}>{item}</li>
+                  ))}
+                </ol>
               ) : (
-                <>
-                  <IconSparkles className="h-3.5 w-3.5 text-lavender-500" />
-                  <span>Structure with AI</span>
-                </>
+                <p className="mt-3 text-sm text-stone-700">The draft came back empty. Edit it or use your own notes instead.</p>
               )}
-            </button>
-          </div>
-        </div>
+              {state.notes.trim() !== '' && (
+                <p className="mt-3 whitespace-pre-line text-sm text-stone-700">
+                  <span className="font-medium text-stone-800">Follow-up notes: </span>
+                  {state.notes.trim()}
+                </p>
+              )}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={confirmDraft}
+                  disabled={draftTakeaways.length === 0}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-lavender-200 bg-white px-4 py-2 text-xs font-semibold text-lavender-900 transition hover:bg-lavender-100 disabled:opacity-40 sm:min-h-9"
+                >
+                  <IconCheck className="h-3.5 w-3.5" />
+                  <span>Looks right — confirm</span>
+                </button>
+                <button type="button" onClick={editDraft} className={secondaryButton}>
+                  <IconEdit className="h-3.5 w-3.5" />
+                  <span>Edit</span>
+                </button>
+                <button type="button" onClick={revertDraft} className={quietLink}>
+                  Use my own notes instead
+                </button>
+              </div>
+            </div>
+          )}
 
-        {/* ADR-0003 Review and Confirmation Banner */}
-        {state.aiGenerated && (
-          <div className="mt-4 rounded-2xl bg-lavender-50 p-4">
-            <p className="inline-flex items-center gap-1.5 text-xs font-medium text-lavender-700">
-              <IconSparkles className="h-3.5 w-3.5 text-lavender-600 shrink-0" />
-              AI structured these takeaways from your notes. Review, edit, and confirm below:
-            </p>
-            <label className="mt-2.5 flex items-center gap-2 text-sm font-medium text-stone-800">
-              <input
-                type="checkbox"
-                checked={state.summaryConfirmed}
-                onChange={event => dispatch(event.target.checked ? { type: 'confirm-structure' } : { type: 'type-takeaway1', content: state.takeaway1 })}
-                className="h-4 w-4 rounded border-stone-300 text-mint-600 focus:ring-mint-500"
-              />
-              I reviewed and confirm these takeaways
-            </label>
-            <button
-              type="button"
-              onClick={() => dispatch({ type: 'reject-structure' })}
-              className="mt-2 min-h-11 text-xs text-stone-500 underline underline-offset-4 transition hover:text-stone-700"
-            >
-              Use my own notes instead
-            </button>
-          </div>
-        )}
+          {/* Stage 3: the three takeaways */}
+          {stage === 'takeaways' && (
+            <div className="mt-6">
+              {state.aiGenerated && (
+                <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl bg-lavender-50 px-4 py-3">
+                  <p className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-lavender-900" role="status">
+                    <IconSparkles className="h-3.5 w-3.5 shrink-0" />
+                    {state.summaryConfirmed
+                      ? 'AI draft confirmed. If you change it, you’ll confirm again.'
+                      : 'Check your edits to the AI draft, then confirm.'}
+                  </p>
+                  {!state.summaryConfirmed && (
+                    <button
+                      type="button"
+                      onClick={confirmDraft}
+                      disabled={draftTakeaways.length === 0}
+                      className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-lavender-200 bg-white px-4 py-2 text-xs font-semibold text-lavender-900 transition hover:bg-lavender-100 disabled:opacity-40 sm:min-h-9"
+                    >
+                      <IconCheck className="h-3.5 w-3.5" />
+                      <span>Confirm takeaways</span>
+                    </button>
+                  )}
+                  <button type="button" onClick={revertDraft} className={quietLink}>
+                    Use my own notes instead
+                  </button>
+                </div>
+              )}
 
-        {/* Guided 3 Takeaways */}
-        <div className="mt-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
-              Guided 3 Takeaways (Diary Sheet Column G)
-            </h3>
-          </div>
+              <h3 className="text-base font-semibold text-stone-900">Your 3 takeaways</h3>
+              <p className="mt-0.5 text-xs text-stone-500">Short answers are fine. Leave any you don’t need blank.</p>
 
-          <div>
-            <label htmlFor="takeaway-1-input" className="block text-xs font-medium text-stone-700">
-              1. Core Concept / Knowledge
-            </label>
-            <p className="text-xs text-stone-400">What fundamental concept or architecture did you learn?</p>
-            <textarea
-              id="takeaway-1-input"
-              aria-label="1. Core Concept / Knowledge"
-              placeholder="e.g. Understood how the Google Sheets sync queue batches local writes"
-              value={state.takeaway1}
-              onChange={event => dispatch({ type: 'type-takeaway1', content: event.target.value })}
-              rows={2}
-              className="mt-1.5 w-full rounded-xl border border-stone-200 p-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-mint-400 focus:ring-mint-400"
-            />
-          </div>
+              <div className="mt-3 space-y-4">
+                {takeawayFields.map((field, index) => (
+                  <div key={field.id}>
+                    <label htmlFor={field.id} className="block text-sm font-medium text-stone-800">
+                      {field.label}
+                    </label>
+                    <p id={`${field.id}-help`} className="text-xs text-stone-500">{field.help}</p>
+                    <textarea
+                      id={field.id}
+                      ref={index === 0 ? takeaway1Ref : undefined}
+                      aria-describedby={`${field.id}-help`}
+                      placeholder={field.placeholder}
+                      value={field.value}
+                      onChange={event => dispatch({ type: field.action, content: event.target.value })}
+                      rows={2}
+                      className={fieldClass}
+                    />
+                  </div>
+                ))}
+              </div>
 
-          <div>
-            <label htmlFor="takeaway-2-input" className="block text-xs font-medium text-stone-700">
-              2. Process & Standard
-            </label>
-            <p className="text-xs text-stone-400">What process, workflow, or operating standard was covered?</p>
-            <textarea
-              id="takeaway-2-input"
-              aria-label="2. Process & Standard"
-              placeholder="e.g. Followed the 4-step deployment review procedure and checklist"
-              value={state.takeaway2}
-              onChange={event => dispatch({ type: 'type-takeaway2', content: event.target.value })}
-              rows={2}
-              className="mt-1.5 w-full rounded-xl border border-stone-200 p-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-mint-400 focus:ring-mint-400"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="takeaway-3-input" className="block text-xs font-medium text-stone-700">
-              3. Practical Application
-            </label>
-            <p className="text-xs text-stone-400">How will you apply this in your daily responsibilities?</p>
-            <textarea
-              id="takeaway-3-input"
-              aria-label="3. Practical Application"
-              placeholder="e.g. Will configure local environment secrets in .env.local without committing"
-              value={state.takeaway3}
-              onChange={event => dispatch({ type: 'type-takeaway3', content: event.target.value })}
-              rows={2}
-              className="mt-1.5 w-full rounded-xl border border-stone-200 p-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-mint-400 focus:ring-mint-400"
-            />
-          </div>
-        </div>
-
-        {/* Expandable Personal Notes & Follow-ups */}
-        <div className="mt-5 border-t border-stone-100 pt-4">
-          <button
-            type="button"
-            onClick={() => setNotesOpen(!notesOpen)}
-            aria-expanded={notesOpen}
-            className="flex items-center gap-2 text-xs font-medium text-stone-500 hover:text-stone-700"
-          >
-            <IconChevronDown
-              className={`h-3.5 w-3.5 transition-transform ${notesOpen || state.notes.trim() ? 'rotate-0' : '-rotate-90'}`}
-            />
-            Personal Notes & Follow-ups (Optional)
-          </button>
-
-          {(notesOpen || state.notes.trim() !== '') && (
-            <textarea
-              aria-label="Personal Notes & Follow-ups"
-              placeholder="Add reminders, mentor questions, observations, or follow-up items..."
-              value={state.notes}
-              onChange={event => dispatch({ type: 'type-notes', content: event.target.value })}
-              rows={3}
-              className="mt-2 w-full rounded-xl border border-stone-200 p-2.5 text-sm text-stone-900 placeholder:text-stone-400 focus:border-mint-400 focus:ring-mint-400"
-            />
+              <div className="mt-4 border-t border-stone-100 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setNotesOpen(!notesOpen)}
+                  aria-expanded={showNotes}
+                  aria-controls="learning-notes-input"
+                  className="inline-flex min-h-11 items-center gap-2 text-xs font-medium text-stone-600 hover:text-stone-900 sm:min-h-9"
+                >
+                  <IconChevronDown className={`h-3.5 w-3.5 transition-transform ${showNotes ? 'rotate-0' : '-rotate-90'}`} />
+                  Follow-up notes (optional)
+                </button>
+                {showNotes && (
+                  <textarea
+                    id="learning-notes-input"
+                    aria-label="Follow-up notes"
+                    placeholder="Reminders, questions for your mentor, things to look into…"
+                    value={state.notes}
+                    onChange={event => dispatch({ type: 'type-notes', content: event.target.value })}
+                    rows={3}
+                    className={fieldClass}
+                  />
+                )}
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Actions */}
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-stone-100 pt-4">
-          <button
-            type="button"
-            onClick={() => void handleCopyTsv()}
-            disabled={copyDisabled}
-            title={isUnconfirmedAi ? 'Please review and confirm takeaways above before copying' : undefined}
-            className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition ${
-              copyDisabled
-                ? 'cursor-not-allowed border border-stone-200 bg-stone-100 text-stone-400 opacity-60'
-                : copied
-                  ? 'border border-mint-300 bg-mint-100 text-mint-800 ring-1 ring-mint-300'
-                  : 'border border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
-            }`}
-          >
-            {copied ? (
-              <>
-                <IconCheck className="h-3.5 w-3.5 text-mint-600" />
-                <span>Copied for Diary Sheet!</span>
-              </>
-            ) : isUnconfirmedAi ? (
-              <>
-                <IconClipboard className="h-3.5 w-3.5" />
-                <span>Confirm to Copy</span>
-              </>
-            ) : (
-              <>
-                <IconClipboard className="h-3.5 w-3.5" />
-                <span>Copy for Diary Sheet</span>
-              </>
-            )}
-          </button>
-
-          <div className="flex flex-wrap items-center gap-2">
+        {/* Sticky footer: always visible, so Save never needs scrolling */}
+        <div className="shrink-0 border-t border-stone-100 bg-white px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:pb-4">
+          {saveHint && (
+            <p id="learning-save-hint" className="mb-2 text-right text-xs text-stone-500">
+              {saveHint}
+            </p>
+          )}
+          <div className="flex items-center gap-2">
+            <SheetToolsMenu items={sheetItems} placement="up" align="start" className="mr-auto" />
             <button
               type="button"
               onClick={onSkip}
-              className="min-h-11 rounded-full px-3 py-2 text-xs font-medium text-stone-500 underline underline-offset-4 transition hover:text-stone-700"
+              className="min-h-11 rounded-full px-3 py-2 text-xs font-medium text-stone-600 underline underline-offset-4 transition hover:text-stone-900"
             >
               Skip for now
             </button>
             <button
+              ref={saveRef}
               type="button"
               onClick={save}
               disabled={!canSave}
+              aria-describedby={saveHint ? 'learning-save-hint' : undefined}
               className="min-h-11 rounded-full bg-stone-900 px-5 py-2 text-sm font-semibold text-white transition hover:bg-stone-700 disabled:opacity-40"
             >
-              {state.aiGenerated ? 'Confirm & save' : 'Save & continue'}
+              Save
             </button>
           </div>
         </div>
-
-        {state.status === 'summarize-failed' && (
-          <p className="mt-3 text-center text-sm text-peach-700" role="status">
-            The summary is unavailable right now. Your notes are safe — you can still save them as-is.
-          </p>
-        )}
-        {state.aiError && state.status !== 'summarize-failed' && (
-          <p className="mt-3 text-center text-xs text-peach-700" role="status">
-            {state.aiError}
-          </p>
-        )}
       </section>
     </div>
   );

@@ -5,7 +5,10 @@ import { ToastProvider } from '@/app/components/Toast';
 import { AppShell } from '@/app/components/AppShell';
 
 export const metadata: Metadata = {
-  title: 'NOVA — Newcomer Onboarding & Virtual Assistant',
+  title: {
+    template: '%s · NOVA',
+    default: 'NOVA — Newcomer Onboarding & Virtual Assistant',
+  },
   description: "NOVA is a bright guide for every new employee's journey.",
 };
 

@@ -85,7 +85,7 @@ export function GlossaryDetailSheet({
             <div className="space-y-1.5 pr-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                     isVideo
                       ? 'bg-lavender-50 text-lavender-800'
                       : isMeeting
@@ -102,7 +102,7 @@ export function GlossaryDetailSheet({
                   )}
                   <span>{module.media}</span>
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-medium text-stone-600">
+                <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-600">
                   <IconClock className="h-3 w-3 text-stone-400" />
                   <span>{module.durationMinutes} mins</span>
                 </span>
@@ -116,7 +116,7 @@ export function GlossaryDetailSheet({
               <div className="flex items-center gap-1 text-xs text-stone-500">
                 <IconUser className="h-3.5 w-3.5 text-stone-400" />
                 <span>
-                  Person in Charge: <strong className="text-stone-700">{module.pic}</strong>
+                  Led by: <strong className="text-stone-700">{module.pic}</strong>
                 </span>
               </div>
             </div>
@@ -128,7 +128,7 @@ export function GlossaryDetailSheet({
                   type="button"
                   disabled={!hasPrev}
                   onClick={onPrevModule}
-                  className="rounded-full p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900 disabled:opacity-30 transition"
+                  className="inline-flex size-11 items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 hover:text-stone-900 disabled:opacity-30 transition sm:size-9"
                   title="Previous module"
                   aria-label="Previous module"
                 >
@@ -142,7 +142,7 @@ export function GlossaryDetailSheet({
                   type="button"
                   disabled={!hasNext}
                   onClick={onNextModule}
-                  className="rounded-full p-2 text-stone-500 hover:bg-stone-100 hover:text-stone-900 disabled:opacity-30 transition"
+                  className="inline-flex size-11 items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 hover:text-stone-900 disabled:opacity-30 transition sm:size-9"
                   title="Next module"
                   aria-label="Next module"
                 >
@@ -154,7 +154,7 @@ export function GlossaryDetailSheet({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-full p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition ml-1"
+                className="ml-1 inline-flex size-11 items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 hover:text-stone-700 transition sm:size-9"
                 aria-label="Close sheet"
               >
                 <IconX className="h-5 w-5" />
@@ -201,7 +201,7 @@ export function GlossaryDetailSheet({
                         href={link.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-between rounded-2xl border border-stone-200 bg-stone-50/50 p-3 text-xs font-medium text-stone-800 hover:bg-stone-100 hover:border-stone-300 transition"
+                        className="flex min-h-11 items-center justify-between rounded-2xl border border-stone-200 bg-stone-50/50 p-3 text-xs font-medium text-stone-800 hover:bg-stone-100 hover:border-stone-300 transition"
                       >
                         <div className="flex items-center gap-2">
                           {link.type === 'video' ? (
@@ -211,7 +211,7 @@ export function GlossaryDetailSheet({
                           )}
                           <span>{link.label}</span>
                         </div>
-                        <span className="text-[11px] font-semibold text-mint-700">Open ↗</span>
+                        <span className="text-xs font-semibold text-mint-800">Open ↗</span>
                       </a>
                     ))}
                   </div>
@@ -244,13 +244,13 @@ export function GlossaryDetailSheet({
                   href={module.materialLinks[0].url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white hover:bg-stone-800 transition active:scale-95 shadow-xs"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-stone-900 px-4 py-2 text-xs sm:min-h-9 font-semibold text-white hover:bg-stone-800 transition active:scale-95 shadow-xs"
                 >
                   <span>Launch {module.materialLinks[0].label}</span>
                   <IconExternalLink className="h-3.5 w-3.5" />
                 </a>
               ) : (
-                <span className="text-xs text-stone-400">
+                <span className="text-xs text-stone-500">
                   {isMeeting ? 'Scheduled during live meeting' : 'Offline resource'}
                 </span>
               )}
@@ -258,7 +258,7 @@ export function GlossaryDetailSheet({
               <button
                 type="button"
                 onClick={onClose}
-                className="text-xs font-medium text-stone-500 hover:text-stone-800 transition px-2"
+                className="inline-flex min-h-11 items-center px-3 text-xs font-medium text-stone-600 hover:text-stone-800 transition sm:min-h-9"
               >
                 Close
               </button>

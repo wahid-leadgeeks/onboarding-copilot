@@ -37,7 +37,7 @@ export function LearningsFilters({ filter, activityOptions, onFilterChange, onCl
             value={filter.query}
             onChange={(event) => onFilterChange({ ...filter, query: event.target.value })}
             placeholder="Notes and activities"
-            className="min-h-11 w-full rounded-full border border-stone-200 bg-white px-4 py-2 text-sm text-stone-900 placeholder:text-stone-400"
+            className="min-h-11 w-full rounded-full border border-stone-200 bg-white px-4 py-2 text-sm text-stone-900 placeholder:text-stone-500"
           />
         </div>
         <label className={filterLabelClass}>

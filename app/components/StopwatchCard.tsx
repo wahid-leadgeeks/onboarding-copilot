@@ -15,12 +15,13 @@ import {
   formatStopwatch,
   formatTimeHHMM,
 } from '@/lib/session/stopwatch';
+import { activityDateLabel } from '@/lib/today-view';
+import { RowTag } from './RowTag';
+import { SheetToolsMenu, type SheetToolsMenuItem } from './SheetToolsMenu';
 import {
   IconCheck,
   IconClock,
-  IconEdit,
   IconNote,
-  IconClipboard,
   IconPlay,
   IconPause,
   IconStop,
@@ -28,7 +29,6 @@ import {
   IconSearch,
   IconChevronDown,
   IconX,
-  IconRocket,
 } from './Icons';
 
 export interface StopwatchCardProps {
@@ -161,11 +161,34 @@ export function StopwatchCard({
         ? computedDurationMins
         : matchedSchedule?.durationMinutes || Math.max(1, Math.round(elapsed / 60));
 
+    const finishedSheetItems: SheetToolsMenuItem[] = [
+      ...(onDirectSyncToSheets
+        ? [
+            {
+              id: 'sync-row',
+              label: 'Sync this row to the sheet',
+              hint: matchedSchedule ? `Writes duration, times, progress and notes to row ${matchedSchedule.rowNumber}` : undefined,
+              onSelect: onDirectSyncToSheets,
+              state: isSyncingSheets ? ('busy' as const) : ('idle' as const),
+            },
+          ]
+        : []),
+      { id: 'edit-details', label: 'Edit details', hint: 'Times, progress, link and notes', onSelect: onFillSchedule },
+      {
+        id: 'copy-row',
+        label: 'Copy row for the sheet',
+        hint: matchedSchedule ? `Columns G–L · paste at G${matchedSchedule.rowNumber}` : 'Columns G–L',
+        onSelect: onCopyGtoK,
+        state: copiedGtoKToast ? ('done' as const) : ('idle' as const),
+        doneLabel: 'Copied',
+      },
+    ];
+
     return (
       <section
         id="stopwatch-cockpit"
         data-tour="current-activity"
-        className="animate-pop-in mt-10 rounded-card bg-white p-8 shadow-soft"
+        className="animate-pop-in mt-10 rounded-card bg-white p-6 shadow-soft sm:p-8"
       >
         <div className="flex items-center gap-4">
           <span className="animate-spring-in flex h-14 w-14 items-center justify-center rounded-full bg-mint-100 text-mint-700">
@@ -179,21 +202,21 @@ export function StopwatchCard({
           </div>
         </div>
 
-        {/* Spreadsheet Row Context Badges */}
+        {/* Activity context badges */}
         {matchedSchedule && (
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="rounded-md bg-stone-900 px-2 py-0.5 text-[11px] font-bold text-white tracking-wide">
-              Row {matchedSchedule.rowNumber}
-            </span>
+            <RowTag rowNumber={matchedSchedule.rowNumber} />
             <span className="text-xs font-medium text-stone-500">
-              #{matchedSchedule.activityCount} · {matchedSchedule.day}, {matchedSchedule.date}
+              {activityDateLabel(matchedSchedule.day, matchedSchedule.date)}
             </span>
-            <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getPicBadge(matchedSchedule.pic)}`}>
+            <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getPicBadge(matchedSchedule.pic)}`}>
               {matchedSchedule.pic}
             </span>
-            <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[11px] font-medium text-stone-600">
-              {matchedSchedule.mainMedia}
-            </span>
+            {matchedSchedule.mainMedia && (
+              <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-xs font-medium text-stone-600">
+                {matchedSchedule.mainMedia}
+              </span>
+            )}
           </div>
         )}
 
@@ -203,13 +226,13 @@ export function StopwatchCard({
 
         <div className="mt-5 flex flex-wrap items-baseline gap-x-6 gap-y-2 rounded-2xl bg-stone-50 p-4 border border-stone-100">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+            <span className="block text-xs font-bold uppercase tracking-wider text-stone-500">
               Logged Duration
             </span>
             <p className="font-mono text-3xl font-bold text-stone-900">{finalElapsedMins} min</p>
           </div>
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+            <span className="block text-xs font-bold uppercase tracking-wider text-stone-500">
               Time Window
             </span>
             <p className="font-mono text-xl font-semibold text-stone-700">
@@ -217,7 +240,7 @@ export function StopwatchCard({
             </p>
           </div>
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 block">
+            <span className="block text-xs font-bold uppercase tracking-wider text-stone-500">
               Status
             </span>
             <span className="inline-flex items-center gap-1 rounded-full bg-mint-100 px-2.5 py-0.5 text-xs font-semibold text-mint-800 mt-1">
@@ -229,51 +252,15 @@ export function StopwatchCard({
         <p className="mt-4 text-stone-500">Nice. That’s one less thing to carry around.</p>
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          {onDirectSyncToSheets && (
-            <button
-              type="button"
-              disabled={isSyncingSheets}
-              onClick={onDirectSyncToSheets}
-              className="inline-flex items-center gap-2 min-h-12 rounded-full bg-stone-900 px-6 py-3 font-semibold text-white transition hover:bg-stone-700 active:scale-95 shadow-xs disabled:opacity-50"
-            >
-              <IconRocket className="h-4 w-4" />
-              <span>{isSyncingSheets ? 'Syncing to Google Sheets…' : 'Sync to Google Sheets'}</span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onFillSchedule}
-            className="inline-flex items-center gap-2 min-h-12 rounded-full border border-stone-200 bg-white px-6 py-3 font-semibold text-stone-800 transition hover:bg-stone-50 active:scale-95 shadow-2xs"
-          >
-            <IconEdit className="h-4 w-4" />
-            <span>Fill / Edit Row in Schedule</span>
-          </button>
           <button
             type="button"
             onClick={onWriteReflection}
-            className="inline-flex items-center gap-2 min-h-12 rounded-full bg-mint-700 px-6 py-3 font-semibold text-white transition hover:bg-mint-800 active:scale-95 shadow-xs"
+            className="inline-flex items-center gap-2 min-h-12 rounded-full bg-stone-900 px-6 py-3 font-semibold text-white transition hover:bg-stone-700 active:scale-95 shadow-xs"
           >
             <IconNote className="h-4 w-4" />
             <span>Write Diary Reflection</span>
           </button>
-          <button
-            type="button"
-            onClick={onCopyGtoK}
-            className="inline-flex items-center gap-2 min-h-12 rounded-full bg-stone-100 px-5 py-3 font-medium text-stone-700 transition hover:bg-stone-200 active:scale-95"
-            title="Copy tab-separated Duration, Start, End, Progress, Notes to clipboard"
-          >
-            {copiedGtoKToast ? (
-              <>
-                <IconCheck className="h-4 w-4 text-mint-600" />
-                <span>Copied Cols G–K</span>
-              </>
-            ) : (
-              <>
-                <IconClipboard className="h-4 w-4" />
-                <span>Copy Cols G–K TSV</span>
-              </>
-            )}
-          </button>
+          <SheetToolsMenu items={finishedSheetItems} align="start" className="[&>button]:min-h-12" />
           <button
             type="button"
             onClick={onReset}
@@ -301,14 +288,14 @@ export function StopwatchCard({
               <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-mint-500 animate-pulse-soft" />
               <IconClock className="h-3.5 w-3.5 text-mint-600" />
               <span className="text-mint-700 font-bold">Stopwatch Running</span>
-              <span className="text-stone-400">· Started at {startedAt ? formatTimeHHMM(startedAt) : ''}</span>
+              <span className="text-stone-500">· Started at {startedAt ? formatTimeHHMM(startedAt) : ''}</span>
             </>
           ) : isPaused ? (
             <>
               <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-amber-500" />
               <IconPause className="h-3.5 w-3.5 text-amber-600" />
               <span className="text-amber-700 font-bold">Stopwatch Paused</span>
-              <span className="text-stone-400">· Paused at {pausedAt ? formatTimeHHMM(pausedAt) : ''}</span>
+              <span className="text-stone-500">· Paused at {pausedAt ? formatTimeHHMM(pausedAt) : ''}</span>
             </>
           ) : (
             <>
@@ -322,7 +309,8 @@ export function StopwatchCard({
         <button
           type="button"
           onClick={() => setSelectorOpen((o) => !o)}
-          className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-1 text-[11px] font-semibold text-stone-600 hover:bg-stone-200 transition active:scale-95"
+          aria-expanded={selectorOpen}
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-stone-100 px-3 text-xs font-semibold text-stone-600 transition hover:bg-stone-200 active:scale-95 sm:min-h-8"
         >
           {selectorOpen ? (
             <>
@@ -342,18 +330,20 @@ export function StopwatchCard({
       {selectorOpen && (
         <div className="mt-4 rounded-2xl bg-stone-50 border border-stone-200/80 p-4 animate-fade-in">
           <div className="flex items-center gap-2 mb-3">
-            <IconSearch className="h-3.5 w-3.5 text-stone-400 shrink-0" />
+            <IconSearch className="h-3.5 w-3.5 shrink-0 text-stone-500" aria-hidden="true" />
             <input
-              type="text"
+              type="search"
+              aria-label="Search topics"
               value={selectorSearch}
               onChange={(e) => setSelectorSearch(e.target.value)}
-              placeholder="Search topic or row to focus..."
-              className="w-full text-xs bg-white rounded-lg px-3 py-1.5 border border-stone-200 focus:outline-hidden"
+              placeholder="Search topic or leader…"
+              className="min-h-11 w-full rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm placeholder:text-stone-500 focus:border-stone-900 sm:min-h-0 sm:text-xs"
             />
           </div>
           <div className="max-h-48 overflow-y-auto space-y-1">
             {filteredSchedule.map((s) => (
-              <div
+              <button
+                type="button"
                 key={s.id}
                 onClick={() => {
                   onSelectActivity({
@@ -370,16 +360,16 @@ export function StopwatchCard({
                   });
                   setSelectorOpen(false);
                 }}
-                className="flex items-center justify-between p-2 rounded-xl text-xs hover:bg-white cursor-pointer transition"
+                className="flex min-h-11 w-full items-center justify-between gap-2 rounded-xl p-2 text-left text-xs transition hover:bg-white focus-visible:bg-white"
               >
-                <div className="truncate pr-2">
-                  <span className="font-bold text-stone-900 mr-2">Row {s.rowNumber}</span>
-                  <span className="text-stone-700">{s.topic.split('\n')[0]}</span>
-                </div>
-                <span className="shrink-0 text-[10px] font-mono px-2 py-0.5 rounded-md bg-stone-200/60 text-stone-600">
+                <span className="flex min-w-0 items-center gap-2">
+                  <RowTag rowNumber={s.rowNumber} />
+                  <span className="truncate text-stone-700">{s.topic.split('\n')[0]}</span>
+                </span>
+                <span className="shrink-0 rounded-md bg-stone-200/60 px-2 py-0.5 font-mono text-xs text-stone-600">
                   {s.durationMinutes ? `${s.durationMinutes}m` : 'TBD'}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -388,27 +378,21 @@ export function StopwatchCard({
       {/* Topic Title & Badges */}
       <div className="mt-5">
         <div className="flex flex-wrap items-center gap-2 mb-2.5">
-          {matchedSchedule && (
-            <span className="rounded-md bg-stone-900 px-2 py-0.5 text-[11px] font-bold text-white tracking-wide">
-              Row {matchedSchedule.rowNumber}
-            </span>
-          )}
+          {matchedSchedule && <RowTag rowNumber={matchedSchedule.rowNumber} />}
           {(matchedSchedule || activity) && (
             <span className="text-xs font-medium text-stone-500">
-              {matchedSchedule?.activityCount ? `#${matchedSchedule.activityCount} · ` : ''}
-              {matchedSchedule?.day || activity?.day || 'Day'}
-              {matchedSchedule?.date ? `, ${matchedSchedule.date}` : activity?.date ? `, ${activity.date}` : ''}
+              {activityDateLabel(matchedSchedule?.day || activity?.day || 'Day', matchedSchedule?.date || activity?.date)}
             </span>
           )}
-          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getPicBadge(matchedSchedule?.pic || pic)}`}>
+          <span className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${getPicBadge(matchedSchedule?.pic || pic)}`}>
             {matchedSchedule?.pic || pic}
           </span>
           {matchedSchedule?.mainMedia && (
-            <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[11px] font-medium text-stone-600">
+            <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-xs font-medium text-stone-600">
               {matchedSchedule.mainMedia}
             </span>
           )}
-          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-bold ${getProgressBadge(isRunning ? 'In Progress' : matchedSchedule?.progress || 'Not Started')}`}>
+          <span className={`rounded-full border px-2 py-0.5 text-xs font-bold ${getProgressBadge(isRunning ? 'In Progress' : matchedSchedule?.progress || 'Not Started')}`}>
             {isRunning ? (
               <span className="inline-flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-peach-500 animate-pulse" />
@@ -419,11 +403,11 @@ export function StopwatchCard({
             )}
           </span>
           {targetMinutes ? (
-            <span className="rounded-full bg-mint-50 px-2.5 py-0.5 text-[11px] font-semibold text-mint-700">
+            <span className="rounded-full bg-mint-50 px-2.5 py-0.5 text-xs font-semibold text-mint-700">
               Target: {targetMinutes} min
             </span>
           ) : (
-            <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-medium text-stone-500">
+            <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-600">
               Flexible / TBD
             </span>
           )}
@@ -446,7 +430,7 @@ export function StopwatchCard({
               <ul className="mt-2 space-y-1 rounded-2xl bg-stone-50 p-3.5 text-xs text-stone-700 border border-stone-100 animate-fade-in">
                 {subtopics.map((sub, i) => (
                   <li key={i} className="flex items-start gap-1.5">
-                    <span className="text-stone-400 font-bold">•</span>
+                    <span className="font-bold text-stone-500" aria-hidden="true">•</span>
                     <span>{sub.replace(/^[-*•]\s*/, '')}</span>
                   </li>
                 ))}
@@ -458,7 +442,7 @@ export function StopwatchCard({
 
       {/* Digital Stopwatch Display */}
       <div className="mt-6 rounded-3xl bg-stone-50 border border-stone-100 p-6 sm:p-8 text-center">
-        <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-stone-400 block mb-2">
+        <span className="mb-2 block text-[11px] font-bold uppercase tracking-[0.2em] text-stone-500">
           {isRunning ? 'Elapsed Stopwatch Time' : isPaused ? 'Paused Stopwatch Time' : 'Stopwatch Ready'}
         </span>
 

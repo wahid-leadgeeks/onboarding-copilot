@@ -635,3 +635,32 @@ export function clipboardBlockForFeedback(entries: FeedbackEntry[]): string {
 
   return lines.join('\n');
 }
+
+/**
+ * Focus-trap helper for keyboard navigation inside modal dialogs.
+ */
+export function tabWrapTarget<T>(active: T | null, focusable: readonly T[], shiftKey: boolean): T | null {
+  if (focusable.length === 0) return null;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (shiftKey && active === first) return last;
+  if (!shiftKey && active === last) return first;
+  return null;
+}
+
+/**
+ * Validates if all 6 Likert dimensions have been rated 1–6.
+ */
+export function isRatingComplete(ratings: Partial<FeedbackRatings>): ratings is FeedbackRatings {
+  const dims: FeedbackRatingDimension[] = [
+    'communication',
+    'alignment',
+    'understanding',
+    'readiness',
+    'pace',
+    'overall',
+  ];
+  return dims.every(
+    (d) => typeof ratings[d] === 'number' && ratings[d]! >= 1 && ratings[d]! <= 6
+  );
+}

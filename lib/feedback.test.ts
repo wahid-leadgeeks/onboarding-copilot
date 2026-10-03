@@ -18,9 +18,10 @@ import {
   toLikertLabel,
   upsertFeedbackEntry,
   writeFeedbackEntries,
+  isRatingComplete,
+  tabWrapTarget,
 } from './feedback';
 import type { FeedbackEntry } from './feedback';
-import { isRatingComplete, tabWrapTarget } from '@/app/components/FeedbackModal';
 
 /**
  * Pure RFC4180 TSV row parser for zero-DOM headless test verification.

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { clampStep } from '@/lib/guide-tour';
+import { OFFICIAL_SCHEDULE_ACTIVITIES } from '@/lib/schedule-catalog';
 
 export type GuideTourStep = {
   /** Optional route to navigate to for this step */
@@ -23,7 +24,7 @@ export const allPagesTourSteps: readonly GuideTourStep[] = [
     route: '/',
     badge: 'Welcome to NOVA',
     title: 'Your onboarding cockpit',
-    body: 'Starting a new role involves lots of activities, documents, and spreadsheet columns. NOVA is your personal companion designed to keep your first 90 days calm, organized, and clear — with zero guesswork. Let’s explore how to use the core feature on every page!',
+    body: 'Starting a new role involves lots of activities, documents and check-ins. NOVA is your personal companion designed to keep your first 90 days calm, organized, and clear — with zero guesswork. Let’s explore how to use the core feature on every page!',
     proTip: '💡 This tour will navigate through each page and show you how to take action step-by-step.',
   },
   {
@@ -33,24 +34,24 @@ export const allPagesTourSteps: readonly GuideTourStep[] = [
     title: 'How to track your daily work',
     body: 'Your day is focused on one activity at a time. You never need to calculate hours or guess what to do next.',
     steps: [
-      'Check your current task: The card shows your scheduled topic, mentor (PIC), and planned duration.',
-      'Click "Start Timer": Hit the green button when you begin. NOVA records your exact start time automatically.',
-      'Click "Complete & Log": When finished, hit Complete. NOVA calculates your duration and prompts you for a quick reflection note.',
+      'Check your current task: The card shows your scheduled topic, who leads it, and the planned duration.',
+      'Click "Start Stopwatch": Press it when you begin. NOVA records your exact start time automatically.',
+      'Click "Finish & Stop": When you are done, NOVA calculates your duration. Then choose "Write Diary Reflection" to capture a quick note.',
     ],
-    proTip: '💡 Stepping away for a break? Hit "Pause" anytime to pause the timer without losing your progress.',
+    proTip: '💡 Stepping away for a break? Hit "Pause Stopwatch" anytime to pause the timer without losing your progress.',
   },
   {
     route: '/schedule',
     target: 'schedule-toolbar',
     badge: 'Schedule · 90-Day Plan',
     title: 'How to explore & check off sessions',
-    body: 'Explore all 59 onboarding activities planned across Weeks 1–4 and Months 2 & 3 in one master calendar.',
+    body: `Explore all ${OFFICIAL_SCHEDULE_ACTIVITIES.length} onboarding activities planned across Weeks 1–4 and Months 2 & 3 in one master calendar.`,
     steps: [
       'Filter by Week: Click tabs like "Week 1", "Week 2", or "Today" to see scheduled sessions.',
       'Search topics or trainers: Type any topic, mentor name, or session number to find activities instantly.',
-      'Click any activity card: Open the side drawer to see detailed subtopics, syllabus outlines, or sync your status to Google Sheets.',
+      'Click any activity card: Open the side drawer to see detailed subtopics, syllabus outlines, or update your progress.',
     ],
-    proTip: '💡 Use "Copy G–K" in any activity drawer to copy your duration and timestamps directly into Google Sheets.',
+    proTip: "💡 Open any activity's Sheet tools to copy or sync its row.",
   },
   {
     route: '/timeline',
@@ -63,7 +64,7 @@ export const allPagesTourSteps: readonly GuideTourStep[] = [
       'Check off completed items: Tick off deliverables as you finish them to advance your stage progress toward 100%.',
       'Track stage dates: Set and review your planned start and completion dates to stay on schedule with HR.',
     ],
-    proTip: '💡 Click "Copy Entire Timeline Sheet" at the top to copy all stage dates and checklists in 1 click.',
+    proTip: '💡 Open "Sheet tools" at the top and choose "Copy for spreadsheet" to copy all stage dates and checklists in one go.',
   },
   {
     route: '/reviews',
@@ -72,7 +73,7 @@ export const allPagesTourSteps: readonly GuideTourStep[] = [
     title: 'How to prepare for manager check-ins',
     body: 'At the end of Month 1, Month 2, and Month 3, you will have a formal check-in conversation with your manager.',
     steps: [
-      'Open your upcoming review: Click Month 1, Month 2, or Month 3 to view your review agenda.',
+      'Open your upcoming review: Click Month 1, Month 2, or Month 3 to view your review agenda. First month and Monthly score live in the tabs at the top of Reviews.',
       'Write your self-reflection: Fill in your achievements, challenges faced, and goals for the next month.',
       'Align during your meeting: Walk through company core values (HARPS) and technical rubric together with your manager.',
     ],
@@ -85,12 +86,12 @@ export const allPagesTourSteps: readonly GuideTourStep[] = [
     title: 'How to write your daily notes',
     body: 'The HR workbook requires you to document learnings across 28 syllabus topics. NOVA makes recording them fast and effortless.',
     steps: [
-      'Pick today’s session: Find your topic in the list and click "Write" or "Fill Notes".',
-      'Document 3 Key Learnings (Col G): Write 3 concise takeaways from the session. Click ✨ AI Suggestions if you need inspiration!',
-      'Add Personal Notes (Col H): Note down your reflections, questions, or ideas for your mentor.',
-      'Save & Sync: Click "Save Notes" to store them safely on your device, or "Sync to Sheets" to send them to the workbook!',
+      'Pick today’s session: Find your topic in the list and click "Write notes".',
+      'Write 3 things you learned: Jot down 3 concise takeaways from the session. Click "Suggest ideas" if you need inspiration!',
+      'Add your notes: Note down your reflections, questions, or ideas for your mentor.',
+      'Save: Click "Save notes" to keep them safely on your device.',
     ],
-    proTip: '💡 Use "Copy Row TSV" if you ever want to paste your 3 takeaways directly into cell A of Google Sheets.',
+    proTip: '💡 Sheet tools on any topic lets you copy it for the spreadsheet.',
   },
   {
     route: '/feedback',
@@ -99,11 +100,11 @@ export const allPagesTourSteps: readonly GuideTourStep[] = [
     title: 'How to rate onboarding sessions',
     body: 'Your feedback helps your mentor and HR team ensure you have all the support and resources you need.',
     steps: [
-      'Select an onboarding session: Click any session you attended this week to open its rating drawer.',
+      'Select an onboarding session: Click any session you attended this week to open its rating panel.',
       'Rate on a 1-to-6 scale: Score key dimensions like topic clarity, material quality, and mentor support.',
       'Share questions & comments: Type any questions or suggestions so your team can help immediately.',
     ],
-    proTip: '💡 You can sync your evaluation directly to Google Sheets with 1 click or copy the TSV row.',
+    proTip: '💡 Use Sheet tools to send your evaluation to the spreadsheet, or copy it to paste yourself.',
   },
   {
     route: '/glossary',
@@ -113,10 +114,10 @@ export const allPagesTourSteps: readonly GuideTourStep[] = [
     body: 'Never waste time hunting through email threads or chat messages for training links and company guides.',
     steps: [
       'Search by keyword: Type any topic, system name, or term to instantly find matching materials.',
-      'Filter by format: Switch between Video recordings, Online Meeting links, and Reading Materials.',
+      'Filter by format: Switch between All, Video recordings, and Online Meeting links.',
       'Direct links: Click any module card to view syllabus objectives and open documents or slides directly.',
     ],
-    proTip: '💡 Check the "Sheet Guide" tab to understand exactly what each tab in the company spreadsheet is for.',
+    proTip: '💡 Check the "Workbook Guide" tab to understand exactly what each tab in the company spreadsheet is for.',
   },
   {
     route: '/settings',
@@ -126,8 +127,8 @@ export const allPagesTourSteps: readonly GuideTourStep[] = [
     body: 'NOVA is built local-first so your work is always preserved, even if you lose your internet connection.',
     steps: [
       'Automatic local saving: All timers, notes, and feedback save instantly in your browser.',
-      'Link Google Sheets: Connect your Google account or sheet ID whenever you want live cloud synchronization.',
-      'Copy-paste fallback: Every page has 1-click clipboard copy buttons formatted specifically for the company workbook.',
+      'Connect Google: Sign in with Google whenever you want your work kept in step with the company spreadsheet.',
+      'Copy-paste fallback: Every page has a Sheet tools menu with copy-paste fallbacks formatted for the company workbook.',
     ],
     proTip: '💡 You can restart this guide tour anytime from this page or from the sidebar footer.',
   },
@@ -312,11 +313,21 @@ export function GuideTour({
   // Track route transitions or DOM changes so the spotlight follows its target.
   useEffect(() => {
     if (!open) return;
-    const timer = setTimeout(() => {
+    // A page may scroll itself after the tour first brought the target into view (e.g. jumping to
+    // the next activity), so re-check shortly after and again once that scroll has settled.
+    const reveal = () => {
       updatePosition();
-    }, 120);
-    return () => clearTimeout(timer);
-  }, [open, index, currentRoute, updatePosition]);
+      if (!step || centered) return;
+      const el = document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`);
+      if (!el || (el.offsetWidth === 0 && el.offsetHeight === 0)) return;
+      const rect = el.getBoundingClientRect();
+      if (rect.bottom < 0 || rect.top > window.innerHeight) {
+        el.scrollIntoView({ block: 'center', behavior: 'auto' });
+      }
+    };
+    const timers = [setTimeout(reveal, 120), setTimeout(reveal, 900)];
+    return () => timers.forEach(clearTimeout);
+  }, [open, index, currentRoute, updatePosition, step, centered]);
 
   // Track viewport changes so the spotlight follows its target.
   useEffect(() => {

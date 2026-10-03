@@ -145,7 +145,7 @@ export function activityFilterOptions(views: readonly LearningRecordView[]): Act
     .sort((first, second) => (first.label < second.label ? -1 : 1));
 }
 
-/** Export-shaped note; structurally compatible with `ExportNotes`' `SelectableNote`. */
+/** A learning note in the shape used when selecting notes for export. */
 export type SelectableLearningNote = {
   readonly id: string;
   readonly kind: LearningRecordKind;

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import {
   HARPS_VALUES,
   OFFICIAL_MONTHLY_REVIEWS,
@@ -15,7 +14,7 @@ import {
 } from '@/lib/reviews';
 import { ReviewDetailSheet } from '@/app/components/ReviewDetailSheet';
 import { useToast } from '@/app/components/Toast';
-import { IconCheck, IconClipboard, IconTrophy, IconTarget } from '@/app/components/Icons';
+import { ReviewsTabs } from '@/app/components/ReviewsTabs';
 
 export default function ReviewsPage() {
   const { toast } = useToast();
@@ -100,7 +99,7 @@ export default function ReviewsPage() {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(row);
         setCopiedMonth(milestone.month);
-        toast.success(`Copied Month ${milestone.month} review TSV! Paste into Google Sheets.`);
+        toast.success(`Copied Month ${milestone.month} review. Paste it into the spreadsheet.`);
         setTimeout(() => setCopiedMonth(null), 2500);
       }
     } catch {
@@ -129,15 +128,15 @@ export default function ReviewsPage() {
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
       {/* Header */}
       <header className="animate-fade-up pb-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">
-            Worksheet: 1st to 3rd Month Review · Probation Checkpoints
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+            Probation checkpoints
           </p>
           <span className="rounded-full bg-sun-50 px-3 py-1 text-xs font-semibold text-sun-800">
-            3 Milestones · Day 30, 60, 90
+            Day 30, 60 and 90
           </span>
         </div>
-        <div className="mt-2">
+        <div className="mt-2 min-w-0">
           <h1 className="text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
             Monthly Reviews &amp; Values
           </h1>
@@ -145,49 +144,14 @@ export default function ReviewsPage() {
             Self-evaluations across Month 1, Month 2, and Month 3 probation milestones, plus HARPS Core Values alignment.
           </p>
         </div>
-
-        {/* Quick Action Banners for New Sheets */}
-        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Link
-            href="/first-month-review"
-            className="group flex items-start gap-3 rounded-2xl border border-peach-200/90 bg-peach-50/40 p-4 transition-all hover:bg-peach-50/70 hover:shadow-xs active:scale-98"
-          >
-            <div className="rounded-xl bg-peach-500/10 p-2 text-peach-700">
-              <IconTrophy className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 font-bold text-stone-900 group-hover:text-peach-900">
-                <span>First Month Review</span>
-                <span className="text-xs text-stone-400 group-hover:translate-x-0.5 transition-transform">→</span>
-              </div>
-              <p className="mt-0.5 text-xs text-stone-600 leading-snug">
-                Complete 30-day review: 11 technical competencies, 8 values, ratings, supervisor comments & HRD reflections.
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/monthly-review-score"
-            className="group flex items-start gap-3 rounded-2xl border border-sky-200/90 bg-sky-50/40 p-4 transition-all hover:bg-sky-50/70 hover:shadow-xs active:scale-98"
-          >
-            <div className="rounded-xl bg-sky-500/10 p-2 text-sky-700">
-              <IconTarget className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5 font-bold text-stone-900 group-hover:text-sky-900">
-                <span>Monthly Review Score Rubric</span>
-                <span className="text-xs text-stone-400 group-hover:translate-x-0.5 transition-transform">→</span>
-              </div>
-              <p className="mt-0.5 text-xs text-stone-600 leading-snug">
-                Official scoring rubric defining expectations for 60, 70, 80, 90, and 100 score levels.
-              </p>
-            </div>
-          </Link>
-        </div>
+        <ReviewsTabs className="mt-4" />
       </header>
 
       {/* 3 Clean Milestone Cards */}
-      <section className="animate-fade-up stagger-1 mt-4 space-y-4">
+      <section aria-labelledby="reviews-milestones-heading" className="animate-fade-up stagger-1 mt-4 space-y-4">
+        <h2 id="reviews-milestones-heading" className="sr-only">
+          Month-by-month reviews
+        </h2>
         <div data-tour="reviews-cards-grid" className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {OFFICIAL_MONTHLY_REVIEWS.map((milestone) => {
             const assessment = assessments.find((a) => a.month === milestone.month);
@@ -210,61 +174,62 @@ export default function ReviewsPage() {
                 : null;
 
             return (
-              <div
+              <button
                 key={milestone.month}
+                type="button"
                 onClick={() => setActiveMilestone(milestone)}
-                className={`group flex flex-col justify-between rounded-3xl border p-5 cursor-pointer transition-all ${
+                className={`group flex min-w-0 flex-col justify-between rounded-3xl border bg-white p-5 text-left transition-all ${
                   isCompleted
-                    ? 'border-mint-200 bg-white hover:border-mint-300 hover:shadow-soft'
-                    : 'border-stone-200 bg-white hover:border-stone-300 hover:shadow-soft'
+                    ? 'border-mint-200 hover:border-mint-300 hover:shadow-soft'
+                    : 'border-stone-200 hover:border-stone-300 hover:shadow-soft'
                 }`}
               >
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="rounded-md bg-stone-900 px-2 py-0.5 text-[11px] font-bold text-white">
+                <span className="block w-full">
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="rounded-md bg-stone-900 px-2 py-0.5 text-xs font-bold text-white">
                       Month {milestone.month}
                     </span>
                     {isCompleted ? (
-                      <span className="rounded-full bg-mint-50 px-2.5 py-0.5 text-[11px] font-semibold text-mint-700 border border-mint-200">
+                      <span className="rounded-full border border-mint-200 bg-mint-50 px-2.5 py-0.5 text-xs font-semibold text-mint-800">
                         Completed ✓
                       </span>
                     ) : (
-                      <span className="rounded-full bg-peach-50 px-2.5 py-0.5 text-[11px] font-semibold text-peach-700 border border-peach-200">
+                      <span className="rounded-full border border-peach-200 bg-peach-50 px-2.5 py-0.5 text-xs font-semibold text-peach-800">
                         Pending
                       </span>
                     )}
-                  </div>
+                  </span>
 
-                  <h3 className="mt-3 text-base font-semibold text-stone-900 group-hover:text-mint-800 transition">
+                  <span className="mt-3 block text-base font-semibold text-stone-900 transition group-hover:text-mint-800">
                     {milestone.stageTitle}
-                  </h3>
-                  <p className="mt-1 text-xs text-stone-500 line-clamp-2 leading-relaxed">
+                  </span>
+                  <span className="mt-1 line-clamp-2 block text-xs leading-relaxed text-stone-500">
                     {milestone.focus}
-                  </p>
-                </div>
+                  </span>
+                </span>
 
-                <div className="mt-5 space-y-3 pt-3 border-t border-stone-100">
-                  <div className="flex items-center justify-between text-xs">
+                <span className="mt-5 block w-full space-y-3 border-t border-stone-100 pt-3">
+                  <span className="flex items-center justify-between text-xs">
                     <span className="text-stone-500">
                       {ratedCrit.length} / {allCrit.length} criteria rated
                     </span>
                     {avg ? (
-                      <span className="font-bold text-mint-700 bg-mint-50 px-2 py-0.5 rounded-md">
+                      <span className="rounded-md bg-mint-50 px-2 py-0.5 font-bold text-mint-800">
                         ★ {avg}
                       </span>
                     ) : (
-                      <span className="text-stone-400">—</span>
+                      <span className="text-stone-500">—</span>
                     )}
-                  </div>
+                  </span>
 
-                  <div className="flex items-center justify-between text-xs pt-1">
-                    <span className="text-stone-400 text-[11px]">Day {milestone.targetDays}</span>
-                    <span className="font-semibold text-stone-700 group-hover:text-stone-900 group-hover:translate-x-0.5 transition">
+                  <span className="flex items-center justify-between pt-1 text-xs">
+                    <span className="text-stone-500">Day {milestone.targetDays}</span>
+                    <span className="font-semibold text-stone-700 transition group-hover:translate-x-0.5 group-hover:text-stone-900">
                       Open Review →
                     </span>
-                  </div>
-                </div>
-              </div>
+                  </span>
+                </span>
+              </button>
             );
           })}
         </div>
@@ -272,17 +237,17 @@ export default function ReviewsPage() {
 
       {/* HARPS Values Summary Strip */}
       <section className="animate-fade-up stagger-2 mt-6 rounded-3xl bg-stone-50/70 border border-stone-100 p-5">
-        <div className="flex items-center justify-between border-b border-stone-200/60 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-stone-200/60 pb-3">
           <h2 className="text-xs font-bold uppercase tracking-wider text-stone-600">
             HARPS Core Values Framework
           </h2>
-          <span className="text-[11px] text-stone-400">Evaluated in each monthly review</span>
+          <span className="text-xs text-stone-500">Evaluated in each monthly review</span>
         </div>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-5 gap-3">
           {HARPS_VALUES.map((val) => (
             <div key={val.key} className="rounded-2xl bg-white p-3 border border-stone-100 shadow-2xs">
               <span className="text-xs font-bold text-stone-900 block">{val.name}</span>
-              <p className="mt-1 text-[11px] text-stone-500 leading-normal">
+              <p className="mt-1 text-xs text-stone-500 leading-normal">
                 {val.description}
               </p>
             </div>

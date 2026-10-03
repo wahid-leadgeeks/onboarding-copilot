@@ -1,67 +1,109 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScheduleCard } from '@/app/components/ScheduleCard';
+import { ScheduleCompletedRow } from '@/app/components/ScheduleCompletedRow';
 import { ActivityDetailSheet } from '@/app/components/ActivityDetailSheet';
 import { ScheduleFillModal } from '@/app/components/ScheduleFillModal';
-import { ScheduleSyncAllModal } from '@/app/components/ScheduleSyncAllModal';
+import { BulkSyncModal, type BulkSyncModalRow } from '@/app/components/BulkSyncModal';
+import { SheetToolsMenu, type SheetToolsMenuItem } from '@/app/components/SheetToolsMenu';
 import { LearningModal } from '@/app/components/LearningModal';
 import type { LearningActivityContext, LearningSubmission } from '@/app/components/LearningModal';
 import { useToast } from '@/app/components/Toast';
-import {
-  IconSearch,
-  IconLightbulb,
-  IconCalendar,
-  IconX,
-  IconZap,
-  IconGoogle,
-  IconRefresh,
-  IconClipboard,
-  IconCheck,
-} from '@/app/components/Icons';
+import { IconLightbulb, IconCalendar, IconX, IconZap, IconChevronDown } from '@/app/components/Icons';
 import {
   OFFICIAL_SCHEDULE_ACTIVITIES,
   SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY,
   readScheduleCustomizations,
   writeScheduleCustomizations,
   clipboardRowForScheduleGtoL,
-  clipboardRowForScheduleGtoK,
   clipboardRowForScheduleFull,
-  clipboardAllScheduleGtoL,
   getMergedScheduleActivities,
-  isSameDate,
   type ScheduleActivity,
 } from '@/lib/schedule-catalog';
 import { DIARY_STORAGE_KEY, appendDiary, readDiary } from '@/lib/local-records';
 import { diarySyncPayload, learningDiaryEntry } from '@/lib/learning-capture';
+import { buildScheduleSyncBody, scheduleBulkSyncPlan, scheduleChunkClipboard } from '@/lib/bulk-sync';
+import { markSynced, notifySyncChanged } from '@/lib/sync-status';
+import { topicTitle } from '@/lib/today-view';
+import {
+  DEFAULT_SCHEDULE_FILTERS,
+  HIDE_COMPLETED_STORAGE_KEY,
+  SCHEDULE_WEEK_TABS,
+  activeFilterCount,
+  activityAnchorId,
+  activityIdFromHash,
+  filterScheduleActivities,
+  filtersRevealing,
+  groupScheduleByWeek,
+  matchesWeekTab,
+  nextUpActivity,
+  readHideCompleted,
+  reflectedActivityIds,
+  splitCompletedRuns,
+  weekGroupHeading,
+  writeHideCompleted,
+  type ScheduleFilters,
+} from '@/lib/schedule-view';
+
+const TIP_DISMISSED_STORAGE_KEY = 'onboarding-schedule-tip-dismissed';
+const STANDARD_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+function safeStorage(): Storage | null {
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function readStorage(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+type PendingScroll = { id: string; focus: boolean; smooth: boolean };
 
 export default function MasterSchedulePage() {
   const { toast } = useToast();
   const [scheduleCatalog, setScheduleCatalog] = useState<ScheduleActivity[]>(() => [...OFFICIAL_SCHEDULE_ACTIVITIES]);
   const [dataSource, setDataSource] = useState<'loading' | 'database' | 'catalog'>('loading');
-  const [selectedWeek, setSelectedWeek] = useState<string>('All');
-  const [selectedDay, setSelectedDay] = useState<string>('All');
-  const [scheduleSearch, setScheduleSearch] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [filters, setFilters] = useState<ScheduleFilters>(DEFAULT_SCHEDULE_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [editingScheduleItem, setEditingScheduleItem] = useState<ScheduleActivity | null>(null);
   const [detailActivity, setDetailActivity] = useState<ScheduleActivity | null>(null);
   const [copiedRowToast, setCopiedRowToast] = useState<{ rowNumber: number; type: 'G-K' | 'G-L' | 'Full' } | null>(null);
-  const [scheduleTipDismissed, setScheduleTipDismissed] = useState(false);
-  const [syncHelpExpanded, setSyncHelpExpanded] = useState(false);
+  const [scheduleTipDismissed, setScheduleTipDismissed] = useState(true);
+  const [syncHelpOpen, setSyncHelpOpen] = useState(false);
   const [isSyncingRow, setIsSyncingRow] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
-  const [copiedBulkTSV, setCopiedBulkTSV] = useState(false);
+  const [copiedChunk, setCopiedChunk] = useState<number | null>(null);
+  const [reflectedIds, setReflectedIds] = useState<Set<string>>(() => new Set());
   const [selectedActivityForLearning, setSelectedActivityForLearning] = useState<ScheduleActivity | null>(null);
   const [showLearningCapture, setShowLearningCapture] = useState(false);
+  const [pendingScroll, setPendingScroll] = useState<PendingScroll | null>(null);
+  const initialScrollDone = useRef(false);
+  const catalogRef = useRef(scheduleCatalog);
+
+  useEffect(() => {
+    catalogRef.current = scheduleCatalog;
+  }, [scheduleCatalog]);
+
+  // Per-device preferences and reflections: read once on mount.
+  useEffect(() => {
+    setScheduleTipDismissed(readStorage(TIP_DISMISSED_STORAGE_KEY) === 'true');
+    const hide = readHideCompleted(readStorage(HIDE_COMPLETED_STORAGE_KEY));
+    if (hide !== null) setFilters((current) => ({ ...current, hideCompleted: hide }));
+    setReflectedIds(reflectedActivityIds(readDiary(readStorage(DIARY_STORAGE_KEY))));
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
 
     async function loadSchedule() {
-      if (typeof window !== 'undefined') {
-        setScheduleTipDismissed(localStorage.getItem('onboarding-schedule-tip-dismissed') === 'true');
-      }
-
       try {
         const res = await fetch('/api/schedule?catalog=true', { cache: 'no-store' });
         if (res.ok) {
@@ -77,10 +119,8 @@ export default function MasterSchedulePage() {
       }
 
       if (isMounted) {
-        if (typeof window !== 'undefined') {
-          const savedCustoms = readScheduleCustomizations(localStorage.getItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY));
-          setScheduleCatalog(getMergedScheduleActivities(savedCustoms));
-        }
+        const savedCustoms = readScheduleCustomizations(readStorage(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY));
+        setScheduleCatalog(getMergedScheduleActivities(savedCustoms));
         setDataSource('catalog');
       }
     }
@@ -92,38 +132,110 @@ export default function MasterSchedulePage() {
     };
   }, []);
 
+  /** Shows an activity: clears filters that hide it, then scrolls to it once rendered. */
+  const focusActivity = useCallback((id: string, options: { focus: boolean; smooth: boolean }) => {
+    const item = catalogRef.current.find((activity) => activity.id === id);
+    if (!item) return;
+    setFilters((current) => filtersRevealing(item, current, new Date()));
+    setPendingScroll({ id, ...options });
+  }, []);
+
+  // After the schedule loads: follow a #activity-{id} link, otherwise bring the next activity into view once.
+  useEffect(() => {
+    if (dataSource === 'loading' || initialScrollDone.current) return;
+    initialScrollDone.current = true;
+    const hashId = activityIdFromHash(window.location.hash);
+    if (hashId) {
+      focusActivity(hashId, { focus: true, smooth: false });
+      return;
+    }
+    if (window.location.hash) return;
+    const next = nextUpActivity(catalogRef.current, new Date());
+    if (next) setPendingScroll({ id: next.id, focus: false, smooth: false });
+  }, [dataSource, focusActivity]);
+
+  // Later hash changes and the global search palette (which dispatches nova:focus-activity on this page).
+  useEffect(() => {
+    function onHashChange() {
+      const id = activityIdFromHash(window.location.hash);
+      if (id) focusActivity(id, { focus: true, smooth: true });
+    }
+    function onFocusActivity(event: Event) {
+      const id = (event as CustomEvent<{ id?: unknown }>).detail?.id;
+      if (typeof id !== 'string' || !id) return;
+      try {
+        window.history.replaceState(null, '', `#${activityAnchorId(id)}`);
+      } catch {
+        /* URL update is cosmetic */
+      }
+      focusActivity(id, { focus: true, smooth: true });
+    }
+    window.addEventListener('hashchange', onHashChange);
+    window.addEventListener('nova:focus-activity', onFocusActivity);
+    return () => {
+      window.removeEventListener('hashchange', onHashChange);
+      window.removeEventListener('nova:focus-activity', onFocusActivity);
+    };
+  }, [focusActivity]);
+
+  useEffect(() => {
+    if (!pendingScroll) return;
+    const frame = window.requestAnimationFrame(() => {
+      const target = document.getElementById(activityAnchorId(pendingScroll.id));
+      if (target) {
+        target.scrollIntoView({ block: 'start', behavior: pendingScroll.smooth ? 'smooth' : 'auto' });
+        if (pendingScroll.focus) target.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });
+      }
+      setPendingScroll(null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [pendingScroll, filters]);
+
+  function updateFilters(patch: Partial<ScheduleFilters>) {
+    setFilters((current) => ({ ...current, ...patch }));
+  }
+
+  function handleToggleHideCompleted() {
+    const next = !filters.hideCompleted;
+    updateFilters({ hideCompleted: next });
+    writeHideCompleted(safeStorage(), next);
+  }
+
   function handleDismissScheduleTip() {
     setScheduleTipDismissed(true);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('onboarding-schedule-tip-dismissed', 'true');
+    try {
+      localStorage.setItem(TIP_DISMISSED_STORAGE_KEY, 'true');
+    } catch {
+      /* preference only */
     }
   }
 
-  async function handleCopyGtoK(item: ScheduleActivity) {
-    const tsv = clipboardRowForScheduleGtoL(item);
+  async function copyText(text: string): Promise<boolean> {
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(tsv);
-        setCopiedRowToast({ rowNumber: item.rowNumber, type: 'G-L' });
-        toast.success(`Copied G–L TSV for Row ${item.rowNumber} (${item.pic})!`);
-        setTimeout(() => setCopiedRowToast(null), 3000);
+        await navigator.clipboard.writeText(text);
+        return true;
       }
     } catch {
-      toast.error('Could not access clipboard');
+      /* fall through */
+    }
+    toast.error('Could not access the clipboard.');
+    return false;
+  }
+
+  async function handleCopyGtoK(item: ScheduleActivity) {
+    if (await copyText(clipboardRowForScheduleGtoL(item))) {
+      setCopiedRowToast({ rowNumber: item.rowNumber, type: 'G-L' });
+      toast.success(`Copied “${topicTitle(item.topic)}” for the spreadsheet.`);
+      setTimeout(() => setCopiedRowToast(null), 3000);
     }
   }
 
   async function handleCopyFullRow(item: ScheduleActivity) {
-    const tsv = clipboardRowForScheduleFull(item);
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(tsv);
-        setCopiedRowToast({ rowNumber: item.rowNumber, type: 'Full' });
-        toast.success(`Copied Full Row ${item.rowNumber} TSV (A–L)!`);
-        setTimeout(() => setCopiedRowToast(null), 3000);
-      }
-    } catch {
-      toast.error('Could not access clipboard');
+    if (await copyText(clipboardRowForScheduleFull(item))) {
+      setCopiedRowToast({ rowNumber: item.rowNumber, type: 'Full' });
+      toast.success(`Copied the full row for “${topicTitle(item.topic)}”.`);
+      setTimeout(() => setCopiedRowToast(null), 3000);
     }
   }
 
@@ -150,10 +262,12 @@ export default function MasterSchedulePage() {
         throw new Error(data.error || data.message || 'API sync failed');
       }
 
-      toast.success(`Successfully synced Row ${item.rowNumber} to Google Sheets!`);
+      markSynced(safeStorage());
+      notifySyncChanged();
+      toast.success(`Synced “${topicTitle(item.topic)}” to the spreadsheet.`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to sync to Google Sheets';
-      toast.error(`Sync error: ${msg}. You can use "Copy G–L TSV" as a fallback.`);
+      const msg = err instanceof Error ? err.message : 'The spreadsheet could not be updated';
+      toast.error(`Couldn't sync: ${msg}. You can copy the row from Sheet tools instead.`);
     } finally {
       setIsSyncingRow(false);
     }
@@ -166,13 +280,20 @@ export default function MasterSchedulePage() {
       setDetailActivity(updated);
     }
 
-    if (typeof window !== 'undefined') {
+    try {
       const existing = readScheduleCustomizations(localStorage.getItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY));
       const nextCustoms = { ...existing, [updated.id]: updated };
       localStorage.setItem(SCHEDULE_CUSTOMIZATIONS_STORAGE_KEY, writeScheduleCustomizations(nextCustoms));
+    } catch {
+      toast.error('Saved for now, but this device could not store the change.');
     }
-    toast.success(`Updated Row ${updated.rowNumber}!`);
+    toast.success(`Saved your changes to “${topicTitle(updated.topic)}”.`);
     setEditingScheduleItem(null);
+  }
+
+  function openReflection(act: ScheduleActivity) {
+    setSelectedActivityForLearning(act);
+    setShowLearningCapture(true);
   }
 
   async function handleLearningSave(submission: LearningSubmission) {
@@ -196,7 +317,9 @@ export default function MasterSchedulePage() {
     };
 
     const existing = readDiary(localStorage.getItem(DIARY_STORAGE_KEY));
-    localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(appendDiary(existing, entry)));
+    const nextDiary = appendDiary(existing, entry);
+    localStorage.setItem(DIARY_STORAGE_KEY, JSON.stringify(nextDiary));
+    setReflectedIds(reflectedActivityIds(nextDiary));
 
     await fetch('/api/diary', {
       method: 'POST',
@@ -204,66 +327,82 @@ export default function MasterSchedulePage() {
       body: JSON.stringify(diarySyncPayload(entry)),
     }).catch(() => null);
 
-    toast.success('Diary reflection saved & queued for sync!');
+    toast.success('Reflection saved to your diary.');
     setShowLearningCapture(false);
     setSelectedActivityForLearning(null);
   }
 
-  // Calculate statistics
+  // Statistics (computed from whatever is loaded)
   const now = new Date();
   const overallTotalCount = scheduleCatalog.length;
   const overallCompletedCount = scheduleCatalog.filter((a) => a.progress === 'Done').length;
   const overallProgressPercent = overallTotalCount > 0 ? Math.round((overallCompletedCount / overallTotalCount) * 100) : 0;
+  const nextUp = nextUpActivity(scheduleCatalog, now);
 
-  const weekCounts: Record<string, number> = {
-    'All': scheduleCatalog.length,
-    'Today': scheduleCatalog.filter((a) => isSameDate(a.date, now)).length,
-    'Week 1': scheduleCatalog.filter((a) => a.week === 'Week 1').length,
-    'Week 2': scheduleCatalog.filter((a) => a.week === 'Week 2').length,
-    'Week 3': scheduleCatalog.filter((a) => a.week === 'Week 3').length,
-    'Week 4': scheduleCatalog.filter((a) => a.week === 'Week 4').length,
-    'Week 5': scheduleCatalog.filter((a) => a.week === 'Week 5').length,
-    'Monthly Reviews': scheduleCatalog.filter((a) => a.week.startsWith('Month')).length,
-  };
+  const weekCounts: Record<string, number> = {};
+  for (const tab of SCHEDULE_WEEK_TABS) {
+    weekCounts[tab] = scheduleCatalog.filter((a) => matchesWeekTab(a, tab, now)).length;
+  }
 
-  const currentWeekActivities = scheduleCatalog.filter((a) => {
-    if (selectedWeek === 'Today') return isSameDate(a.date, now);
-    if (selectedWeek === 'All') return true;
-    if (selectedWeek === 'Monthly Reviews') return a.week.startsWith('Month');
-    return a.week === selectedWeek;
-  });
-
-  const standardDaysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  const currentWeekActivities = scheduleCatalog.filter((a) => matchesWeekTab(a, filters.week, now));
   const dayCounts: Record<string, number> = {};
   currentWeekActivities.forEach((a) => {
     if (a.day && a.day !== 'TBD') {
       dayCounts[a.day] = (dayCounts[a.day] || 0) + 1;
     }
   });
-  const availableDays = standardDaysOrder.filter((d) => (dayCounts[d] || 0) > 0);
+  const availableDays = STANDARD_DAYS.filter((d) => (dayCounts[d] || 0) > 0);
+  const showDayPills = filters.week !== 'Today' && availableDays.length > 1;
 
-  const filteredScheduleActivities = currentWeekActivities.filter((item) => {
-    if (selectedDay !== 'All' && item.day !== selectedDay) return false;
+  const filteredScheduleActivities = filterScheduleActivities(scheduleCatalog, filters, now);
+  const visibleGroups = groupScheduleByWeek(filteredScheduleActivities);
+  const weekTotals = new Map(groupScheduleByWeek(scheduleCatalog).map((g) => [g.key, g]));
+  const hiddenFilterCount = activeFilterCount(filters);
 
-    if (statusFilter !== 'All') {
-      if (statusFilter === 'Done' && item.progress !== 'Done') return false;
-      if (statusFilter === 'In Progress' && item.progress !== 'In Progress') return false;
-      if (statusFilter === 'On-Hold' && item.progress !== 'On-Hold') return false;
-      if (statusFilter === 'Reschedule' && item.progress !== 'Reschedule') return false;
-      if (statusFilter === 'Not Started' && item.progress !== 'Not Started' && item.progress !== '' && item.progress !== undefined) return false;
-    }
+  // Bulk sync: plan from exactly the list that is posted (all weeks, rows with data only).
+  const syncPlan = useMemo(() => scheduleBulkSyncPlan(scheduleCatalog), [scheduleCatalog]);
+  const syncRows: BulkSyncModalRow[] = useMemo(
+    () =>
+      [
+        ...syncPlan.rowsWithData.map((a) => ({ rowNumber: a.rowNumber, label: topicTitle(a.topic), status: 'ready' as const })),
+        ...syncPlan.skipped.map((a) => ({ rowNumber: a.rowNumber, label: topicTitle(a.topic), status: 'skipped' as const })),
+      ].sort((a, b) => a.rowNumber - b.rowNumber),
+    [syncPlan]
+  );
+  const syncDisabledReason =
+    dataSource === 'loading'
+      ? 'Your schedule is still loading. Syncing unlocks once it has loaded.'
+      : syncPlan.rowsWithData.length === 0
+        ? 'No activities have details to sync yet.'
+        : null;
+  const chunkToolItems: SheetToolsMenuItem[] = syncPlan.chunks.map((chunk) => ({
+    id: `chunk-${chunk.startRow}`,
+    label: chunk.startRow === chunk.endRow ? `Copy row ${chunk.startRow}` : `Copy rows ${chunk.startRow}–${chunk.endRow}`,
+    hint: `Paste at G${chunk.startRow}`,
+    state: copiedChunk === chunk.startRow ? 'done' : 'idle',
+    doneLabel: 'Copied',
+    onSelect: async () => {
+      if (await copyText(scheduleChunkClipboard(chunk))) {
+        setCopiedChunk(chunk.startRow);
+        setTimeout(() => setCopiedChunk(null), 3000);
+      }
+    },
+  }));
 
-    if (scheduleSearch.trim()) {
-      const q = scheduleSearch.toLowerCase().trim();
-      const matchTopic = item.topic.toLowerCase().includes(q);
-      const matchPic = item.pic.toLowerCase().includes(q);
-      const matchMedia = item.mainMedia.toLowerCase().includes(q);
-      const matchRow = `row ${item.rowNumber}`.includes(q) || String(item.rowNumber) === q;
-      if (!matchTopic && !matchPic && !matchMedia && !matchRow) return false;
-    }
-
-    return true;
-  });
+  const pageToolItems: SheetToolsMenuItem[] = [
+    {
+      id: 'sync-all',
+      label: 'Sync all to spreadsheet…',
+      hint: dataSource === 'loading' ? 'Available once your schedule has loaded' : 'Review the rows before anything is written',
+      disabled: dataSource === 'loading',
+      onSelect: () => setIsSyncModalOpen(true),
+    },
+    {
+      id: 'how-sync-works',
+      label: 'How spreadsheet sync works',
+      onSelect: () => setSyncHelpOpen(true),
+    },
+  ];
 
   const learningActivityContext: LearningActivityContext | null = selectedActivityForLearning
     ? {
@@ -277,288 +416,325 @@ export default function MasterSchedulePage() {
       }
     : null;
 
+  const pillClass = (active: boolean) =>
+    `inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-xs font-medium transition sm:min-h-9 ${
+      active ? 'bg-stone-900 text-white shadow-xs' : 'bg-stone-100 text-stone-700 hover:bg-stone-200 hover:text-stone-900'
+    }`;
+  const dayPillClass = (active: boolean) =>
+    `inline-flex min-h-11 items-center rounded-full px-3 text-xs font-medium transition sm:min-h-8 ${
+      active ? 'bg-mint-700 text-white shadow-2xs' : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+    }`;
+
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
       {/* Header */}
       <header className="animate-fade-up pb-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-stone-500">
-              <span>90-Day Master Roadmap</span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-stone-700">
-                <span>{overallCompletedCount} of {overallTotalCount} done</span>
-                <span className="text-stone-400">({overallProgressPercent}%)</span>
-              </span>
-              {dataSource === 'database' ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 text-[11px] font-medium text-emerald-800">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Database Synced ({scheduleCatalog.length})</span>
-                </span>
-              ) : dataSource === 'loading' ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] text-stone-500">
-                  <IconRefresh className="h-3 w-3 animate-spin" />
-                  <span>Loading DB...</span>
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] text-stone-600">
-                  <span>Local Catalog ({scheduleCatalog.length})</span>
-                </span>
-              )}
-            </div>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
-              Onboarding Schedule
-            </h1>
-            <p className="mt-1 text-sm text-stone-500">
-              Browse, filter, and sync all 53 activities across Weeks 1–5 and Monthly Reviews.
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">Your 90-day schedule</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">Onboarding Schedule</h1>
+            <p className="mt-1 text-sm text-stone-500" aria-live="polite">
+              {dataSource === 'loading'
+                ? 'Loading your schedule…'
+                : `${overallCompletedCount} of ${overallTotalCount} activities done (${overallProgressPercent}%).`}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <SheetToolsMenu items={pageToolItems} />
+        </div>
+
+        <div
+          role="progressbar"
+          aria-label="Schedule progress"
+          aria-valuemin={0}
+          aria-valuemax={overallTotalCount}
+          aria-valuenow={overallCompletedCount}
+          className="mt-5 h-2 overflow-hidden rounded-full bg-stone-100"
+        >
+          <div className="bar-gradient progress-shimmer h-full rounded-full transition-all" style={{ width: `${overallProgressPercent}%` }} />
+        </div>
+
+        {nextUp && dataSource !== 'loading' && (
+          <div className="mt-4 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="min-w-0 truncate text-stone-600">
+              <span className="font-semibold text-stone-900">Next up:</span> {topicTitle(nextUp.topic)}
+            </span>
             <button
               type="button"
-              onClick={() => setIsSyncModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-stone-800 active:scale-95 transition"
-              title="Sync all database activities to Google Sheets"
+              onClick={() => focusActivity(nextUp.id, { focus: true, smooth: true })}
+              className="inline-flex min-h-11 items-center rounded-full border border-stone-200 bg-white px-3.5 text-xs font-semibold text-stone-700 shadow-2xs transition hover:bg-stone-50 sm:min-h-8"
             >
-              <IconGoogle className="h-3.5 w-3.5" />
-              <span>Sync to Spreadsheet</span>
-              <span className="rounded-full bg-stone-800 px-1.5 py-0.2 text-[10px] text-stone-300">
-                {scheduleCatalog.length}
-              </span>
+              Jump to next
             </button>
-
-            <a
-              href="/"
-              className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 shadow-2xs transition hover:bg-stone-50 active:scale-95"
-            >
-              <span>← Back to Today</span>
-            </a>
           </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mt-5 h-2 rounded-full bg-stone-100 overflow-hidden">
-          <div
-            className="bar-gradient progress-shimmer h-full rounded-full transition-all"
-            style={{ width: `${overallProgressPercent}%` }}
-          />
-        </div>
+        )}
       </header>
 
-      {/* Quick tip & sync guide banner */}
+      {syncHelpOpen && (
+        <section
+          aria-labelledby="sync-help-title"
+          className="mb-6 rounded-2xl border border-sky-100 bg-sky-50/70 p-4 text-sm text-sky-950 shadow-2xs"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <h2 id="sync-help-title" className="font-semibold">
+              How spreadsheet sync works
+            </h2>
+            <button
+              type="button"
+              onClick={() => setSyncHelpOpen(false)}
+              aria-label="Close sync help"
+              className="-m-2 inline-flex size-11 shrink-0 items-center justify-center rounded-full text-stone-500 transition hover:bg-sky-100 hover:text-stone-800 sm:size-9"
+            >
+              <IconX className="h-4 w-4" />
+            </button>
+          </div>
+          <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sky-900">
+            <li>Your time, progress, links and notes are saved on this device first.</li>
+            <li>
+              To update the company spreadsheet for one activity, open its Sheet tools menu and choose Sync this row.
+            </li>
+            <li>To update every activity that has details, choose Sync all to spreadsheet from the Sheet tools menu above. You can review the rows before anything is written.</li>
+            <li>If syncing isn&apos;t available, copy from the same menu and paste into the spreadsheet yourself.</li>
+          </ul>
+        </section>
+      )}
+
       {!scheduleTipDismissed && (
-        <div className="mb-6 rounded-2xl bg-sky-50/70 border border-sky-100/80 p-3.5 text-xs text-sky-900 shadow-2xs transition-all">
+        <div className="mb-6 rounded-2xl border border-sky-100/80 bg-sky-50/70 p-3.5 text-sm text-sky-900 shadow-2xs">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-2.5">
-              <IconLightbulb className="h-4 w-4 text-sky-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold text-sky-950">
-                  Click any activity to open the detail sheet, log time, or sync with Google Sheets.
-                </p>
-                <div className="mt-1 flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setSyncHelpExpanded((prev) => !prev)}
-                    className="text-[11px] font-medium text-sky-700 hover:text-sky-950 underline underline-offset-2 transition"
-                  >
-                    {syncHelpExpanded ? 'Hide sync guide ▴' : 'How spreadsheet sync works ▾'}
-                  </button>
-                </div>
-                {syncHelpExpanded && (
-                  <div className="mt-2.5 space-y-1.5 rounded-xl bg-white/80 p-3 text-[11px] text-sky-900 border border-sky-100">
-                    <p>
-                      <strong>1-Click Direct Sync:</strong> Open an activity to sync Duration, Start Time, End Time, Progress, Materials Link, and Notes straight to your Google Sheet.
-                    </p>
-                    <p>
-                      <strong>Clipboard Fallback:</strong> Click <code className="bg-sky-100 px-1 py-0.5 rounded font-mono font-semibold">Copy G–L</code> to copy tab-separated values, then paste into cell <code className="bg-sky-100 px-1 py-0.5 rounded font-mono font-bold">G&#123;row&#125;</code> in Google Sheets.
-                    </p>
-                  </div>
-                )}
-              </div>
+              <IconLightbulb className="mt-0.5 h-4 w-4 shrink-0 text-sky-600" />
+              <p className="font-medium text-sky-950">
+                Tap any activity to see its outline, log your time, or write a reflection.
+              </p>
             </div>
             <button
               type="button"
               onClick={handleDismissScheduleTip}
-              className="text-stone-400 hover:text-stone-700 p-1 transition rounded-md hover:bg-sky-100/60"
+              className="-m-2 inline-flex size-11 shrink-0 items-center justify-center rounded-full text-stone-500 transition hover:bg-sky-100/60 hover:text-stone-700 sm:size-9"
               aria-label="Dismiss tip"
             >
-              <IconX className="h-3.5 w-3.5" />
+              <IconX className="h-4 w-4" />
             </button>
           </div>
         </div>
       )}
 
-      {/* Week Filter Tabs */}
-      <div data-tour="schedule-toolbar" className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-stone-100 pb-3">
-        {(['All', 'Today', 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Monthly Reviews'] as const).map((w) => {
-          const active = selectedWeek === w;
-          const count = weekCounts[w] || 0;
+      {/* Week tabs: one scrollable row */}
+      <div
+        data-tour="schedule-toolbar"
+        role="group"
+        aria-label="Show week"
+        className="-mx-5 mb-4 flex gap-1.5 overflow-x-auto border-b border-stone-100 px-5 pb-3 sm:mx-0 sm:px-0"
+      >
+        {SCHEDULE_WEEK_TABS.map((w) => {
+          const active = filters.week === w;
           return (
             <button
               key={w}
               type="button"
-              onClick={() => {
-                setSelectedWeek(w);
-                setSelectedDay('All');
-              }}
-              className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition ${
-                active
-                  ? 'bg-stone-900 text-white shadow-xs'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900'
-              }`}
+              aria-pressed={active}
+              onClick={() => updateFilters({ week: w, day: 'All' })}
+              className={pillClass(active)}
             >
               {w === 'Today' && <IconZap className="h-3 w-3 text-amber-400" />}
-              <span>{w}</span>
-              <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${active ? 'bg-stone-800 text-stone-200' : 'bg-stone-200 text-stone-700'}`}>
-                {count}
+              <span className="whitespace-nowrap">{w}</span>
+              <span className={`rounded-full px-1.5 text-xs ${active ? 'bg-stone-800 text-stone-200' : 'bg-stone-200 text-stone-700'}`}>
+                {weekCounts[w] || 0}
               </span>
             </button>
           );
         })}
       </div>
 
-      {/* Why no Monday in Week 1 note */}
-      {selectedWeek === 'Week 1' && (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-amber-50/90 border border-amber-200/70 p-3 text-xs text-amber-900">
-          <div className="flex items-center gap-2">
-            <IconCalendar className="h-4 w-4 text-amber-700 shrink-0" />
-            <span>
-              <strong>Note:</strong> Day 1 of onboarding started on <strong>Tuesday, September 1st, 2026</strong>. Monday activities appear in Week 2 (07/09), Week 3, and Week 4!
-            </span>
-          </div>
+      {filters.week === 'Week 1' && (
+        <div className="mb-4 flex items-start gap-2 rounded-2xl border border-amber-200/70 bg-amber-50/90 p-3 text-sm text-amber-900">
+          <IconCalendar className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
+          <span>
+            Onboarding started on <strong>Tue 1 Sep 2026</strong>, so Week 1 has no Monday. Monday activities start in Week 2.
+          </span>
         </div>
       )}
 
-      {/* Filter Toolbar: Day pills, Status dropdown, and Search */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        {/* Day filter pills */}
-        {selectedWeek !== 'Today' && availableDays.length > 1 && (
-          <div className="flex flex-wrap items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setSelectedDay('All')}
-              className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                selectedDay === 'All'
-                  ? 'bg-mint-700 text-white shadow-2xs'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-              }`}
-            >
-              All Days ({currentWeekActivities.length})
-            </button>
-            {availableDays.map((d) => {
-              const count = dayCounts[d] || 0;
-              const active = selectedDay === d;
-              return (
+      {/* Search + filters */}
+      <div className="mb-5 space-y-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="relative min-w-0 grow sm:max-w-xs">
+            <label htmlFor="schedule-search" className="sr-only">
+              Search activities
+            </label>
+            <input
+              id="schedule-search"
+              type="search"
+              value={filters.search}
+              onChange={(e) => updateFilters({ search: e.target.value })}
+              placeholder="Search topic or leader…"
+              className="min-h-11 w-full rounded-full border border-stone-200 bg-stone-50 py-1.5 pl-3.5 pr-11 text-sm text-stone-800 placeholder-stone-500 focus:border-mint-500 focus:bg-white sm:min-h-9 sm:text-xs [&::-webkit-search-cancel-button]:hidden"
+            />
+            {filters.search && (
+              <button
+                type="button"
+                onClick={() => updateFilters({ search: '' })}
+                aria-label="Clear search"
+                className="absolute right-0 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 hover:text-stone-800 sm:size-9"
+              >
+                <IconX className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            aria-expanded={filtersOpen}
+            aria-controls="schedule-filters"
+            onClick={() => setFiltersOpen((open) => !open)}
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3.5 text-xs font-semibold text-stone-700 shadow-2xs transition hover:bg-stone-50 sm:hidden"
+          >
+            <span>Filters{hiddenFilterCount > 0 ? ` (${hiddenFilterCount} active)` : ''}</span>
+            <IconChevronDown className={`h-3.5 w-3.5 text-stone-500 transition ${filtersOpen ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        <div id="schedule-filters" className={`${filtersOpen ? 'flex' : 'hidden'} flex-wrap items-center gap-2 sm:flex`}>
+          {showDayPills && (
+            <div role="group" aria-label="Day" className="flex flex-wrap items-center gap-1">
+              <button
+                type="button"
+                aria-pressed={filters.day === 'All'}
+                onClick={() => updateFilters({ day: 'All' })}
+                className={dayPillClass(filters.day === 'All')}
+              >
+                All days ({currentWeekActivities.length})
+              </button>
+              {availableDays.map((d) => (
                 <button
                   key={d}
                   type="button"
-                  onClick={() => setSelectedDay(d)}
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition ${
-                    active
-                      ? 'bg-mint-700 text-white shadow-2xs'
-                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                  }`}
+                  aria-pressed={filters.day === d}
+                  onClick={() => updateFilters({ day: d })}
+                  className={dayPillClass(filters.day === d)}
                 >
-                  {d} ({count})
+                  {d} ({dayCounts[d] || 0})
                 </button>
-              );
-            })}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
 
-        <div className="flex flex-wrap items-center gap-2 ml-auto w-full sm:w-auto">
-          {/* Status filter dropdown */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs text-stone-700 shadow-2xs focus:border-stone-900 focus:outline-none"
-          >
-            <option value="All">All Progress ({currentWeekActivities.length})</option>
-            <option value="Done">Done</option>
-            <option value="In Progress">In Progress</option>
-            <option value="On-Hold">On-Hold</option>
-            <option value="Reschedule">Reschedule</option>
-            <option value="Not Started">Not Started</option>
-          </select>
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            <label htmlFor="schedule-progress" className="sr-only">
+              Progress
+            </label>
+            <select
+              id="schedule-progress"
+              value={filters.status}
+              onChange={(e) => updateFilters({ status: e.target.value })}
+              className="min-h-11 rounded-full border border-stone-200 bg-white px-3 text-xs text-stone-700 shadow-2xs focus:border-stone-900 sm:min-h-9"
+            >
+              <option value="All">All progress ({currentWeekActivities.length})</option>
+              <option value="Done">Done</option>
+              <option value="In Progress">In Progress</option>
+              <option value="On-Hold">On-Hold</option>
+              <option value="Reschedule">Reschedule</option>
+              <option value="Not Started">Not Started</option>
+            </select>
 
-          {/* Quick Sync Button */}
-          <button
-            type="button"
-            onClick={() => setIsSyncModalOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 active:scale-95 transition"
-            title="Open Schedule Sync modal"
-          >
-            <IconGoogle className="h-3.5 w-3.5 text-sky-600" />
-            <span>Sync ({filteredScheduleActivities.length})</span>
-          </button>
-
-          {/* Search box */}
-          <div className="relative min-w-44 max-w-xs grow">
-            <input
-              type="text"
-              value={scheduleSearch}
-              onChange={(e) => setScheduleSearch(e.target.value)}
-              placeholder="Search topic, PIC, row..."
-              className="w-full rounded-full border border-stone-200 bg-stone-50 px-3.5 py-1.5 text-xs text-stone-800 placeholder-stone-400 focus:border-mint-500 focus:bg-white focus:outline-hidden"
-            />
-            {scheduleSearch && (
-              <button
-                type="button"
-                onClick={() => setScheduleSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-700"
+            <button
+              type="button"
+              role="switch"
+              aria-checked={filters.hideCompleted}
+              onClick={handleToggleHideCompleted}
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 shadow-2xs transition hover:bg-stone-50 sm:min-h-9"
+            >
+              <span
+                aria-hidden="true"
+                className={`relative h-5 w-9 shrink-0 rounded-full transition ${filters.hideCompleted ? 'bg-mint-700' : 'bg-stone-300'}`}
               >
-                <IconX className="h-3 w-3" />
-              </button>
-            )}
+                <span
+                  className={`absolute top-0.5 size-4 rounded-full bg-white shadow-2xs transition-all ${
+                    filters.hideCompleted ? 'left-4.5' : 'left-0.5'
+                  }`}
+                />
+              </span>
+              <span>Hide completed</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Schedule Activities List */}
-      <div className="space-y-3">
-        {filteredScheduleActivities.length === 0 ? (
-          <div className="rounded-2xl border border-stone-100 bg-white p-8 text-center shadow-soft">
-            <p className="text-sm font-medium text-stone-600">No activities match your filter.</p>
+      {/* Activities, grouped by week */}
+      {filteredScheduleActivities.length === 0 ? (
+        <div className="rounded-2xl border border-stone-100 bg-white p-8 text-center shadow-soft">
+          <p className="text-sm font-medium text-stone-600">
+            {dataSource === 'loading' ? 'Loading your schedule…' : 'No activities match your filters.'}
+          </p>
+          {dataSource !== 'loading' && (
             <button
               type="button"
-              onClick={() => {
-                setSelectedWeek('All');
-                setSelectedDay('All');
-                setStatusFilter('All');
-                setScheduleSearch('');
-              }}
-              className="mt-3 rounded-full bg-stone-100 px-4 py-1.5 text-xs font-semibold text-stone-800 hover:bg-stone-200 transition"
+              onClick={() => setFilters({ ...DEFAULT_SCHEDULE_FILTERS })}
+              className="mt-3 inline-flex min-h-11 items-center rounded-full bg-stone-100 px-4 text-xs font-semibold text-stone-800 transition hover:bg-stone-200 sm:min-h-9"
             >
-              Reset Filters
+              Reset filters
             </button>
-          </div>
-        ) : (
-          filteredScheduleActivities.map((item) => (
-            <ScheduleCard
-              key={item.id}
-              item={item}
-              isCurrentTimer={false}
-              isTimerRunning={false}
-              isTimerPaused={false}
-              elapsedSeconds={0}
-              startedAt={null}
-              onViewDetails={(act) => setDetailActivity(act)}
-              onStartTimer={() => {
-                window.location.href = '/';
-              }}
-              onFillRow={(act) => setEditingScheduleItem(act)}
-              onSyncRow={(act) => void handleSyncRowDirectly(act)}
-              onCopyGtoK={(act) => void handleCopyGtoK(act)}
-              onCopyFullRow={(act) => void handleCopyFullRow(act)}
-              onWriteReflection={(act) => {
-                setSelectedActivityForLearning(act);
-                setShowLearningCapture(true);
-              }}
-              copiedToast={copiedRowToast}
-            />
-          ))
-        )}
-      </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {visibleGroups.map((group) => {
+            const totals = weekTotals.get(group.key);
+            const headingId = `week-${group.key.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+            return (
+              <section key={group.key} aria-labelledby={headingId}>
+                <h2
+                  id={headingId}
+                  className="sticky top-14 z-10 -mx-5 bg-cream/95 px-5 py-2 text-sm font-semibold text-stone-800 backdrop-blur-sm sm:-mx-8 sm:px-8 md:top-0"
+                >
+                  {weekGroupHeading(group.title, totals?.doneCount ?? group.doneCount, totals?.items.length ?? group.items.length)}
+                </h2>
+                <div className="mt-2 space-y-3">
+                  {splitCompletedRuns(group.items).map((run) =>
+                    run.kind === 'done' ? (
+                      <ul
+                        key={`done-${run.items[0].id}`}
+                        className="divide-y divide-stone-100 overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-2xs"
+                      >
+                        {run.items.map((item) => (
+                          <ScheduleCompletedRow
+                            key={item.id}
+                            item={item}
+                            hasReflection={reflectedIds.has(item.id)}
+                            onOpen={(act) => setDetailActivity(act)}
+                          />
+                        ))}
+                      </ul>
+                    ) : (
+                      <ScheduleCard
+                        key={run.item.id}
+                        item={run.item}
+                        isCurrentTimer={false}
+                        isTimerRunning={false}
+                        isTimerPaused={false}
+                        elapsedSeconds={0}
+                        startedAt={null}
+                        hasReflection={reflectedIds.has(run.item.id)}
+                        onViewDetails={(act) => setDetailActivity(act)}
+                        onStartTimer={() => {
+                          window.location.href = '/';
+                        }}
+                        onFillRow={(act) => setEditingScheduleItem(act)}
+                        onSyncRow={(act) => void handleSyncRowDirectly(act)}
+                        onCopyGtoK={(act) => void handleCopyGtoK(act)}
+                        onCopyFullRow={(act) => void handleCopyFullRow(act)}
+                        onWriteReflection={openReflection}
+                        copiedToast={copiedRowToast}
+                      />
+                    )
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
 
       {/* Slide-Over Detail Sheet */}
       <ActivityDetailSheet
@@ -571,13 +747,9 @@ export default function MasterSchedulePage() {
         onSyncRow={(act) => void handleSyncRowDirectly(act)}
         copiedToast={copiedRowToast}
         isSyncing={isSyncingRow}
-        onWriteReflection={(act) => {
-          setSelectedActivityForLearning(act);
-          setShowLearningCapture(true);
-        }}
+        onWriteReflection={openReflection}
       />
 
-      {/* Fill Schedule Modal */}
       {editingScheduleItem && (
         <ScheduleFillModal
           activity={editingScheduleItem}
@@ -586,7 +758,6 @@ export default function MasterSchedulePage() {
         />
       )}
 
-      {/* Learning Diary Reflection Modal */}
       <LearningModal
         open={showLearningCapture}
         activity={learningActivityContext}
@@ -597,15 +768,37 @@ export default function MasterSchedulePage() {
         }}
       />
 
-      {/* Sync All to Spreadsheet Modal */}
-      <ScheduleSyncAllModal
+      <BulkSyncModal
         isOpen={isSyncModalOpen}
         onClose={() => setIsSyncModalOpen(false)}
-        activities={scheduleCatalog}
-        selectedWeek={selectedWeek}
-        onSyncSuccess={({ totalUpdatedRows }) => {
-          toast.success(`Successfully synced ${totalUpdatedRows} activities to Google Sheets!`);
+        title="Sync all to the spreadsheet"
+        description="Writes the time, progress, link and notes you've logged for every activity that has details."
+        warning={
+          <>
+            <p className="font-semibold">
+              This overwrites {syncPlan.rowsWithData.length} rows in the shared &lsquo;Schedule&rsquo; sheet. What&apos;s there now will be replaced.
+            </p>
+            {syncPlan.ranges.length > 0 && (
+              <p className="mt-1 break-words">Cells written: {syncPlan.ranges.join(', ')}.</p>
+            )}
+            <p className="mt-1">
+              Activities with only some details filled in will have their other cells cleared.
+              {syncPlan.skipped.length > 0 &&
+                ` ${syncPlan.skipped.length} ${syncPlan.skipped.length === 1 ? 'activity has' : 'activities have'} no details and ${syncPlan.skipped.length === 1 ? 'is' : 'are'} left unchanged.`}
+            </p>
+          </>
+        }
+        rows={syncRows}
+        writeCount={syncPlan.rowsWithData.length}
+        endpoint="/api/schedule/sync"
+        buildBody={() => buildScheduleSyncBody(syncPlan, dataSource)}
+        disabledReason={syncDisabledReason}
+        formatSuccess={(data) => {
+          const updated = typeof data.totalUpdatedRows === 'number' ? data.totalUpdatedRows : syncPlan.rowsWithData.length;
+          return `Updated ${updated} activities in the spreadsheet.`;
         }}
+        onSyncSuccess={() => toast.success('Schedule synced to the spreadsheet.')}
+        toolsItems={chunkToolItems}
       />
     </main>
   );

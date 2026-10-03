@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import {
   SCORING_CATEGORIES,
   DEPARTMENT_VALUES_SCORING_INDICATORS,
@@ -11,14 +10,9 @@ import {
   type ScoringLevel,
 } from '@/lib/review-scoring';
 import { useToast } from '@/app/components/Toast';
-import {
-  IconTarget,
-  IconClipboard,
-  IconCheck,
-  IconTrophy,
-  IconStar,
-  IconBookOpen,
-} from '@/app/components/Icons';
+import { ReviewsTabs } from '@/app/components/ReviewsTabs';
+import { SheetToolsMenu, type SheetToolsMenuItem } from '@/app/components/SheetToolsMenu';
+import { IconStar, IconBookOpen } from '@/app/components/Icons';
 
 export default function MonthlyReviewScorePage() {
   const { toast } = useToast();
@@ -33,7 +27,7 @@ export default function MonthlyReviewScorePage() {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(tsv);
         setCopiedRubric(true);
-        toast.success('Copied entire Scoring Rubric TSV to clipboard!');
+        toast.success('Copied the scoring rubric. Paste it into the spreadsheet.');
         setTimeout(() => setCopiedRubric(false), 3000);
       }
     } catch {
@@ -47,7 +41,7 @@ export default function MonthlyReviewScorePage() {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
         setCopiedItemKey(key);
-        toast.success(`Copied ${level} (${score}) indicator!`);
+        toast.success(`Copied ${level} (${score}). Paste it into the spreadsheet.`);
         setTimeout(() => setCopiedItemKey(null), 2500);
       }
     } catch {
@@ -55,57 +49,38 @@ export default function MonthlyReviewScorePage() {
     }
   }
 
+  const rubricToolItems: SheetToolsMenuItem[] = [
+    {
+      id: 'copy-rubric',
+      label: 'Copy for spreadsheet',
+      hint: 'Both rubrics with headings · 3 columns (level, score, description)',
+      onSelect: handleCopyRubric,
+      state: copiedRubric ? 'done' : 'idle',
+      doneLabel: 'Copied the rubric',
+    },
+  ];
+
   return (
     <main className="mx-auto min-h-screen max-w-5xl px-5 py-6 text-stone-900 sm:px-8 sm:py-8">
       {/* Header */}
-      <header className="mb-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-peach-100 px-3 py-1 text-xs font-semibold text-peach-800">
-                <IconTarget className="h-3.5 w-3.5 text-peach-700" />
-                Sheet: Monthly Review Score
-              </span>
-              <span className="text-xs font-medium text-stone-500">
-                Standard Scoring Indicator Rubric
-              </span>
-            </div>
+      <header className="relative z-10 mb-8 min-w-0">
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">
+              Probation checkpoints
+            </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">
               Monthly Review Score
             </h1>
-            <p className="mt-1 text-sm text-stone-500 max-w-2xl">
+            <p className="mt-1 max-w-2xl text-sm text-stone-500">
               The official 5-tier evaluation rubric defining standard expectations for Department Values and Technical Competency across all monthly reviews.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              type="button"
-              onClick={handleCopyRubric}
-              className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 shadow-2xs transition hover:bg-stone-50 active:scale-95"
-            >
-              {copiedRubric ? (
-                <>
-                  <IconCheck className="h-3.5 w-3.5 text-mint-600" />
-                  <span className="text-mint-700">Copied Rubric!</span>
-                </>
-              ) : (
-                <>
-                  <IconClipboard className="h-3.5 w-3.5 text-stone-500" />
-                  <span>Copy Rubric TSV</span>
-                </>
-              )}
-            </button>
-
-            <Link
-              href="/first-month-review"
-              className="inline-flex items-center gap-1.5 rounded-full bg-stone-900 px-4 py-2 text-xs font-semibold text-white shadow-2xs transition hover:bg-stone-700 active:scale-95"
-            >
-              <IconTrophy className="h-3.5 w-3.5 text-amber-400" />
-              <span>Go to First Month Review →</span>
-            </Link>
-          </div>
+          <SheetToolsMenu items={rubricToolItems} className="ml-auto shrink-0" />
         </div>
+
+        <ReviewsTabs className="mt-4" />
 
         {/* Quick summary strip */}
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -117,18 +92,19 @@ export default function MonthlyReviewScorePage() {
                 key={score}
                 type="button"
                 onClick={() => setSelectedScoreFilter((prev) => (prev === score ? 'all' : score))}
-                className={`rounded-2xl border p-3 text-left transition-all duration-200 active:scale-98 ${
+                aria-pressed={isFilterActive}
+                className={`min-w-0 rounded-2xl border p-3 text-left transition-all duration-200 active:scale-98 ${
                   isFilterActive
                     ? 'border-stone-900 bg-stone-900 text-white shadow-sm ring-2 ring-stone-900/20'
                     : 'border-stone-200/90 bg-white hover:border-stone-300 hover:shadow-2xs'
                 }`}
               >
-                <div className="flex items-center justify-between">
+                <span className="flex flex-wrap items-center justify-between gap-1">
                   <span className={`text-base font-bold ${isFilterActive ? 'text-white' : 'text-stone-900'}`}>
                     {score.toFixed(1)}
                   </span>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                       isFilterActive
                         ? 'bg-stone-800 text-stone-200'
                         : valItem?.theme.badgeBg + ' ' + valItem?.theme.badgeText
@@ -136,10 +112,10 @@ export default function MonthlyReviewScorePage() {
                   >
                     {valItem?.level}
                   </span>
-                </div>
-                <p className={`mt-1 text-[11px] line-clamp-1 ${isFilterActive ? 'text-stone-300' : 'text-stone-500'}`}>
+                </span>
+                <span className={`mt-1 line-clamp-1 block text-xs ${isFilterActive ? 'text-stone-300' : 'text-stone-500'}`}>
                   {score === 100 ? 'Sets benchmark' : score >= 80 ? 'Independent' : 'Supervised'}
-                </p>
+                </span>
               </button>
             );
           })}
@@ -161,7 +137,8 @@ export default function MonthlyReviewScorePage() {
                 key={tab.id}
                 type="button"
                 onClick={() => setSelectedCategory(tab.id as typeof selectedCategory)}
-                className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                aria-pressed={active}
+                className={`inline-flex min-h-11 items-center rounded-full px-4 text-xs font-semibold transition sm:min-h-8 ${
                   active
                     ? 'bg-stone-900 text-white shadow-2xs'
                     : 'bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900'
@@ -177,7 +154,7 @@ export default function MonthlyReviewScorePage() {
           <button
             type="button"
             onClick={() => setSelectedScoreFilter('all')}
-            className="text-xs font-medium text-stone-500 hover:text-stone-900 underline underline-offset-2"
+            className="inline-flex min-h-11 items-center text-xs font-medium text-stone-600 underline underline-offset-2 hover:text-stone-900 sm:min-h-0"
           >
             Clear score filter ({selectedScoreFilter.toFixed(1)})
           </button>
@@ -197,13 +174,13 @@ export default function MonthlyReviewScorePage() {
             return (
               <section key={cat.key} className="space-y-4">
                 <div className="flex items-start justify-between gap-4">
-                  <div>
+                  <div className="min-w-0">
                     <h2 className="text-xl font-bold tracking-tight text-stone-900">
                       {cat.title}
                     </h2>
                     <p className="mt-0.5 text-xs text-stone-500">{cat.description}</p>
                   </div>
-                  <span className="rounded-full bg-stone-100 px-2.5 py-1 text-[11px] font-medium text-stone-600">
+                  <span className="shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-600">
                     {filteredItems.length} tiers
                   </span>
                 </div>
@@ -228,24 +205,20 @@ export default function MonthlyReviewScorePage() {
                             </span>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleCopyItem(item.level, item.formattedScore, item.description, key)}
-                            className="opacity-90 group-hover:opacity-100 inline-flex items-center gap-1 rounded-full border border-stone-200 bg-white/80 px-2.5 py-1 text-[11px] font-medium text-stone-700 shadow-2xs backdrop-blur-xs transition hover:bg-white active:scale-95"
-                            title="Copy single indicator row (TSV)"
-                          >
-                            {isCopied ? (
-                              <>
-                                <IconCheck className="h-3 w-3 text-mint-600" />
-                                <span className="text-mint-700 font-semibold">Copied!</span>
-                              </>
-                            ) : (
-                              <>
-                                <IconClipboard className="h-3 w-3 text-stone-400" />
-                                <span>Copy TSV</span>
-                              </>
-                            )}
-                          </button>
+                          <SheetToolsMenu
+                            size="icon"
+                            label={`Sheet tools for ${item.level} (${item.formattedScore})`}
+                            items={[
+                              {
+                                id: 'copy-indicator',
+                                label: 'Copy for spreadsheet',
+                                hint: 'One row · level, score, description',
+                                onSelect: () => handleCopyItem(item.level, item.formattedScore, item.description, key),
+                                state: isCopied ? 'done' : 'idle',
+                                doneLabel: 'Copied',
+                              },
+                            ]}
+                          />
                         </div>
 
                         <p className={`mt-3 text-sm leading-relaxed ${item.theme.text}`}>

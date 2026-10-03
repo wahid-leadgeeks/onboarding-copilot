@@ -6,7 +6,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { NovaLogo } from '@/app/components/NovaLogo';
 import {
   IconBook,
-  IconBell,
   IconCalendar,
   IconFileText,
   IconMenu,
@@ -15,14 +14,13 @@ import {
   IconStar,
   IconSun,
   IconTree,
-  IconTrophy,
-  IconTarget,
   IconSparkles,
   IconX,
   IconLogOut,
 } from '@/app/components/Icons';
 import { NotificationBellTrigger } from '@/app/components/NotificationPanel';
-
+import { SyncStatusChip } from '@/app/components/SyncStatusChip';
+import { CommandPalette } from '@/app/components/CommandPalette';
 
 import { GuideTour, allPagesTourSteps } from '@/app/components/GuideTour';
 import { GUIDE_TOUR_STORAGE_KEY, readGuideTourState, writeGuideTourState } from '@/lib/guide-tour';
@@ -33,6 +31,8 @@ interface NavItem {
   readonly icon: React.ComponentType<{ className?: string }>;
   readonly badge?: string;
   readonly tourId?: string;
+  /** Extra routes that belong to this item (it is active on them too). */
+  readonly matches?: readonly string[];
 }
 
 interface NavSection {
@@ -52,9 +52,13 @@ const NAV_SECTIONS: readonly NavSection[] = [
     title: 'Milestones & Growth',
     items: [
       { label: 'Timeline', href: '/timeline', icon: IconTree, tourId: 'nav-timeline' },
-      { label: 'Reviews', href: '/reviews', icon: IconSparkles, tourId: 'nav-reviews' },
-      { label: 'First Month Review', href: '/first-month-review', icon: IconTrophy, tourId: 'nav-first-month-review' },
-      { label: 'Monthly Review Score', href: '/monthly-review-score', icon: IconTarget, tourId: 'nav-monthly-review-score' },
+      {
+        label: 'Reviews',
+        href: '/reviews',
+        icon: IconSparkles,
+        tourId: 'nav-reviews',
+        matches: ['/first-month-review', '/monthly-review-score'],
+      },
     ],
   },
   {
@@ -73,11 +77,25 @@ const NAV_SECTIONS: readonly NavSection[] = [
   },
 ];
 
+/** Every nav item in display order. */
+export const NAV_ITEMS: readonly NavItem[] = NAV_SECTIONS.flatMap((section) => section.items);
+
+function routeMatches(pathname: string, href: string): boolean {
+  if (href === '/') return pathname === '/';
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/** Whether a nav item is the current one for `pathname` (Reviews also covers its sub-pages). */
+export function isNavItemActive(item: Pick<NavItem, 'href' | 'matches'>, pathname: string): boolean {
+  return [item.href, ...(item.matches ?? [])].some((href) => routeMatches(pathname, href));
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [user, setUser] = useState<{ name: string; email: string; picture?: string } | null>(null);
 
   const isLoginPage = pathname === '/login';
@@ -149,6 +167,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('open-guide-tour', handleOpenTour);
   }, [isLoginPage]);
 
+  // One global command palette (opened by the Search buttons, ⌘K or `?`).
+  useEffect(() => {
+    if (isLoginPage) return;
+    function handleOpenPalette() {
+      setPaletteOpen(true);
+    }
+    window.addEventListener('open-command-palette', handleOpenPalette);
+    return () => window.removeEventListener('open-command-palette', handleOpenPalette);
+  }, [isLoginPage]);
+
   function handleTourFinish() {
     localStorage.setItem(
       GUIDE_TOUR_STORAGE_KEY,
@@ -170,16 +198,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [mobileMenuOpen]);
 
-  const isLinkActive = (href: string) => {
-    if (href === '/') {
-      return pathname === '/';
-    }
-    return pathname.startsWith(href);
-  };
-
   // Find active label for mobile header
-  const allItems = NAV_SECTIONS.flatMap((s) => s.items);
-  const currentItem = allItems.find((i) => isLinkActive(i.href)) || { label: 'Today' };
+  const currentItem = NAV_ITEMS.find((item) => isNavItemActive(item, pathname)) || { label: 'Today' };
+  // The daily summary is built by the Today page, so its bell only exists there.
+  const showBell = pathname === '/';
 
   const triggerSearch = () => {
     window.dispatchEvent(new CustomEvent('open-command-palette'));
@@ -191,6 +213,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-[#fafaf7] text-stone-900">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-stone-900 focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-white focus:shadow-lift"
+      >
+        Skip to content
+      </a>
       {/* ============================================================ */}
       {/* DESKTOP SIDEBAR (Visible on md and above)                      */}
       {/* ============================================================ */}
@@ -208,16 +236,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <span className="text-base font-bold tracking-[0.16em] text-stone-900">
                   NOVA
                 </span>
-                <span className="rounded bg-mint-50 px-1.5 py-0.2 text-[9px] font-bold text-mint-700 uppercase tracking-wider">
+                <span className="rounded bg-mint-50 px-1.5 text-[11px] font-bold text-mint-700 uppercase tracking-wider">
                   v3
                 </span>
               </div>
-              <p className="text-[10px] font-medium text-stone-400 tracking-wide">
+              <p className="text-xs font-medium text-stone-500 tracking-wide">
                 Onboarding Cockpit
               </p>
             </div>
           </Link>
-          <NotificationBellTrigger />
+          {showBell && <NotificationBellTrigger />}
         </div>
 
         {/* Quick Search Trigger */}
@@ -229,10 +257,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             title="Search activities, topics, and guides (⌘K)"
           >
             <div className="flex items-center gap-2">
-              <IconSearch className="h-3.5 w-3.5 text-stone-400" />
+              <IconSearch className="h-3.5 w-3.5 text-stone-500" />
               <span>Quick search...</span>
             </div>
-            <kbd className="rounded bg-stone-200/70 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-stone-600">
+            <kbd className="rounded bg-stone-200/70 px-1.5 py-0.5 font-mono text-xs font-semibold text-stone-600">
               ⌘K
             </kbd>
           </button>
@@ -242,12 +270,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-5">
           {NAV_SECTIONS.map((section) => (
             <div key={section.title} className="space-y-1">
-              <h3 className="px-3 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+              <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-stone-500">
                 {section.title}
               </h3>
               <div className="space-y-0.5">
                 {section.items.map((item) => {
-                  const active = isLinkActive(item.href);
+                  const active = isNavItemActive(item, pathname);
                   const Icon = item.icon;
 
                   return (
@@ -301,38 +329,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 )}
                 <div className="min-w-0 truncate">
                   <p className="text-xs font-semibold text-stone-800 truncate">{user.name}</p>
-                  <p className="text-[10px] text-stone-400 truncate">{user.email}</p>
+                  <p className="text-xs text-stone-500 truncate">{user.email}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => void handleLogout()}
                 title="Sign out"
-                className="text-stone-400 hover:text-stone-700 p-1.5 rounded-lg hover:bg-stone-200/60 transition cursor-pointer"
+                aria-label="Sign out"
+                className="flex size-8 items-center justify-center text-stone-500 hover:text-stone-700 rounded-lg hover:bg-stone-200/60 transition cursor-pointer"
               >
                 <IconLogOut className="size-3.5" />
               </button>
             </div>
           )}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="size-2 rounded-full bg-mint-500 animate-pulse" />
-              <span className="text-[11px] font-medium text-stone-600">
-                PostgreSQL + Sheets Sync
-              </span>
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            <SyncStatusChip variant="full" className="min-w-0" />
             <Link
               href="/settings"
-              className="text-[11px] font-semibold text-stone-400 hover:text-stone-700 transition"
-              title="Database & Google Sheets Configuration"
+              className="shrink-0 text-xs font-semibold text-stone-500 hover:text-stone-800 transition"
             >
-              Sync Status →
+              Settings
             </Link>
           </div>
           <button
             type="button"
             onClick={() => setTourOpen(true)}
-            className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-stone-200/80 bg-white py-1.5 text-[11px] font-semibold text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition shadow-2xs cursor-pointer active:scale-98"
+            className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-stone-200/80 bg-white py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-50 hover:text-stone-900 transition shadow-2xs cursor-pointer active:scale-98"
           >
             <span>🧭 Quick Guide Tour</span>
           </button>
@@ -344,31 +367,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* MOBILE STICKY TOP BAR (Visible below md)                       */}
       {/* ============================================================ */}
       <header className="md:hidden fixed top-0 inset-x-0 z-40 h-14 border-b border-stone-200/70 bg-[#fafaf7]/90 backdrop-blur-md px-4 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <NovaLogo className="size-5" />
-          <span className="text-sm font-bold tracking-[0.16em] text-stone-900">
-            NOVA
-          </span>
-          <span className="text-stone-300">/</span>
-          <span className="text-xs font-semibold text-stone-700">
-            {currentItem.label}
-          </span>
-        </Link>
+        <div className="flex min-w-0 items-center gap-2">
+          <Link href="/" className="flex min-h-11 min-w-0 items-center gap-2">
+            <NovaLogo className="size-5 shrink-0" />
+            <span className="text-sm font-bold tracking-[0.16em] text-stone-900">
+              NOVA
+            </span>
+            <span aria-hidden="true" className="text-stone-300">/</span>
+            <span className="truncate text-xs font-semibold text-stone-700">
+              {currentItem.label}
+            </span>
+          </Link>
+          <SyncStatusChip variant="compact" className="shrink-0" />
+        </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-0.5">
           <button
             type="button"
             onClick={triggerSearch}
-            className="flex size-9 items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 transition"
+            className="flex size-11 items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 transition"
             aria-label="Search"
           >
             <IconSearch className="h-4 w-4" />
           </button>
-          <NotificationBellTrigger />
+          {showBell && <NotificationBellTrigger />}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
-            className="flex size-9 items-center justify-center rounded-full text-stone-700 hover:bg-stone-100 transition"
+            className="flex size-11 items-center justify-center rounded-full text-stone-700 hover:bg-stone-100 transition"
             aria-label="Open menu"
           >
             <IconMenu className="h-5 w-5" />
@@ -407,7 +433,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="rounded-full p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition"
+                  className="flex size-11 items-center justify-center rounded-full text-stone-500 hover:bg-stone-100 hover:text-stone-700 transition"
                   aria-label="Close menu"
                 >
                   <IconX className="h-5 w-5" />
@@ -418,12 +444,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <nav className="flex-1 overflow-y-auto p-4 space-y-6">
                 {NAV_SECTIONS.map((section) => (
                   <div key={section.title} className="space-y-1.5">
-                    <h3 className="px-2 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                    <h3 className="px-2 text-[11px] font-bold uppercase tracking-wider text-stone-500">
                       {section.title}
                     </h3>
                     <div className="space-y-1">
                       {section.items.map((item) => {
-                        const active = isLinkActive(item.href);
+                        const active = isNavItemActive(item, pathname);
                         const Icon = item.icon;
 
                         return (
@@ -432,7 +458,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             href={item.href}
                             onClick={() => setMobileMenuOpen(false)}
                             aria-current={active ? 'page' : undefined}
-                            className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                            className={`flex min-h-11 items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                               active
                                 ? 'bg-stone-900 text-white font-semibold'
                                 : 'text-stone-700 hover:bg-stone-100'
@@ -441,7 +467,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             <div className="flex items-center gap-3">
                               <Icon
                                 className={`h-4 w-4 ${
-                                  active ? 'text-white' : 'text-stone-400'
+                                  active ? 'text-white' : 'text-stone-500'
                                 }`}
                               />
                               <span>{item.label}</span>
@@ -476,7 +502,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       )}
                       <div className="min-w-0 truncate">
                         <p className="text-xs font-semibold text-stone-800 truncate">{user.name}</p>
-                        <p className="text-[10px] text-stone-400 truncate">{user.email}</p>
+                        <p className="text-xs text-stone-500 truncate">{user.email}</p>
                       </div>
                     </div>
                     <button
@@ -486,21 +512,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         void handleLogout();
                       }}
                       title="Sign out"
-                      className="text-xs font-medium text-stone-500 hover:text-stone-800 px-2 py-1 rounded bg-stone-200/50 transition cursor-pointer"
+                      className="min-h-11 shrink-0 text-xs font-medium text-stone-600 hover:text-stone-800 px-3 rounded-lg bg-stone-200/50 transition cursor-pointer"
                     >
                       Sign out
                     </button>
                   </div>
                 )}
-                <div className="flex items-center justify-between text-xs text-stone-500">
-                  <span className="flex items-center gap-1.5">
-                    <span className="size-2 rounded-full bg-mint-500" />
-                    Local-First Cockpit
-                  </span>
+                <div className="flex items-center justify-between gap-2">
+                  <SyncStatusChip variant="full" className="min-w-0" />
                   <Link
                     href="/settings"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="font-semibold text-stone-700 hover:underline"
+                    className="flex min-h-11 shrink-0 items-center text-xs font-semibold text-stone-700 hover:underline"
                   >
                     Settings
                   </Link>
@@ -512,7 +535,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     setMobileMenuOpen(false);
                     setTourOpen(true);
                   }}
-                  className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-stone-200/80 bg-white py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition shadow-2xs cursor-pointer active:scale-98"
+                  className="w-full min-h-11 flex items-center justify-center gap-1.5 rounded-lg border border-stone-200/80 bg-white py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition shadow-2xs cursor-pointer active:scale-98"
                 >
                   <span>🧭 Quick Guide Tour</span>
                 </button>
@@ -525,13 +548,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* ============================================================ */}
       {/* MAIN CONTENT AREA                                            */}
       {/* ============================================================ */}
-      <div className="flex-1 md:pl-64 flex flex-col min-h-screen">
+      <div className="flex-1 min-w-0 md:pl-64 flex flex-col min-h-screen">
         {/* Mobile top spacing buffer */}
         <div className="h-14 md:hidden" />
-        <div className="flex-1 w-full">
+        <div
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 w-full overflow-x-clip pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-0 focus:outline-none"
+        >
           {children}
         </div>
       </div>
+
+      <CommandPalette
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onSelectActivity={(activity) => {
+          if (pathname === '/schedule') {
+            window.dispatchEvent(new CustomEvent('nova:focus-activity', { detail: { id: activity.id } }));
+          } else {
+            router.push(`/schedule#activity-${activity.id}`);
+          }
+        }}
+      />
 
       <GuideTour
         steps={allPagesTourSteps}

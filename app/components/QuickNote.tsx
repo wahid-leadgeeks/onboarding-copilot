@@ -32,7 +32,7 @@ export function QuickNote({ onSave }: { onSave: (content: string) => void }) {
             onChange={(event) => setValue(event.target.value)}
             rows={3}
             placeholder="Capture something for later..."
-            className="w-full rounded-card border border-stone-200 bg-white p-3 text-sm text-stone-900 placeholder:text-stone-400 focus:border-mint-300"
+            className="w-full rounded-card border border-stone-200 bg-white p-3 text-sm text-stone-900 placeholder:text-stone-500 focus:border-mint-300"
           />
           <button onClick={save} className="min-h-11 self-end rounded-full bg-stone-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-stone-700">
             Save
